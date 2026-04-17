@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-gateway
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: router-service-config
+  namespace: ai-gateway
+data:
+  config.yaml: |
+    server:
+      port: "8080"
+    provider:
+      ollama:
+        enabled: true
+        endpoint: "http://host.docker.internal:11434"
+        api_key: ""
+      opencode_zen:
+        enabled: false
+        endpoint: "https://api.opencode.com"
+        api_key: ""
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: router-service
+  namespace: ai-gateway
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: router-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: router-service
+  namespace: ai-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: router-service
+  template:
+    metadata:
+      labels:
+        app: router-service
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: router-service
+        image: docker.io/library/router-service:local
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: CONFIG_PATH
+          value: /app/config/config.yaml
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      volumes:
+      - name: config
+        configMap:
+          name: router-service-config
+          items:
+          - key: config.yaml
+            path: config.yaml

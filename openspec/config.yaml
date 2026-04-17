@@ -1,0 +1,42 @@
+schema: spec-driven
+
+# Project context
+# This is shown to AI when creating artifacts.
+context: |
+  Tech stack:
+  - Golang services: Go 1.26 + Gin + Domain-driven design + Clean Architecture 
+  - Python services: Python 3.14 + FastAPI + Domain-driven design + Clean Architecture 
+  - Deployment: KinD (Kubernetes in Docker) + Ingress via Helm chart
+  Domain: AI-powered LLM api gateway
+  Project type: Multi-service monorepo (Go + Python + React)
+  Each service is a top-level directory in the repository.
+  Spec naming convention:
+  - Service-specific: {service-name}-{capability}
+  - Cross-cutting: system-{capability}
+  Mandatory specs - every service and system MUST have:
+  - {service-name}-architecture: internal structure, patterns, dependencies
+  - {service-name}-deployment: build, containerization, configuration, env vars
+  - {service-name}-testing: test strategy, coverage requirements, fixtures
+
+# Per-artifact rules
+rules:
+  design:
+    - The chart in the design should use Mermaid
+    - All contents must be written in English
+  proposal:
+    - Keep proposals under 500 words
+    - Always focus on the "why" not the "how"
+    - All contents must be written in English
+  tasks:
+    - Break tasks into manageable chunks
+    - Use clear, actionable task descriptions
+    - All contents must be written in English
+  specs:
+    - "Spec folder names MUST follow: {service-name}-{capability} or system-{capability}"
+    - "Every service and system MUST have three mandatory specs: architecture, deployment, testing"
+    - When a change affects an existing capability, modify the existing spec - do NOT create a new spec for the same capability
+    - A requirement belongs in a service spec if it describes WHAT the service does
+    - A requirement belongs in a system spec if it describes HOW services are deployed, configured, or operated
+    - Service-level deployment specs cover that service's Dockerfile, env vars, Helm values, and startup behavior
+    - "System-deployment covers orchestration: top-level chart, kind, ingress, resource budgets, cross-cutting deployment patterns"
+    - All contents must be written in English

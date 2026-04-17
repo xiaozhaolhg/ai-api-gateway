@@ -1,0 +1,13 @@
+server:
+  port: "8080"
+
+provider:
+  ollama:
+    enabled: true
+    endpoint: "http://host.docker.internal:11434"
+    api_key: ""
+
+  opencode_zen:
+    enabled: false
+    endpoint: "https://api.opencode.com"
+    api_key: "${OPENCODE_API_KEY}"

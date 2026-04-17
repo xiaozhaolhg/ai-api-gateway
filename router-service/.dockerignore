@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+router-service
+*.exe
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Test
+*.test
+testdata/
+
+# Go
+vendor/
+go.work
+
+# Docs
+*.md
+
+# OpenCode
+.opencode/
