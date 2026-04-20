@@ -19,8 +19,7 @@ type ServerConfig struct {
 }
 
 type ProviderConfig struct {
-	Ollama      ProviderSettings `yaml:"ollama"`
-	OpenCodeZen ProviderSettings `yaml:"opencode_zen"`
+	Providers map[string]ProviderSettings `yaml:"providers"`
 }
 
 type ProviderSettings struct {
@@ -60,29 +59,25 @@ func resolveEnvVars(cfg *Config) error {
 		})
 	}
 
-	if cfg.Provider.Ollama.Endpoint != "" {
-		cfg.Provider.Ollama.Endpoint = resolve(cfg.Provider.Ollama.Endpoint)
-	}
-	if cfg.Provider.Ollama.APIKey != "" {
-		cfg.Provider.Ollama.APIKey = resolve(cfg.Provider.Ollama.APIKey)
-	}
-	if cfg.Provider.OpenCodeZen.Endpoint != "" {
-		cfg.Provider.OpenCodeZen.Endpoint = resolve(cfg.Provider.OpenCodeZen.Endpoint)
-	}
-	if cfg.Provider.OpenCodeZen.APIKey != "" {
-		cfg.Provider.OpenCodeZen.APIKey = resolve(cfg.Provider.OpenCodeZen.APIKey)
+	for providerType, settings := range cfg.Provider.Providers {
+		if settings.Endpoint != "" {
+			settings.Endpoint = resolve(settings.Endpoint)
+		}
+		if settings.APIKey != "" {
+			settings.APIKey = resolve(settings.APIKey)
+		}
+		cfg.Provider.Providers[providerType] = settings
 	}
 
 	return nil
 }
 
-func (c *Config) GetEnabledProviders() []ProviderSettings {
-	var enabled []ProviderSettings
-	if c.Provider.Ollama.Enabled {
-		enabled = append(enabled, c.Provider.Ollama)
-	}
-	if c.Provider.OpenCodeZen.Enabled {
-		enabled = append(enabled, c.Provider.OpenCodeZen)
+func (c *Config) GetEnabledProviders() map[string]ProviderSettings {
+	enabled := make(map[string]ProviderSettings)
+	for providerType, settings := range c.Provider.Providers {
+		if settings.Enabled {
+			enabled[providerType] = settings
+		}
 	}
 	return enabled
 }

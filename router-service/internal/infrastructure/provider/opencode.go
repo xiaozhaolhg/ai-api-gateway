@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -13,6 +14,39 @@ import (
 	"github.com/ai-api-gateway/router-service/internal/domain/port"
 	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
 )
+
+type OpenCodeZenFactory struct{}
+
+func NewOpenCodeZenFactory() *OpenCodeZenFactory {
+	return &OpenCodeZenFactory{}
+}
+
+func (f *OpenCodeZenFactory) Type() string {
+	return "opencode_zen"
+}
+
+func (f *OpenCodeZenFactory) Description() string {
+	return "OpenCode Zen - Curated AI models for coding agents"
+}
+
+func (f *OpenCodeZenFactory) Validate(settings config.ProviderSettings) error {
+	if settings.Endpoint == "" {
+		return fmt.Errorf("endpoint is required for OpenCode Zen provider")
+	}
+	return nil
+}
+
+func (f *OpenCodeZenFactory) Defaults() config.ProviderSettings {
+	return config.ProviderSettings{
+		Endpoint: "https://opencode.ai/zen",
+		Enabled:  false,
+		APIKey:   "",
+	}
+}
+
+func (f *OpenCodeZenFactory) Create(settings config.ProviderSettings) (port.Provider, error) {
+	return NewOpenCodeZenProvider(settings), nil
+}
 
 type OpenCodeZenProvider struct {
 	httpClient *http.Client
@@ -31,7 +65,7 @@ func NewOpenCodeZenProvider(settings config.ProviderSettings) *OpenCodeZenProvid
 }
 
 func (p *OpenCodeZenProvider) Name() string {
-	return "opencode"
+	return "opencode_zen"
 }
 
 func (p *OpenCodeZenProvider) ChatCompletion(req port.ChatCompletionRequest) (*port.ChatCompletionResponse, error) {
@@ -157,22 +191,14 @@ func (p *OpenCodeZenProvider) StreamChatCompletion(req port.ChatCompletionReques
 		defer resp.Body.Close()
 		defer close(ch)
 
-		decoder := json.NewDecoder(resp.Body)
-		for {
-			line, err := decoder.Token()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return
-			}
-
-			text, ok := line.(string)
-			if !ok || len(text) < 6 || text[:6] != "data: " {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if len(line) < 6 || line[:6] != "data: " {
 				continue
 			}
 
-			if text == "data: [DONE]" {
+			if line == "data: [DONE]" {
 				ch <- port.StreamChunk{Done: true}
 				break
 			}
@@ -190,7 +216,7 @@ func (p *OpenCodeZenProvider) StreamChatCompletion(req port.ChatCompletionReques
 				} `json:"choices"`
 			}
 
-			if err := json.Unmarshal([]byte(text[6:]), &delta); err != nil {
+			if err := json.Unmarshal([]byte(line[6:]), &delta); err != nil {
 				continue
 			}
 
@@ -245,9 +271,9 @@ func (p *OpenCodeZenProvider) ListModels() ([]entity.Model, error) {
 	models := make([]entity.Model, len(result.Data))
 	for i, m := range result.Data {
 		models[i] = entity.Model{
-			ID:       "opencode:" + m.ID,
+			ID:       "opencode_zen:" + m.ID,
 			Name:     m.ID,
-			Provider: "opencode",
+			Provider: "opencode_zen",
 		}
 	}
 
@@ -255,8 +281,8 @@ func (p *OpenCodeZenProvider) ListModels() ([]entity.Model, error) {
 }
 
 func extractOpenCodeModelName(model string) string {
-	if len(model) > 9 && model[:9] == "opencode:" {
-		return model[9:]
+	if len(model) > 13 && model[:13] == "opencode_zen:" {
+		return model[13:]
 	}
 	return model
 }
