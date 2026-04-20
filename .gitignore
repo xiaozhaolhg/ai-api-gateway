@@ -3,7 +3,6 @@
 *.dll
 *.so
 *.dylib
-/router-service
 router-service/router-service
 
 # Test binary
@@ -21,6 +20,7 @@ go.work
 # IDE
 .idea/
 .vscode/
+.windsurf/
 *.swp
 *.swo
 *~
