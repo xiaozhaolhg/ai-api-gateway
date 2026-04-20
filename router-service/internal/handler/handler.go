@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/ai-api-gateway/router-service/internal/application/service"
@@ -15,20 +16,41 @@ import (
 type Handler struct {
 	chatService  *service.ChatCompletionService
 	modelService *service.ModelService
+	registry     *provider.ProviderRegistry
+	config       *config.Config
 }
 
 func Setup(router *gin.Engine, cfg *config.Config) {
-	var providers []port.Provider
+	// Initialize provider registry
+	registry := provider.NewProviderRegistry()
 
-	for _, p := range cfg.GetEnabledProviders() {
-		if p.Endpoint == "" {
+	// Register built-in provider factories
+	ollamaFactory := provider.NewOllamaFactory()
+	if err := registry.Register(ollamaFactory); err != nil {
+		log.Fatalf("Failed to register Ollama factory: %v", err)
+	}
+
+	opencodeFactory := provider.NewOpenCodeZenFactory()
+	if err := registry.Register(opencodeFactory); err != nil {
+		log.Fatalf("Failed to register OpenCode Zen factory: %v", err)
+	}
+
+	// Create providers from config using registry
+	var providers []port.Provider
+	enabledProviders := cfg.GetEnabledProviders()
+
+	for providerType, settings := range enabledProviders {
+		p, err := registry.Create(providerType, settings)
+		if err != nil {
+			log.Printf("Failed to create provider %s: %v", providerType, err)
 			continue
 		}
-		if p.Endpoint == "http://localhost:11434" || p.Endpoint == "http://host.docker.internal:11434" || p.Endpoint == "http://172.17.0.1:11434" {
-			providers = append(providers, provider.NewOllamaProvider(p))
-		} else {
-			providers = append(providers, provider.NewOpenCodeZenProvider(p))
-		}
+		log.Printf("Successfully initialized provider: %s", providerType)
+		providers = append(providers, p)
+	}
+
+	if len(providers) == 0 {
+		log.Println("Warning: No providers enabled")
 	}
 
 	routerService := service.NewModelRouter(providers)
@@ -38,12 +60,15 @@ func Setup(router *gin.Engine, cfg *config.Config) {
 	h := &Handler{
 		chatService:  chatService,
 		modelService: modelService,
+		registry:     registry,
+		config:       cfg,
 	}
 
 	router.Use(corsMiddleware())
 	router.GET("/health", h.healthHandler)
 	router.POST("/v1/chat/completions", h.chatCompletionHandler)
 	router.GET("/v1/models", h.modelsHandler)
+	router.GET("/v1/providers", h.providersHandler)
 }
 
 func corsMiddleware() gin.HandlerFunc {
@@ -156,5 +181,52 @@ func (h *Handler) modelsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
 		"data":   data,
+	})
+}
+
+func (h *Handler) providersHandler(c *gin.Context) {
+	// Get all registered provider types
+	types := h.registry.ListTypes()
+
+	// Get defaults for all providers
+	defaults := h.registry.GetDefaults()
+
+	// Build response with provider info
+	providers := make([]map[string]interface{}, 0, len(types))
+	for _, providerType := range types {
+		factory, err := h.registry.GetFactory(providerType)
+		if err != nil {
+			continue
+		}
+
+		providerInfo := map[string]interface{}{
+			"type":        factory.Type(),
+			"description": factory.Description(),
+		}
+
+		// Check if provider is configured
+		if settings, ok := h.config.Provider.Providers[providerType]; ok {
+			providerInfo["configured"] = true
+			providerInfo["enabled"] = settings.Enabled
+			providerInfo["endpoint"] = settings.Endpoint
+			providerInfo["has_api_key"] = settings.APIKey != ""
+		} else {
+			providerInfo["configured"] = false
+			providerInfo["enabled"] = false
+		}
+
+		// Add defaults
+		if defaultSettings, ok := defaults[providerType]; ok {
+			providerInfo["defaults"] = map[string]interface{}{
+				"endpoint": defaultSettings.Endpoint,
+				"enabled":   defaultSettings.Enabled,
+			}
+		}
+
+		providers = append(providers, providerInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"providers": providers,
 	})
 }

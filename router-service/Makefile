@@ -21,7 +21,7 @@ IMAGE_NAME := router-service:latest
 KIND_CLUSTER ?= desktop
 CHART_PATH := ./charts
 NAMESPACE := ai-gateway
-CONFIG_PATH := $(PWD)/../configs/config.yaml
+CONFIG_PATH := $(PWD)/configs/config.yaml
 
 .PHONY: build deploy-docker deploy-kind check-prereqs
 

@@ -14,6 +14,39 @@ import (
 	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
 )
 
+type OllamaFactory struct{}
+
+func NewOllamaFactory() *OllamaFactory {
+	return &OllamaFactory{}
+}
+
+func (f *OllamaFactory) Type() string {
+	return "ollama"
+}
+
+func (f *OllamaFactory) Description() string {
+	return "Ollama - Run LLMs locally"
+}
+
+func (f *OllamaFactory) Validate(settings config.ProviderSettings) error {
+	if settings.Endpoint == "" {
+		return fmt.Errorf("endpoint is required for Ollama provider")
+	}
+	return nil
+}
+
+func (f *OllamaFactory) Defaults() config.ProviderSettings {
+	return config.ProviderSettings{
+		Endpoint: "http://localhost:11434",
+		Enabled:  false,
+		APIKey:   "",
+	}
+}
+
+func (f *OllamaFactory) Create(settings config.ProviderSettings) (port.Provider, error) {
+	return NewOllamaProvider(settings), nil
+}
+
 type OllamaProvider struct {
 	httpClient *http.Client
 	endpoint   string
