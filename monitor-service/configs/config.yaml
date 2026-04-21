@@ -1,0 +1,6 @@
+server:
+  port: "50055"
+  host: "0.0.0.0"
+
+database:
+  path: "./data/monitor.db"

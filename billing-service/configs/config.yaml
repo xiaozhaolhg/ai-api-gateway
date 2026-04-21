@@ -1,0 +1,6 @@
+server:
+  port: "50054"
+  host: "0.0.0.0"
+
+database:
+  path: "./data/billing.db"

@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package auth.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/ai-api-gateway/api/gen/auth/v1;authv1";
+
+service AuthService {
+  // Authentication
+  rpc ValidateAPIKey(ValidateAPIKeyRequest) returns (UserIdentity);
+
+  // Model Authorization
+  rpc CheckModelAuthorization(CheckModelAuthorizationRequest) returns (AuthorizationResult);
+
+  // User Management
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc DeleteUser(DeleteUserRequest) returns (common.v1.Empty);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // API Key Management
+  rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
+  rpc DeleteAPIKey(DeleteAPIKeyRequest) returns (common.v1.Empty);
+  rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse);
+
+  // Group Management (Phase 2+)
+  rpc CreateGroup(CreateGroupRequest) returns (Group);
+  rpc UpdateGroup(UpdateGroupRequest) returns (Group);
+  rpc DeleteGroup(DeleteGroupRequest) returns (common.v1.Empty);
+  rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse);
+  rpc AddUserToGroup(AddUserToGroupRequest) returns (common.v1.Empty);
+  rpc RemoveUserFromGroup(RemoveUserFromGroupRequest) returns (common.v1.Empty);
+
+  // Permission Management (Phase 2+)
+  rpc GrantPermission(GrantPermissionRequest) returns (Permission);
+  rpc RevokePermission(RevokePermissionRequest) returns (common.v1.Empty);
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+}
+
+// Authentication
+message ValidateAPIKeyRequest {
+  string api_key = 1;
+}
+
+message UserIdentity {
+  string user_id = 1;
+  string role = 2;              // "admin" | "user"
+  repeated string group_ids = 3;
+  repeated string scopes = 4;
+}
+
+// Model Authorization
+message CheckModelAuthorizationRequest {
+  string user_id = 1;
+  repeated string group_ids = 2;
+  string model = 3;
+}
+
+message AuthorizationResult {
+  bool allowed = 1;
+  string reason = 2;
+  repeated string authorized_models = 3;
+}
+
+// User
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;    // "active" | "disabled"
+  int64 created_at = 6;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+  string role = 3;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+}
+
+// API Key
+message CreateAPIKeyRequest {
+  string user_id = 1;
+  string name = 2;
+}
+
+message CreateAPIKeyResponse {
+  string api_key_id = 1;
+  string api_key = 2;    // returned once only
+}
+
+message DeleteAPIKeyRequest {
+  string id = 1;
+}
+
+message ListAPIKeysRequest {
+  string user_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListAPIKeysResponse {
+  repeated APIKey api_keys = 1;
+  int32 total = 2;
+}
+
+message APIKey {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  repeated string scopes = 4;
+  int64 created_at = 5;
+  int64 expires_at = 6;
+}
+
+// Group (Phase 2+)
+message Group {
+  string id = 1;
+  string name = 2;
+  string parent_group_id = 3;
+  int64 created_at = 4;
+}
+
+message CreateGroupRequest {
+  string name = 1;
+  string parent_group_id = 2;
+}
+
+message UpdateGroupRequest {
+  string id = 1;
+  string name = 2;
+  string parent_group_id = 3;
+}
+
+message DeleteGroupRequest {
+  string id = 1;
+}
+
+message ListGroupsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListGroupsResponse {
+  repeated Group groups = 1;
+  int32 total = 2;
+}
+
+message AddUserToGroupRequest {
+  string user_id = 1;
+  string group_id = 2;
+}
+
+message RemoveUserFromGroupRequest {
+  string user_id = 1;
+  string group_id = 2;
+}
+
+// Permission (Phase 2+)
+message Permission {
+  string id = 1;
+  string group_id = 2;
+  string resource_type = 3;    // "model" | "provider" | "admin_feature"
+  string resource_id = 4;
+  string action = 5;           // "access" | "manage" | "view"
+}
+
+message GrantPermissionRequest {
+  string group_id = 1;
+  string resource_type = 2;
+  string resource_id = 3;
+  string action = 4;
+}
+
+message RevokePermissionRequest {
+  string id = 1;
+}
+
+message ListPermissionsRequest {
+  string group_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListPermissionsResponse {
+  repeated Permission permissions = 1;
+  int32 total = 2;
+}
+
+message CheckPermissionRequest {
+  string user_id = 1;
+  string resource_type = 2;
+  string resource_id = 3;
+  string action = 4;
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+}

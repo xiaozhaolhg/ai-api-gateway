@@ -1,0 +1,42 @@
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o billing-service ./cmd/server
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates sqlite-libs
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/billing-service .
+
+# Copy config
+COPY --from=builder /app/configs ./configs
+
+# Create data directory
+RUN mkdir -p /root/data
+
+# Run as non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+USER appuser
+
+EXPOSE 50054
+
+CMD ["./billing-service"]
