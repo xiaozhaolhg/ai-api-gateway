@@ -4,6 +4,7 @@ schema: spec-driven
 # This is shown to AI when creating artifacts.
 context: |
   Tech stack:
+  - Frontend: React 19.2 + Ant Design 6.3.x + Vite
   - Golang services: Go 1.26 + Gin + Domain-driven design + Clean Architecture 
   - Python services: Python 3.14 + FastAPI + Domain-driven design + Clean Architecture 
   - Deployment: KinD (Kubernetes in Docker) + Ingress via Helm chart

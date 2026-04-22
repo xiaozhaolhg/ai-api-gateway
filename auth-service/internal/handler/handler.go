@@ -2,9 +2,9 @@ package handler
 
 import (
 	"context"
-	"time"
 
 	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
+	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
 	"github.com/ai-api-gateway/auth-service/internal/application"
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
 )
@@ -139,11 +139,11 @@ func (h *Handler) UpdateUser(ctx context.Context, req *authv1.UpdateUserRequest)
 }
 
 // DeleteUser deletes a user
-func (h *Handler) DeleteUser(ctx context.Context, req *authv1.DeleteUserRequest) (*authv1.Empty, error) {
+func (h *Handler) DeleteUser(ctx context.Context, req *authv1.DeleteUserRequest) (*commonv1.Empty, error) {
 	if err := h.userRepo.Delete(req.Id); err != nil {
 		return nil, err
 	}
-	return &authv1.Empty{}, nil
+	return &commonv1.Empty{}, nil
 }
 
 // ListUsers lists users with pagination
@@ -194,11 +194,11 @@ func (h *Handler) CreateAPIKey(ctx context.Context, req *authv1.CreateAPIKeyRequ
 }
 
 // DeleteAPIKey deletes an API key
-func (h *Handler) DeleteAPIKey(ctx context.Context, req *authv1.DeleteAPIKeyRequest) (*authv1.Empty, error) {
+func (h *Handler) DeleteAPIKey(ctx context.Context, req *authv1.DeleteAPIKeyRequest) (*commonv1.Empty, error) {
 	if err := h.apiKeyRepo.Delete(req.Id); err != nil {
 		return nil, err
 	}
-	return &authv1.Empty{}, nil
+	return &commonv1.Empty{}, nil
 }
 
 // ListAPIKeys lists API keys for a user with pagination
@@ -248,7 +248,7 @@ func (h *Handler) UpdateGroup(ctx context.Context, req *authv1.UpdateGroupReques
 	return nil, nil // TODO: implement in Phase 2
 }
 
-func (h *Handler) DeleteGroup(ctx context.Context, req *authv1.DeleteGroupRequest) (*authv1.Empty, error) {
+func (h *Handler) DeleteGroup(ctx context.Context, req *authv1.DeleteGroupRequest) (*commonv1.Empty, error) {
 	return nil, nil // TODO: implement in Phase 2
 }
 
@@ -256,11 +256,11 @@ func (h *Handler) ListGroups(ctx context.Context, req *authv1.ListGroupsRequest)
 	return nil, nil // TODO: implement in Phase 2
 }
 
-func (h *Handler) AddUserToGroup(ctx context.Context, req *authv1.AddUserToGroupRequest) (*authv1.Empty, error) {
+func (h *Handler) AddUserToGroup(ctx context.Context, req *authv1.AddUserToGroupRequest) (*commonv1.Empty, error) {
 	return nil, nil // TODO: implement in Phase 2
 }
 
-func (h *Handler) RemoveUserFromGroup(ctx context.Context, req *authv1.RemoveUserFromGroupRequest) (*authv1.Empty, error) {
+func (h *Handler) RemoveUserFromGroup(ctx context.Context, req *authv1.RemoveUserFromGroupRequest) (*commonv1.Empty, error) {
 	return nil, nil // TODO: implement in Phase 2
 }
 
@@ -269,7 +269,7 @@ func (h *Handler) GrantPermission(ctx context.Context, req *authv1.GrantPermissi
 	return nil, nil // TODO: implement in Phase 2
 }
 
-func (h *Handler) RevokePermission(ctx context.Context, req *authv1.RevokePermissionRequest) (*authv1.Empty, error) {
+func (h *Handler) RevokePermission(ctx context.Context, req *authv1.RevokePermissionRequest) (*commonv1.Empty, error) {
 	return nil, nil // TODO: implement in Phase 2
 }
 

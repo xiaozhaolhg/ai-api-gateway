@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"os"
 	"testing"
 
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
