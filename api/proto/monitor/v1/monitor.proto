@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package monitor.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/ai-api-gateway/api/gen/monitor/v1;monitorv1";
+
+service MonitorService {
+  // Callback (subscriber)
+  rpc OnProviderResponse(common.v1.ProviderResponseCallback) returns (common.v1.Empty);
+
+  // Metrics
+  rpc RecordMetric(RecordMetricRequest) returns (common.v1.Empty);
+  rpc GetMetrics(GetMetricsRequest) returns (ListMetricsResponse);
+  rpc GetMetricAggregation(GetMetricAggregationRequest) returns (MetricAggregationResponse);
+
+  // Provider Health
+  rpc GetProviderHealth(GetProviderHealthRequest) returns (ProviderHealthStatus);
+  rpc ListProviderHealth(ListProviderHealthRequest) returns (ListProviderHealthResponse);
+  rpc ReportProviderHealth(ReportProviderHealthRequest) returns (common.v1.Empty);
+
+  // Alert Rules
+  rpc CreateAlertRule(CreateAlertRuleRequest) returns (AlertRule);
+  rpc UpdateAlertRule(UpdateAlertRuleRequest) returns (AlertRule);
+  rpc DeleteAlertRule(DeleteAlertRuleRequest) returns (common.v1.Empty);
+  rpc ListAlertRules(ListAlertRulesRequest) returns (ListAlertRulesResponse);
+
+  // Alerts
+  rpc GetAlerts(GetAlertsRequest) returns (ListAlertsResponse);
+  rpc AcknowledgeAlert(AcknowledgeAlertRequest) returns (Alert);
+}
+
+// Metrics
+message RecordMetricRequest {
+  string metric_type = 1;           // "request_latency" | "error_rate" | "token_throughput"
+  map<string, string> labels = 2;     // {"provider": "openai", "model": "gpt-4o"}
+  double value = 3;
+  int64 timestamp = 4;
+}
+
+message Metric {
+  string id = 1;
+  string type = 2;
+  map<string, string> labels = 3;
+  double value = 4;
+  int64 timestamp = 5;
+}
+
+message GetMetricsRequest {
+  string metric_type = 1;
+  map<string, string> labels = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message ListMetricsResponse {
+  repeated Metric metrics = 1;
+  int32 total = 2;
+}
+
+message GetMetricAggregationRequest {
+  string metric_type = 1;
+  map<string, string> labels = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  string aggregation = 5;  // "avg" | "min" | "max" | "p50" | "p95" | "p99"
+}
+
+message MetricAggregationResponse {
+  MetricAggregation aggregation = 1;
+}
+
+message MetricAggregation {
+  string metric_type = 1;
+  map<string, string> labels = 2;
+  double avg = 3;
+  double min = 4;
+  double max = 5;
+  double p50 = 6;
+  double p95 = 7;
+  double p99 = 8;
+  int64 count = 9;
+}
+
+// Provider Health
+message ProviderHealthStatus {
+  string provider_id = 1;
+  double latency_p50 = 2;
+  double latency_p95 = 3;
+  double latency_p99 = 4;
+  double error_rate = 5;
+  double uptime_pct = 6;
+  int64 last_check = 7;
+  string status = 8;                // "healthy" | "degraded" | "down"
+}
+
+message GetProviderHealthRequest {
+  string provider_id = 1;
+}
+
+message ListProviderHealthRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListProviderHealthResponse {
+  repeated ProviderHealthStatus health_statuses = 1;
+  int32 total = 2;
+}
+
+message ReportProviderHealthRequest {
+  string provider_id = 1;
+  double latency = 2;
+  double error_rate = 3;
+  double uptime_pct = 4;
+  int64 timestamp = 5;
+}
+
+// Alert Rules
+message AlertRule {
+  string id = 1;
+  string metric_type = 2;
+  string condition = 3;              // "gt" | "lt" | "eq"
+  double threshold = 4;
+  string channel = 5;               // "email" | "webhook" | "slack"
+  string channel_config = 6;       // JSON: email, webhook URL, etc.
+  string status = 7;               // "active" | "paused"
+}
+
+message CreateAlertRuleRequest {
+  string metric_type = 1;
+  string condition = 2;
+  double threshold = 3;
+  string channel = 4;
+  string channel_config = 5;
+}
+
+message UpdateAlertRuleRequest {
+  string id = 1;
+  string metric_type = 2;
+  string condition = 3;
+  double threshold = 4;
+  string channel = 5;
+  string channel_config = 6;
+  string status = 7;
+}
+
+message DeleteAlertRuleRequest {
+  string id = 1;
+}
+
+message ListAlertRulesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListAlertRulesResponse {
+  repeated AlertRule rules = 1;
+  int32 total = 2;
+}
+
+// Alerts
+message Alert {
+  string id = 1;
+  string rule_id = 2;
+  int64 triggered_at = 3;
+  string status = 4;               // "firing" | "acknowledged" | "resolved"
+  int64 acknowledged_at = 5;
+  int64 resolved_at = 6;
+}
+
+message GetAlertsRequest {
+  string rule_id = 1;
+  string status = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message ListAlertsResponse {
+  repeated Alert alerts = 1;
+  int32 total = 2;
+}
+
+message AcknowledgeAlertRequest {
+  string id = 1;
+}

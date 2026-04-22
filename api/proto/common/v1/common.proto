@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/ai-api-gateway/api/gen/common/v1;commonv1";
+
+// Empty message for requests with no parameters
+message Empty {}
+
+// Token counts extracted from provider response
+message TokenCounts {
+  int64 prompt_tokens = 1;
+  int64 completion_tokens = 2;
+}
+
+// Dispatched by provider-service to subscribers after each response
+message ProviderResponseCallback {
+  string request_id = 1;
+  string user_id = 2;
+  string group_id = 3;
+  string provider_id = 4;
+  string model = 5;
+  int64 prompt_tokens = 6;
+  int64 completion_tokens = 7;
+  int64 latency_ms = 8;
+  string status = 9;      // "success" | "error"
+  string error_code = 10;
+  int64 timestamp = 11;
+}
+
+// Returned by billing-service for budget check
+message BudgetStatus {
+  double current_spend = 1;
+  double budget_limit = 2;
+  double remaining = 3;
+  bool soft_cap_exceeded = 4;
+  bool hard_cap_exceeded = 5;
+}
+
+// Returned by auth-service after API key validation
+message UserIdentity {
+  string user_id = 1;
+  string role = 2;             // "admin" | "user"
+  repeated string group_ids = 3;  // user's group memberships
+  repeated string scopes = 4;     // API key scopes
+}
+
+// Returned by auth-service for model authorization check
+message AuthorizationResult {
+  bool allowed = 1;
+  string reason = 2;
+  repeated string authorized_models = 3;  // models this user/group can access
+}
+
+// Returned by router-service for route resolution
+message RouteResult {
+  string provider_id = 1;
+  string adapter_type = 2;   // "openai" | "anthropic" | "gemini"
+  repeated string fallback_provider_ids = 3;
+}

@@ -1,0 +1,142 @@
+services:
+  gateway-service:
+    build:
+      context: .
+      dockerfile: ./gateway-service/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - router-service
+      - provider-service
+    networks:
+      - ai-gateway
+    environment:
+      - AUTH_SERVICE_ADDRESS=auth-service:50051
+      - ROUTER_SERVICE_ADDRESS=router-service:50052
+      - PROVIDER_SERVICE_ADDRESS=provider-service:50053
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./auth-service/Dockerfile
+    ports:
+      - "50051:50051"
+    volumes:
+      - auth-service-data:/data
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50051"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  router-service:
+    build:
+      context: .
+      dockerfile: ./router-service/Dockerfile
+    ports:
+      - "50052:50052"
+    volumes:
+      - router-service-data:/data
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50052"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  provider-service:
+    build:
+      context: .
+      dockerfile: ./provider-service/Dockerfile
+    ports:
+      - "50053:50053"
+    volumes:
+      - provider-service-data:/data
+    depends_on:
+      - billing-service
+      - monitor-service
+    networks:
+      - ai-gateway
+    environment:
+      - BILLING_SERVICE_ADDRESS=billing-service:50054
+      - MONITOR_SERVICE_ADDRESS=monitor-service:50055
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50053"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  billing-service:
+    build:
+      context: .
+      dockerfile: ./billing-service/Dockerfile
+    ports:
+      - "50054:50054"
+    volumes:
+      - billing-service-data:/data
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50054"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  monitor-service:
+    build:
+      context: .
+      dockerfile: ./monitor-service/Dockerfile
+    ports:
+      - "50055:50055"
+    volumes:
+      - monitor-service-data:/data
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50055"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  admin-ui:
+    build:
+      context: ./admin-ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway-service
+    networks:
+      - ai-gateway
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - ai-gateway
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  ai-gateway:
+    driver: bridge
+
+volumes:
+  auth-service-data:
+  router-service-data:
+  provider-service-data:
+  billing-service-data:
+  monitor-service-data:

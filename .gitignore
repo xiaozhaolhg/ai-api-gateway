@@ -42,3 +42,6 @@ Thumbs.db
 
 # OpenCode (shouldn't be in git)
 .opencode/
+
+# CodeBuddy (shouldn't be in git)
+.codebuddy/

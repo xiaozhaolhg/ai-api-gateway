@@ -1,23 +1,55 @@
-FROM golang:1.26-alpine AS builder
+# Build stage
+FROM golang:1.21-alpine AS builder
 
-RUN apk add --no-cache go git
+WORKDIR /app
 
-WORKDIR /build
+# Configure Alpine mirrors for China
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
-COPY go.mod go.sum ./
-RUN GOPROXY=https://goproxy.cn,direct go mod download
+# Install dependencies
+RUN apk add --no-cache git gcc musl-dev
 
-COPY . .
+# Set Go proxy for China
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=off
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o router-service ./cmd/server
+# Copy go mod files and api directory
+COPY ./router-service/go.mod ./
+COPY ./api/ ./api/
 
-FROM alpine:3.23
+# Copy source code
+COPY ./router-service/ ./
 
-RUN apk add --no-cache ca-certificates && \
-    adduser -D -u 65532 nonroot
+# Generate go.sum and download dependencies
+RUN go mod tidy
 
-COPY --from=builder /build/router-service /router-service
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o router-service ./cmd/server
 
-USER nonroot:nonroot
+# Runtime stage
+FROM alpine:latest
 
-ENTRYPOINT ["/router-service"]
+# Configure Alpine mirrors for China
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+RUN apk --no-cache add ca-certificates sqlite-libs
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/router-service .
+
+# Copy config
+COPY --from=builder /app/configs ./configs
+
+# Create data directory
+RUN mkdir -p /root/data
+
+# Run as non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+USER appuser
+
+EXPOSE 50052
+
+CMD ["./router-service"]

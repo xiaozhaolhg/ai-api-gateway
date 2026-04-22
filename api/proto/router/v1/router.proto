@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package router.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/ai-api-gateway/api/gen/router/v1;routerv1";
+
+service RouterService {
+  // Route Resolution
+  rpc ResolveRoute(ResolveRouteRequest) returns (RouteResult);
+
+  // Routing Rule Management
+  rpc GetRoutingRules(GetRoutingRulesRequest) returns (ListRoutingRulesResponse);
+  rpc CreateRoutingRule(CreateRoutingRuleRequest) returns (RoutingRule);
+  rpc UpdateRoutingRule(UpdateRoutingRuleRequest) returns (RoutingRule);
+  rpc DeleteRoutingRule(DeleteRoutingRuleRequest) returns (common.v1.Empty);
+
+  // Cache
+  rpc RefreshRoutingTable(common.v1.Empty) returns (common.v1.Empty);
+
+  // Fallback (Phase 2+)
+  rpc ResolveFallback(ResolveFallbackRequest) returns (RouteResult);
+}
+
+// Route Resolution
+message ResolveRouteRequest {
+  string model = 1;
+  repeated string authorized_models = 2;    // from auth-service
+}
+
+message RouteResult {
+  string provider_id = 1;
+  string adapter_type = 2;               // "openai" | "anthropic" | "gemini"
+  repeated string fallback_provider_ids = 3;
+}
+
+// Routing Rule
+message RoutingRule {
+  string id = 1;
+  string model_pattern = 2;     // e.g., "gpt-4*" or "claude-*"
+  string provider_id = 3;
+  int32 priority = 4;
+  string fallback_provider_id = 5;
+}
+
+message GetRoutingRulesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListRoutingRulesResponse {
+  repeated RoutingRule rules = 1;
+  int32 total = 2;
+}
+
+message CreateRoutingRuleRequest {
+  string model_pattern = 1;
+  string provider_id = 2;
+  int32 priority = 3;
+  string fallback_provider_id = 4;
+}
+
+message UpdateRoutingRuleRequest {
+  string id = 1;
+  string model_pattern = 2;
+  string provider_id = 3;
+  int32 priority = 4;
+  string fallback_provider_id = 5;
+}
+
+message DeleteRoutingRuleRequest {
+  string id = 1;
+}
+
+// Fallback (Phase 2+)
+message ResolveFallbackRequest {
+  string model = 1;
+  string failed_provider_id = 2;
+}

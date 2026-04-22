@@ -2,37 +2,23 @@ package main
 
 import (
 	"log"
-	"os"
+	"net"
 
-	"github.com/ai-api-gateway/router-service/internal/handler"
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
-	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 )
 
 func main() {
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		configPath = "configs/config.yaml"
-	}
-	
-	cfg, err := config.Load(configPath)
+	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	if os.Getenv("GIN_MODE") == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	log.Printf("Router service listening on :50052")
 
-	router := gin.Default()
-	handler.Setup(router, cfg)
+	// TODO: Initialize gRPC server with router service implementation
+	s := grpc.NewServer()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	log.Printf("Starting server on port %s", port)
-	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }

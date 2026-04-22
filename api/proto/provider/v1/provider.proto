@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package provider.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/ai-api-gateway/api/gen/provider/v1;providerv1";
+
+service ProviderService {
+  // Request Forwarding
+  rpc ForwardRequest(ForwardRequestRequest) returns (ForwardRequestResponse);
+  rpc StreamRequest(StreamRequestRequest) returns (stream ProviderChunk);
+
+  // Provider Management
+  rpc GetProvider(GetProviderRequest) returns (Provider);
+  rpc CreateProvider(CreateProviderRequest) returns (Provider);
+  rpc UpdateProvider(UpdateProviderRequest) returns (Provider);
+  rpc DeleteProvider(DeleteProviderRequest) returns (common.v1.Empty);
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+
+  // Provider Discovery
+  rpc GetProviderByType(GetProviderByTypeRequest) returns (Provider);
+
+  // Callback Subscription
+  rpc RegisterSubscriber(RegisterSubscriberRequest) returns (common.v1.Empty);
+  rpc UnregisterSubscriber(UnregisterSubscriberRequest) returns (common.v1.Empty);
+}
+
+// Request Forwarding
+message ForwardRequestRequest {
+  string provider_id = 1;
+  bytes request_body = 2;      // JSON-encoded request
+  map<string, string> headers = 3;
+}
+
+message ForwardRequestResponse {
+  bytes response_body = 1;     // JSON-encoded response
+  common.v1.TokenCounts token_counts = 2;
+  int32 status_code = 3;
+}
+
+message StreamRequestRequest {
+  string provider_id = 1;
+  bytes request_body = 2;
+  map<string, string> headers = 3;
+}
+
+message ProviderChunk {
+  bytes chunk_data = 1;              // SSE chunk
+  common.v1.TokenCounts accumulated_tokens = 2;
+  bool done = 3;
+}
+
+// Provider
+message Provider {
+  string id = 1;
+  string name = 2;
+  string type = 3;               // "openai" | "anthropic" | "gemini" | "custom"
+  string base_url = 4;
+  string credentials = 5;        // encrypted
+  repeated string models = 6;
+  string status = 7;             // "active" | "inactive"
+  int64 created_at = 8;
+  int64 updated_at = 9;
+}
+
+message GetProviderRequest {
+  string id = 1;
+}
+
+message CreateProviderRequest {
+  string name = 1;
+  string type = 2;
+  string base_url = 3;
+  string credentials = 4;
+  repeated string models = 5;
+}
+
+message UpdateProviderRequest {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string base_url = 4;
+  string credentials = 5;
+  repeated string models = 6;
+  string status = 7;
+}
+
+message DeleteProviderRequest {
+  string id = 1;
+}
+
+message ListProvidersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListProvidersResponse {
+  repeated Provider providers = 1;
+  int32 total = 2;
+}
+
+message ListModelsRequest {
+  string provider_id = 1;
+}
+
+message ListModelsResponse {
+  repeated string models = 1;
+}
+
+message GetProviderByTypeRequest {
+  string type = 1;
+}
+
+// Callback Subscription
+message RegisterSubscriberRequest {
+  string service_name = 1;       // "billing-service" | "monitor-service"
+  string callback_endpoint = 2;  // gRPC endpoint
+}
+
+message UnregisterSubscriberRequest {
+  string service_name = 1;
+}

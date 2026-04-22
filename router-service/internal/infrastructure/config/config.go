@@ -3,31 +3,28 @@ package config
 import (
 	"fmt"
 	"os"
-	"regexp"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
+// Config holds the service configuration
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
-	Provider ProviderConfig `yaml:"provider"`
+	Database DatabaseConfig `yaml:"database"`
 }
 
+// ServerConfig holds server configuration
 type ServerConfig struct {
 	Port string `yaml:"port"`
+	Host string `yaml:"host"`
 }
 
-type ProviderConfig struct {
-	Providers map[string]ProviderSettings `yaml:"providers"`
+// DatabaseConfig holds database configuration
+type DatabaseConfig struct {
+	Path string `yaml:"path"`
 }
 
-type ProviderSettings struct {
-	Enabled  bool   `yaml:"enabled"`
-	Endpoint string `yaml:"endpoint"`
-	APIKey   string `yaml:"api_key"`
-}
-
+// Load loads configuration from a YAML file and environment variables
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -36,52 +33,30 @@ func Load(path string) (*Config, error) {
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	if err := resolveEnvVars(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to resolve env vars: %w", err)
+	// Override with environment variables
+	if port := os.Getenv("PORT"); port != "" {
+		cfg.Server.Port = port
+	}
+	if host := os.Getenv("HOST"); host != "" {
+		cfg.Server.Host = host
+	}
+	if dbPath := os.Getenv("DATABASE_PATH"); dbPath != "" {
+		cfg.Database.Path = dbPath
+	}
+
+	// Set defaults
+	if cfg.Server.Port == "" {
+		cfg.Server.Port = "50052"
+	}
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = "0.0.0.0"
+	}
+	if cfg.Database.Path == "" {
+		cfg.Database.Path = "./data/router.db"
 	}
 
 	return &cfg, nil
-}
-
-var envVarRegex = regexp.MustCompile(`\$\{([^}]+)\}`)
-
-func resolveEnvVars(cfg *Config) error {
-	resolve := func(s string) string {
-		return envVarRegex.ReplaceAllStringFunc(s, func(match string) string {
-			varName := match[2 : len(match)-1]
-			if val := os.Getenv(varName); val != "" {
-				return val
-			}
-			return ""
-		})
-	}
-
-	for providerType, settings := range cfg.Provider.Providers {
-		if settings.Endpoint != "" {
-			settings.Endpoint = resolve(settings.Endpoint)
-		}
-		if settings.APIKey != "" {
-			settings.APIKey = resolve(settings.APIKey)
-		}
-		cfg.Provider.Providers[providerType] = settings
-	}
-
-	return nil
-}
-
-func (c *Config) GetEnabledProviders() map[string]ProviderSettings {
-	enabled := make(map[string]ProviderSettings)
-	for providerType, settings := range c.Provider.Providers {
-		if settings.Enabled {
-			enabled[providerType] = settings
-		}
-	}
-	return enabled
-}
-
-func (s ProviderSettings) BaseURL() string {
-	return strings.TrimRight(s.Endpoint, "/")
 }
