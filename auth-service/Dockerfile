@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -21,13 +21,13 @@ COPY ./auth-service/go.sum ./
 COPY ./api/ ./api/
 
 # Copy source code
-COPY ./auth-service/ ./
+COPY ./auth-service/ ./auth-service
 
 # Generate go.sum and download dependencies
 RUN go mod tidy
 
 # Build the application
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o auth-service ./cmd/server
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /bin/auth-service ./auth-service/cmd/server
 
 # Runtime stage
 FROM alpine:latest
@@ -40,10 +40,10 @@ RUN apk --no-cache add ca-certificates sqlite-libs
 WORKDIR /root/
 
 # Copy the binary from builder
-COPY --from=builder /app/auth-service .
+COPY --from=builder /bin/auth-service .
 
 # Copy config
-COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/auth-service/configs ./configs
 
 # Create data directory and startup script before switching user
 RUN mkdir -p /root/data

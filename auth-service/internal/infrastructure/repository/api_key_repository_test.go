@@ -10,13 +10,11 @@ import (
 )
 
 func setupTestDBForAPIKey(t *testing.T) *gorm.DB {
-	dbPath := ":memory:"
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	// Auto-migrate the schema
 	err = db.AutoMigrate(&entity.User{}, &entity.APIKey{})
 	if err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)

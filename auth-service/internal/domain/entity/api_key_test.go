@@ -99,7 +99,7 @@ func TestAPIKey_IsExpired(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			apiKey := APIKey{ExpiresAt: tt.expiresAt}
+			_ = APIKey{ExpiresAt: tt.expiresAt}
 			isExpired := tt.expiresAt != nil && tt.expiresAt.Before(now)
 			if isExpired != tt.expected {
 				t.Errorf("APIKey.IsExpired() = %v, want %v", isExpired, tt.expected)

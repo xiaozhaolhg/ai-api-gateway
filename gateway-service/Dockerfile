@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -21,13 +21,13 @@ COPY ./gateway-service/go.sum ./
 COPY ./api/ ./api/
 
 # Copy source code
-COPY ./gateway-service/ ./
+COPY ./gateway-service/ ./gateway-service
 
 # Generate go.sum and download dependencies
 RUN go mod tidy
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gateway-service ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /bin/gateway-service ./gateway-service/cmd/server
 
 # Runtime stage
 FROM alpine:latest
@@ -40,10 +40,10 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the binary from builder
-COPY --from=builder /app/gateway-service .
+COPY --from=builder /bin/gateway-service .
 
 # Copy config
-COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/gateway-service/configs ./configs
 
 # Run as non-root user
 RUN addgroup -g 1000 appuser && \
