@@ -22,11 +22,11 @@ test:
 
 # Start all services with Docker Compose
 up:
-	docker-compose up -d
+	docker compose up -d
 
 # Stop all services with Docker Compose
 down:
-	docker-compose down
+	docker compose down
 
 # Generate protobuf stubs
 proto:

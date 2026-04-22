@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,9 +22,6 @@ func waitForService(name, addr string) error {
 		// Try to connect to the service
 		// For MVP, we'll use a simple HTTP check if the service has an HTTP endpoint
 		// In production, you'd use gRPC health checks
-		client := &http.Client{
-			Timeout: 1 * time.Second,
-		}
 
 		// Try to connect - for gRPC services, we'd use grpc.Dial
 		// For MVP, we'll just sleep and assume services come up

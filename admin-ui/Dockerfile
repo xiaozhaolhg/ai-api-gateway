@@ -1,13 +1,17 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# Configure Alpine mirrors for China
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+# Use npx to ensure tsc is found, then build
+RUN npx tsc -b && npm run build
 
 # Production stage
 FROM nginx:alpine

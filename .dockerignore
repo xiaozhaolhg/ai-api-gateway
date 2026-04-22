@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# OpenCode
+.opencode
+
+# IDE
+.codebuddy
+.windsurf
+
+# Documentation
+docs
+
+# Archive
+openspec/changes/archive
+
+# Temporary
+*.log
+*.tmp
+
+# Large files
+*.zip
+*.tar
+*.tar.gz

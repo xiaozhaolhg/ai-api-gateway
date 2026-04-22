@@ -9,4 +9,4 @@ require (
 	gorm.io/gorm v1.25.5
 )
 
-replace github.com/ai-api-gateway/api => ../api
+replace github.com/ai-api-gateway/api => ./api

@@ -3,6 +3,9 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
+# Configure Alpine mirrors for China
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 # Install dependencies
 RUN apk add --no-cache git
 
@@ -10,18 +13,24 @@ RUN apk add --no-cache git
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
-# Copy go mod files
-COPY go.mod ./
-RUN go mod download
+# Copy go mod files and api directory
+COPY ./gateway-service/go.mod ./
+COPY ./api/ ./api/
 
 # Copy source code
-COPY . .
+COPY ./gateway-service/ ./
+
+# Generate go.sum and download dependencies
+RUN go mod tidy
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gateway-service ./cmd/server
 
 # Runtime stage
 FROM alpine:latest
+
+# Configure Alpine mirrors for China
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk --no-cache add ca-certificates
 

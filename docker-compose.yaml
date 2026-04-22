@@ -1,8 +1,8 @@
 services:
   gateway-service:
     build:
-      context: ./gateway-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./gateway-service/Dockerfile
     ports:
       - "8080:8080"
     depends_on:
@@ -23,8 +23,8 @@ services:
 
   auth-service:
     build:
-      context: ./auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./auth-service/Dockerfile
     ports:
       - "50051:50051"
     volumes:
@@ -39,8 +39,8 @@ services:
 
   router-service:
     build:
-      context: ./router-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./router-service/Dockerfile
     ports:
       - "50052:50052"
     volumes:
@@ -55,8 +55,8 @@ services:
 
   provider-service:
     build:
-      context: ./provider-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./provider-service/Dockerfile
     ports:
       - "50053:50053"
     volumes:
@@ -77,8 +77,8 @@ services:
 
   billing-service:
     build:
-      context: ./billing-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./billing-service/Dockerfile
     ports:
       - "50054:50054"
     volumes:
@@ -93,8 +93,8 @@ services:
 
   monitor-service:
     build:
-      context: ./monitor-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./monitor-service/Dockerfile
     ports:
       - "50055:50055"
     volumes:

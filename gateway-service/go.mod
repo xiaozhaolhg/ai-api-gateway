@@ -10,4 +10,4 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 )
 
-replace github.com/ai-api-gateway/api => ../api
+replace github.com/ai-api-gateway/api => ./api
