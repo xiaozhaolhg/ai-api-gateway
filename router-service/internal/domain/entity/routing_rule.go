@@ -11,3 +11,10 @@ type RoutingRule struct {
 	FallbackProviderID string    `json:"fallback_provider_id"`
 	CreatedAt          time.Time `json:"created_at"`
 }
+
+// RouteResult represents the result of route resolution
+type RouteResult struct {
+	ProviderID          string   `json:"provider_id"`
+	AdapterType         string   `json:"adapter_type"`          // "openai" | "anthropic" | "gemini" | "ollama" | "opencode-zen"
+	FallbackProviderIDs []string `json:"fallback_provider_ids"` // ordered list of fallback providers
+}
