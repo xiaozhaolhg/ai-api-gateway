@@ -1,0 +1,14 @@
+{
+  "title": "Budgets",
+  "addBudget": "Add Budget",
+  "editBudget": "Edit Budget",
+  "deleteBudget": "Delete Budget",
+  "fields": {
+    "name": "Budget Name",
+    "scope": "Scope",
+    "limit": "Limit",
+    "currentSpend": "Current Spend",
+    "remaining": "Remaining",
+    "period": "Period"
+  }
+}

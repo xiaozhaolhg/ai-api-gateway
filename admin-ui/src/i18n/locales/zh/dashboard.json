@@ -1,0 +1,16 @@
+{
+  "title": "仪表板",
+  "summary": {
+    "totalUsers": "用户总数",
+    "totalProviders": "提供商总数",
+    "monthlySpend": "月度支出",
+    "activeAlerts": "活跃告警"
+  },
+  "quickActions": {
+    "title": "快速操作",
+    "addProvider": "添加提供商",
+    "createUser": "创建用户",
+    "issueApiKey": "颁发API密钥",
+    "viewAlerts": "查看告警"
+  }
+}

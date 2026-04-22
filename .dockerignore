@@ -2,24 +2,46 @@
 .git
 .gitignore
 
-# OpenCode
-.opencode
+# Documentation
+README.md
+AGENTS.md
+openspec/
 
 # IDE
-.codebuddy
-.windsurf
+.vscode
+.idea
+*.swp
+*.swo
 
-# Documentation
-docs
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
 
-# Archive
-openspec/changes/archive
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
 
-# Temporary
+# Logs
 *.log
-*.tmp
+logs/
 
-# Large files
-*.zip
-*.tar
-*.tar.gz
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.yml
+docker-compose.override.yml
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp

@@ -21,4 +21,4 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 )
 
-replace github.com/ai-api-gateway/api => ../api
+replace github.com/ai-api-gateway/api => ./api

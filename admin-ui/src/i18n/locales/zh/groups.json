@@ -1,0 +1,14 @@
+{
+  "title": "分组",
+  "addGroup": "添加分组",
+  "editGroup": "编辑分组",
+  "deleteGroup": "删除分组",
+  "fields": {
+    "name": "分组名称",
+    "description": "描述",
+    "memberCount": "成员数量"
+  },
+  "members": "成员",
+  "addMember": "添加成员",
+  "removeMember": "移除成员"
+}

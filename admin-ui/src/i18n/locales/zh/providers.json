@@ -1,0 +1,13 @@
+{
+  "title": "提供商",
+  "addProvider": "添加提供商",
+  "editProvider": "编辑提供商",
+  "deleteProvider": "删除提供商",
+  "fields": {
+    "name": "提供商名称",
+    "type": "提供商类型",
+    "endpoint": "API端点",
+    "apiKey": "API密钥",
+    "enabled": "已启用"
+  }
+}

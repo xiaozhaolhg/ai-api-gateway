@@ -1,0 +1,22 @@
+{
+  "title": "告警",
+  "tabs": {
+    "rules": "告警规则",
+    "activeAlerts": "活跃告警"
+  },
+  "addRule": "添加告警规则",
+  "editRule": "编辑告警规则",
+  "deleteRule": "删除告警规则",
+  "acknowledge": "确认",
+  "fields": {
+    "name": "规则名称",
+    "metric": "指标",
+    "condition": "条件",
+    "threshold": "阈值",
+    "channel": "通道",
+    "severity": "严重程度",
+    "status": "状态",
+    "triggeredAt": "触发时间",
+    "description": "描述"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "title": "API Keys",
+  "addKey": "Add API Key",
+  "editKey": "Edit API Key",
+  "deleteKey": "Delete API Key",
+  "fields": {
+    "key": "API Key",
+    "user": "User",
+    "status": "Status",
+    "expiresAt": "Expires At"
+  },
+  "copyKey": "Copy Key",
+  "keyCopied": "Key copied to clipboard"
+}

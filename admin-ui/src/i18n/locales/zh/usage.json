@@ -1,0 +1,17 @@
+{
+  "title": "使用情况",
+  "fields": {
+    "userId": "用户ID",
+    "model": "模型",
+    "provider": "提供商",
+    "promptTokens": "提示令牌",
+    "completionTokens": "完成令牌",
+    "totalTokens": "总令牌",
+    "cost": "费用"
+  },
+  "stats": {
+    "totalRequests": "总请求数",
+    "totalTokens": "总令牌",
+    "totalCost": "总费用"
+  }
+}

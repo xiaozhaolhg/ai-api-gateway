@@ -1,0 +1,22 @@
+{
+  "title": "Alerts",
+  "tabs": {
+    "rules": "Alert Rules",
+    "activeAlerts": "Active Alerts"
+  },
+  "addRule": "Add Alert Rule",
+  "editRule": "Edit Alert Rule",
+  "deleteRule": "Delete Alert Rule",
+  "acknowledge": "Acknowledge",
+  "fields": {
+    "name": "Rule Name",
+    "metric": "Metric",
+    "condition": "Condition",
+    "threshold": "Threshold",
+    "channel": "Channel",
+    "severity": "Severity",
+    "status": "Status",
+    "triggeredAt": "Triggered At",
+    "description": "Description"
+  }
+}

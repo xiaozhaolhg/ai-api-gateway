@@ -13,8 +13,11 @@ RUN apk add --no-cache git gcc musl-dev
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
-# Copy go mod files and api directory
+# Copy go mod files
 COPY ./auth-service/go.mod ./
+COPY ./auth-service/go.sum ./
+
+# Copy api directory
 COPY ./api/ ./api/
 
 # Copy source code
@@ -42,14 +45,17 @@ COPY --from=builder /app/auth-service .
 # Copy config
 COPY --from=builder /app/configs ./configs
 
-# Create data directory
+# Create data directory and startup script before switching user
 RUN mkdir -p /root/data
+RUN printf '#!/bin/sh\necho "Starting auth service..."\n./auth-service\n' > /root/start.sh
+RUN chmod +x /root/start.sh
 
 # Run as non-root user
 RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
+    adduser -D -u 1000 -G appuser appuser && \
+    chown -R appuser:appuser /root
 USER appuser
 
 EXPOSE 50051
 
-CMD ["./auth-service"]
+CMD ["/root/start.sh"]
