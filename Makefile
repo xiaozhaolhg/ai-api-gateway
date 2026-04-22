@@ -3,7 +3,7 @@
 # Build all services
 build:
 	@echo "Building all services..."
-	@for dir in api auth-service router-service provider-service gateway-service billing-service monitor-service; do \
+	@for dir in auth-service router-service provider-service gateway-service billing-service monitor-service; do \
 		if [ -d "$$dir" ]; then \
 			echo "Building $$dir..."; \
 			$(MAKE) -C $$dir build; \
@@ -13,10 +13,10 @@ build:
 # Test all services
 test:
 	@echo "Testing all services..."
-	@for dir in api auth-service router-service provider-service gateway-service billing-service monitor-service; do \
+	@for dir in auth-service router-service provider-service gateway-service billing-service monitor-service; do \
 		if [ -d "$$dir" ]; then \
 			echo "Testing $$dir..."; \
-			$(MAKE) -C $$dir test; \
+			cd $$dir && go test -v ./... && cd ..; \
 		fi; \
 	done
 
@@ -41,4 +41,11 @@ clean:
 			echo "Cleaning $$dir..."; \
 			$(MAKE) -C $$dir clean || true; \
 		fi; \
+	done
+
+clean-images:
+	@echo "Cleaning images..."
+	@for image in $(shell docker images | grep ai-api-gateway | awk '{print $$1}'); do \
+		echo "Cleaning $$image..."; \
+		docker rmi $$image:latest || true; \
 	done

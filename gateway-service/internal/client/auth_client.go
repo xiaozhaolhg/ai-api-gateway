@@ -34,6 +34,21 @@ func (c *AuthClient) Close() error {
 	return c.conn.Close()
 }
 
+// Login authenticates a user with email/password and returns a JWT token
+func (c *AuthClient) Login(ctx context.Context, email, password string) (*authv1.LoginResponse, error) {
+	req := &authv1.LoginRequest{
+		Email:    email,
+		Password: password,
+	}
+
+	resp, err := c.client.Login(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to login: %w", err)
+	}
+
+	return resp, nil
+}
+
 // ValidateAPIKey validates an API key and returns user identity
 func (c *AuthClient) ValidateAPIKey(ctx context.Context, apiKey string) (*authv1.UserIdentity, error) {
 	req := &authv1.ValidateAPIKeyRequest{
@@ -79,11 +94,12 @@ func (c *AuthClient) GetUser(ctx context.Context, id string) (*authv1.User, erro
 }
 
 // CreateUser creates a new user
-func (c *AuthClient) CreateUser(ctx context.Context, name, email, role string) (*authv1.User, error) {
+func (c *AuthClient) CreateUser(ctx context.Context, name, email, role, password string) (*authv1.User, error) {
 	req := &authv1.CreateUserRequest{
-		Name:  name,
-		Email: email,
-		Role:  role,
+		Name:     name,
+		Email:    email,
+		Role:     role,
+		Password: password,
 	}
 
 	resp, err := c.client.CreateUser(ctx, req)

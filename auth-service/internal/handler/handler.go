@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
@@ -54,8 +55,28 @@ func (h *Handler) ValidateAPIKey(ctx context.Context, req *authv1.ValidateAPIKey
 	return &authv1.UserIdentity{
 		UserId:   user.ID,
 		Role:     user.Role,
-		GroupIds: []string{}, // MVP: no groups
+		GroupIds: []string{},
 		Scopes:   scopes,
+	}, nil
+}
+
+// Login handles email/password authentication
+func (h *Handler) Login(ctx context.Context, req *authv1.LoginRequest) (*authv1.LoginResponse, error) {
+	user, token, err := h.authService.Login(req.Email, req.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.LoginResponse{
+		Token: token,
+		User: &authv1.User{
+			Id:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			Status:    user.Status,
+			CreatedAt: user.CreatedAt.Unix(),
+		},
 	}, nil
 }
 
@@ -89,7 +110,18 @@ func (h *Handler) GetUser(ctx context.Context, req *authv1.GetUserRequest) (*aut
 
 // CreateUser creates a new user
 func (h *Handler) CreateUser(ctx context.Context, req *authv1.CreateUserRequest) (*authv1.User, error) {
-	user, err := h.authService.CreateUser(req.Name, req.Email, req.Role)
+	var hash string
+	if req.Password != "" {
+		var err error
+		hash, err = application.HashPassword(req.Password)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password: %w", err)
+		}
+	} else {
+		hash, _ = application.HashPassword(req.Password)
+	}
+
+	user, err := h.authService.CreateUser(req.Name, req.Email, req.Role, hash)
 	if err != nil {
 		return nil, err
 	}
