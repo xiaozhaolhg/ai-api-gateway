@@ -8,6 +8,7 @@ import (
 	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	"github.com/ai-api-gateway/auth-service/internal/application"
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
+	"gorm.io/gorm"
 )
 
 // MockUserRepository for testing
@@ -25,7 +26,7 @@ func (m *mockUserRepository) GetByID(id string) (*entity.User, error) {
 	if user, ok := m.users[id]; ok {
 		return user, nil
 	}
-	return nil, nil // Simulate not found
+	return nil, gorm.ErrRecordNotFound
 }
 
 func (m *mockUserRepository) Create(user *entity.User) error {
@@ -52,6 +53,15 @@ func (m *mockUserRepository) List(page, pageSize int) ([]*entity.User, int, erro
 		users = append(users, user)
 	}
 	return users, len(users), nil
+}
+
+func (m *mockUserRepository) GetByEmail(email string) (*entity.User, error) {
+	for _, user := range m.users {
+		if user.Email == email {
+			return user, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
 }
 
 // MockAPIKeyRepository for testing
@@ -135,12 +145,6 @@ func setupTestHandler(t *testing.T) *Handler {
 func TestHandler_ValidateAPIKey(t *testing.T) {
 	handler := setupTestHandler(t)
 
-	// Get the test API key
-	mockRepo := handler.apiKeyRepo.(*mockAPIKeyRepository)
-	testKey := mockRepo.apiKeys["test-key-1"]
-	testAPIKey := "sk-test123" // This won't match the hash, so we need to use the actual key
-
-	// For this test, we'll create a new key with a known value
 	apiKey, _ := handler.authService.GenerateAPIKey()
 	hash := handler.authService.HashAPIKey(apiKey)
 	testAPIKeyRecord := &entity.APIKey{
@@ -151,7 +155,7 @@ func TestHandler_ValidateAPIKey(t *testing.T) {
 		Scopes:    []string{"read"},
 		CreatedAt: time.Now(),
 	}
-	mockRepo.Create(testAPIKeyRecord)
+	handler.apiKeyRepo.(*mockAPIKeyRepository).Create(testAPIKeyRecord)
 
 	req := &authv1.ValidateAPIKeyRequest{
 		ApiKey: apiKey,

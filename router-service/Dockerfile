@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -14,17 +14,17 @@ ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
 # Copy go mod files and api directory
-COPY ./router-service/go.mod ./
+COPY ./go.mod ./
 COPY ./api/ ./api/
 
 # Copy source code
-COPY ./router-service/ ./
+COPY ./router-service/ ./router-service
 
 # Generate go.sum and download dependencies
 RUN go mod tidy
 
 # Build the application
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o router-service ./cmd/server
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /bin/router-service ./router-service/cmd/server
 
 # Runtime stage
 FROM alpine:latest
@@ -37,10 +37,10 @@ RUN apk --no-cache add ca-certificates sqlite-libs
 WORKDIR /root/
 
 # Copy the binary from builder
-COPY --from=builder /app/router-service .
+COPY --from=builder /bin/router-service .
 
 # Copy config
-COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/router-service/configs ./configs
 
 # Create data directory
 RUN mkdir -p /root/data

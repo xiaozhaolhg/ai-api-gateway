@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	AuthService_ValidateAPIKey_FullMethodName          = "/auth.v1.AuthService/ValidateAPIKey"
+	AuthService_Login_FullMethodName                   = "/auth.v1.AuthService/Login"
 	AuthService_CheckModelAuthorization_FullMethodName = "/auth.v1.AuthService/CheckModelAuthorization"
 	AuthService_GetUser_FullMethodName                 = "/auth.v1.AuthService/GetUser"
 	AuthService_CreateUser_FullMethodName              = "/auth.v1.AuthService/CreateUser"
@@ -48,6 +49,8 @@ const (
 type AuthServiceClient interface {
 	// Authentication
 	ValidateAPIKey(ctx context.Context, in *ValidateAPIKeyRequest, opts ...grpc.CallOption) (*UserIdentity, error)
+	// Login (Email/Password)
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	// Model Authorization
 	CheckModelAuthorization(ctx context.Context, in *CheckModelAuthorizationRequest, opts ...grpc.CallOption) (*AuthorizationResult, error)
 	// User Management
@@ -86,6 +89,16 @@ func (c *authServiceClient) ValidateAPIKey(ctx context.Context, in *ValidateAPIK
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UserIdentity)
 	err := c.cc.Invoke(ctx, AuthService_ValidateAPIKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoginResponse)
+	err := c.cc.Invoke(ctx, AuthService_Login_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +301,8 @@ func (c *authServiceClient) CheckPermission(ctx context.Context, in *CheckPermis
 type AuthServiceServer interface {
 	// Authentication
 	ValidateAPIKey(context.Context, *ValidateAPIKeyRequest) (*UserIdentity, error)
+	// Login (Email/Password)
+	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	// Model Authorization
 	CheckModelAuthorization(context.Context, *CheckModelAuthorizationRequest) (*AuthorizationResult, error)
 	// User Management
@@ -324,6 +339,9 @@ type UnimplementedAuthServiceServer struct{}
 
 func (UnimplementedAuthServiceServer) ValidateAPIKey(context.Context, *ValidateAPIKeyRequest) (*UserIdentity, error) {
 	return nil, status.Error(codes.Unimplemented, "method ValidateAPIKey not implemented")
+}
+func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
 }
 func (UnimplementedAuthServiceServer) CheckModelAuthorization(context.Context, *CheckModelAuthorizationRequest) (*AuthorizationResult, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckModelAuthorization not implemented")
@@ -417,6 +435,24 @@ func _AuthService_ValidateAPIKey_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServiceServer).ValidateAPIKey(ctx, req.(*ValidateAPIKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).Login(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_Login_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).Login(ctx, req.(*LoginRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -773,6 +809,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ValidateAPIKey",
 			Handler:    _AuthService_ValidateAPIKey_Handler,
+		},
+		{
+			MethodName: "Login",
+			Handler:    _AuthService_Login_Handler,
 		},
 		{
 			MethodName: "CheckModelAuthorization",

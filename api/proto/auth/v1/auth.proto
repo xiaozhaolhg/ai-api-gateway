@@ -10,6 +10,9 @@ service AuthService {
   // Authentication
   rpc ValidateAPIKey(ValidateAPIKeyRequest) returns (UserIdentity);
 
+  // Login (Email/Password)
+  rpc Login(LoginRequest) returns (LoginResponse);
+
   // Model Authorization
   rpc CheckModelAuthorization(CheckModelAuthorizationRequest) returns (AuthorizationResult);
 
@@ -45,9 +48,19 @@ message ValidateAPIKeyRequest {
   string api_key = 1;
 }
 
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  User user = 2;
+}
+
 message UserIdentity {
   string user_id = 1;
-  string role = 2;              // "admin" | "user"
+  string role = 2;              // "admin" | "user" | "viewer"
   repeated string group_ids = 3;
   repeated string scopes = 4;
 }
@@ -70,9 +83,10 @@ message User {
   string id = 1;
   string name = 2;
   string email = 3;
-  string role = 4;
-  string status = 5;    // "active" | "disabled"
+  string role = 4;         // "admin" | "user" | "viewer"
+  string status = 5;        // "active" | "disabled"
   int64 created_at = 6;
+  string password_hash = 7;
 }
 
 message GetUserRequest {
@@ -83,6 +97,7 @@ message CreateUserRequest {
   string name = 1;
   string email = 2;
   string role = 3;
+  string password = 4;
 }
 
 message UpdateUserRequest {

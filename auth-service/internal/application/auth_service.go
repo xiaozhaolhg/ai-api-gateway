@@ -47,6 +47,9 @@ func (s *AuthService) ValidateAPIKey(apiKey string) (*entity.User, []string, err
 	if err != nil {
 		return nil, nil, err
 	}
+	if apiKeyRecord == nil {
+		return nil, nil, fmt.Errorf("API key not found")
+	}
 
 	// Check if API key is expired
 	if apiKeyRecord.ExpiresAt != nil && apiKeyRecord.ExpiresAt.Before(time.Now()) {
@@ -82,15 +85,47 @@ func (s *AuthService) CheckModelAuthorization(userID string, groupIDs []string, 
 	return true, []string{"*"}, ""
 }
 
+// Login performs email/password authentication
+func (s *AuthService) Login(email, password string) (*entity.User, string, error) {
+	user, err := s.userRepo.GetByEmail(email)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid credentials")
+	}
+
+	if user.Status != "active" {
+		return nil, "", fmt.Errorf("user account is disabled")
+	}
+
+	if !CheckPassword(user.PasswordHash, password) {
+		return nil, "", fmt.Errorf("invalid credentials")
+	}
+
+	token, err := GenerateJWT(user.ID, user.Email, user.Role, 24*time.Hour)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	return user, token, nil
+}
+
 // CreateUser creates a new user
-func (s *AuthService) CreateUser(name, email, role string) (*entity.User, error) {
+func (s *AuthService) CreateUser(name, email, role, passwordHash string) (*entity.User, error) {
+	validRoles := map[string]bool{"admin": true, "user": true, "viewer": true}
+	if role == "" {
+		role = "user"
+	}
+	if !validRoles[role] {
+		role = "user"
+	}
+
 	user := &entity.User{
-		ID:        generateID(),
-		Name:      name,
-		Email:     email,
-		Role:      role,
-		Status:    "active",
-		CreatedAt: time.Now(),
+		ID:           generateID(),
+		Name:         name,
+		Email:        email,
+		Role:        role,
+		Status:      "active",
+		PasswordHash: passwordHash,
+		CreatedAt:   time.Now(),
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
@@ -98,6 +133,29 @@ func (s *AuthService) CreateUser(name, email, role string) (*entity.User, error)
 	}
 
 	return user, nil
+}
+
+// UpdatePassword updates a user's password
+func (s *AuthService) UpdatePassword(userID, newPasswordHash string) error {
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = newPasswordHash
+	return s.userRepo.Update(user)
+}
+
+// ResetPassword generates a new random password for a user
+func (s *AuthService) ResetPassword(userID string) (string, error) {
+	newPass := generateID()[:16]
+	hash, err := HashPassword(newPass)
+	if err != nil {
+		return "", err
+	}
+	if err := s.UpdatePassword(userID, hash); err != nil {
+		return "", err
+	}
+	return newPass, nil
 }
 
 // CreateAPIKey creates a new API key for a user

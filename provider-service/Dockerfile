@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -14,17 +14,17 @@ ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
 # Copy go mod files and api directory
-COPY ./provider-service/go.mod ./
+COPY ./go.mod ./
 COPY ./api/ ./api/
 
 # Copy source code
-COPY ./provider-service/ ./
+COPY ./provider-service/ ./provider-service
 
 # Generate go.sum and download dependencies
 RUN go mod tidy
 
 # Build the application
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o provider-service ./cmd/server
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /bin/provider-service ./provider-service/cmd/server
 
 # Runtime stage
 FROM alpine:latest
@@ -37,10 +37,10 @@ RUN apk --no-cache add ca-certificates sqlite-libs
 WORKDIR /root/
 
 # Copy the binary from builder
-COPY --from=builder /app/provider-service .
+COPY --from=builder /bin/provider-service .
 
 # Copy config
-COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/provider-service/configs ./configs
 
 # Create data directory
 RUN mkdir -p /root/data

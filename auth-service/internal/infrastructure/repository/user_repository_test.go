@@ -4,20 +4,18 @@ import (
 	"testing"
 
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
-	"github.com/ai-api-gateway/auth-service/internal/infrastructure/migration"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	dbPath := ":memory:"
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	// Run migrations
-	if err := migration.Migrate(dbPath); err != nil {
+	err = db.AutoMigrate(&entity.User{}, &entity.APIKey{})
+	if err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
