@@ -1,6 +1,6 @@
 module github.com/ai-api-gateway/router-service
 
-go 1.21
+go 1.26
 
 require (
 	google.golang.org/grpc v1.64.0
@@ -9,4 +9,4 @@ require (
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
 
-replace github.com/ai-api-gateway/api => ./api
+

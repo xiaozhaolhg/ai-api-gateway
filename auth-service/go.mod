@@ -1,6 +1,6 @@
 module github.com/ai-api-gateway/auth-service
 
-go 1.21
+go 1.26
 
 require (
 	github.com/ai-api-gateway/api v0.0.0
@@ -21,4 +21,4 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 )
 
-replace github.com/ai-api-gateway/api => ./api
+

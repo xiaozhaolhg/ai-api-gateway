@@ -1,6 +1,6 @@
 module github.com/ai-api-gateway/gateway-service
 
-go 1.21
+go 1.26
 
 require (
 	github.com/ai-api-gateway/api v0.0.0
@@ -11,4 +11,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/ai-api-gateway/api => ./api
+
