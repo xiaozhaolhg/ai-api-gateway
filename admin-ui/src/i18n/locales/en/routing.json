@@ -1,0 +1,14 @@
+{
+  "title": "Routing Rules",
+  "addRule": "Add Routing Rule",
+  "editRule": "Edit Routing Rule",
+  "deleteRule": "Delete Routing Rule",
+  "fields": {
+    "modelPattern": "Model Pattern",
+    "provider": "Provider",
+    "adapterType": "Adapter Type",
+    "priority": "Priority",
+    "fallbackChain": "Fallback Chain",
+    "status": "Status"
+  }
+}

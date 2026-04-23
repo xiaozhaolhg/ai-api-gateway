@@ -1,0 +1,12 @@
+{
+  "title": "Permissions",
+  "addPermission": "Add Permission",
+  "editPermission": "Edit Permission",
+  "deletePermission": "Delete Permission",
+  "fields": {
+    "group": "Group",
+    "modelPattern": "Model Pattern",
+    "effect": "Effect",
+    "status": "Status"
+  }
+}

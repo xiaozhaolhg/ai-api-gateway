@@ -1,0 +1,9 @@
+{
+  "title": "Health",
+  "fields": {
+    "provider": "Provider",
+    "status": "Status",
+    "lastCheck": "Last Check",
+    "responseTime": "Response Time"
+  }
+}

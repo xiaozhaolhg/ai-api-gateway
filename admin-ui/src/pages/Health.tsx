@@ -1,99 +1,176 @@
 import { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
-
-interface ProviderHealth {
-  id: string;
-  name: string;
-  status: 'healthy' | 'unhealthy' | 'unknown';
-  latency_ms: number;
-  error_rate: number;
-  last_check: string;
-}
+import { Table, Tag, Spin, Empty, Card, Statistic, Row, Col, message, Switch, InputNumber, Space, Button } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import { apiClient, type ProviderHealth } from '../api/client';
 
 export default function Health() {
+  const { t } = useTranslation(['health', 'common']);
   const [health, setHealth] = useState<ProviderHealth[]>([]);
   const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
 
   useEffect(() => {
-    // Mock data - in real app, fetch from monitor service
-    setHealth([
-      {
-        id: 'provider-1',
-        name: 'OpenAI',
-        status: 'healthy',
-        latency_ms: 150,
-        error_rate: 0.01,
-        last_check: new Date().toISOString(),
-      },
-      {
-        id: 'provider-2',
-        name: 'Ollama',
-        status: 'healthy',
-        latency_ms: 50,
-        error_rate: 0.0,
-        last_check: new Date().toISOString(),
-      },
-      {
-        id: 'provider-3',
-        name: 'Anthropic',
-        status: 'unhealthy',
-        latency_ms: 0,
-        error_rate: 1.0,
-        last_check: new Date().toISOString(),
-      },
-    ]);
-    setLoading(false);
+    loadHealth(true);
   }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'bg-green-100 text-green-800';
-      case 'unhealthy':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    if (autoRefresh) {
+      intervalId = setInterval(() => {
+        loadHealth(false);
+      }, refreshInterval * 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [autoRefresh, refreshInterval]);
+
+  const loadHealth = async (isInitial: boolean = false) => {
+    try {
+      if (isInitial) {
+        setLoading(true);
+      }
+      const data = await apiClient.getProviderHealth();
+      setHealth(data);
+    } catch (error) {
+      message.error('Failed to load provider health data');
+    } finally {
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   };
 
-  return (
-    <Layout>
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Provider Health</h2>
+  const handleManualRefresh = () => {
+    loadHealth(true);
+  };
 
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latency</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error Rate</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {health.map((provider) => (
-                  <tr key={provider.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{provider.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(provider.status)}`}>
-                        {provider.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{provider.latency_ms}ms</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(provider.error_rate * 100).toFixed(1)}%</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(provider.last_check).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+  const getStatusTag = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return <Tag icon={<CheckCircleOutlined />} color="success">{t('health:status.healthy')}</Tag>;
+      case 'unhealthy':
+        return <Tag icon={<CloseCircleOutlined />} color="error">{t('health:status.unhealthy')}</Tag>;
+      default:
+        return <Tag icon={<ClockCircleOutlined />} color="default">{t('health:status.unknown')}</Tag>;
+    }
+  };
+
+  const columns = [
+    {
+      title: t('health:fields.provider'),
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: t('health:fields.status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => getStatusTag(status),
+    },
+    {
+      title: t('health:fields.latency'),
+      dataIndex: 'latency_ms',
+      key: 'latency_ms',
+      render: (latency: number) => `${latency}ms`,
+    },
+    {
+      title: t('health:fields.errorRate'),
+      dataIndex: 'error_rate',
+      key: 'error_rate',
+      render: (errorRate: number) => `${(errorRate * 100).toFixed(1)}%`,
+    },
+    {
+      title: t('health:fields.lastCheck'),
+      dataIndex: 'last_check',
+      key: 'last_check',
+      render: (lastCheck: string) => new Date(lastCheck).toLocaleString(),
+    },
+  ];
+
+  const healthyCount = health.filter(h => h.status === 'healthy').length;
+  const unhealthyCount = health.filter(h => h.status === 'unhealthy').length;
+  const avgLatency = health.length > 0
+    ? health.reduce((sum, h) => sum + h.latency_ms, 0) / health.length
+    : 0;
+
+  if (loading) {
+    return <Spin size="large" />;
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>{t('health:title')}</h2>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={handleManualRefresh} loading={loading}>
+            {t('common:refresh')}
+          </Button>
+          <Space size="middle">
+            <span>Auto-refresh:</span>
+            <Switch checked={autoRefresh} onChange={setAutoRefresh} />
+            <InputNumber
+              min={5}
+              max={300}
+              value={refreshInterval}
+              onChange={(value) => setRefreshInterval(value || 30)}
+              disabled={!autoRefresh}
+              addonAfter="s"
+              style={{ width: 100 }}
+            />
+          </Space>
+        </Space>
       </div>
-    </Layout>
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title={t('health:stats.healthyProviders')}
+              value={healthyCount}
+              valueStyle={{ color: '#52c41a' }}
+              prefix={<CheckCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title={t('health:stats.unhealthyProviders')}
+              value={unhealthyCount}
+              valueStyle={{ color: '#ff4d4f' }}
+              prefix={<CloseCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title={t('health:stats.avgLatency')}
+              value={avgLatency}
+              precision={0}
+              suffix="ms"
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {health.length === 0 ? (
+        <Empty description="No provider health data found" />
+      ) : (
+        <Table
+          dataSource={health}
+          columns={columns}
+          rowKey="id"
+          pagination={false}
+        />
+      )}
+    </div>
   );
 }

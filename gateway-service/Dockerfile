@@ -13,8 +13,11 @@ RUN apk add --no-cache git
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
-# Copy go mod files and api directory
-COPY ./go.mod ./
+# Copy go mod files
+COPY ./gateway-service/go.mod ./
+COPY ./gateway-service/go.sum ./
+
+# Copy api directory
 COPY ./api/ ./api/
 
 # Copy source code

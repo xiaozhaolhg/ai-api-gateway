@@ -12,4 +12,12 @@ export default defineConfig({
       },
     },
   },
+  // Ant Design CSS-in-JS compatibility
+  css: {
+    preprocessorOptions: {
+      less: {
+        javascriptEnabled: true,
+      },
+    },
+  },
 })
