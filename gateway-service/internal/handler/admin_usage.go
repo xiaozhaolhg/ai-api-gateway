@@ -1,59 +1,32 @@
 package handler
 
-import (
-	"encoding/json"
-	"net/http"
-	"strconv"
+import "context"
 
-	"github.com/ai-api-gateway/gateway-service/internal/client"
-)
+type BillingService interface {
+	GetUsage(ctx context.Context, userID string, page, pageSize int) (*UsageResp, error)
+}
 
-// AdminUsageHandler handles admin usage requests
+type UsageRecord struct {
+	UserID    string `json:"user_id"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	PromptTokens     int64 `json:"prompt_tokens"`
+	CompletionTokens int64 `json:"completion_tokens"`
+	Cost    float64 `json:"cost"`
+}
+
+type UsageResp struct {
+	Records []UsageRecord `json:"records"`
+}
+
 type AdminUsageHandler struct {
-	billingClient *client.BillingClient
+	svc BillingService
 }
 
-// NewAdminUsageHandler creates a new admin usage handler
-func NewAdminUsageHandler(billingClient *client.BillingClient) *AdminUsageHandler {
-	return &AdminUsageHandler{
-		billingClient: billingClient,
-	}
+func NewAdminUsageHandler(svc BillingService) *AdminUsageHandler {
+	return &AdminUsageHandler{svc: svc}
 }
 
-// ServeHTTP handles HTTP requests for /admin/usage
-func (h *AdminUsageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getUsage(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-// getUsage retrieves usage records
-func (h *AdminUsageHandler) getUsage(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		http.Error(w, "Missing user_id", http.StatusBadRequest)
-		return
-	}
-
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
-
-	if page == 0 {
-		page = 1
-	}
-	if pageSize == 0 {
-		pageSize = 20
-	}
-
-	resp, err := h.billingClient.GetUsage(r.Context(), userID, int32(page), int32(pageSize))
-	if err != nil {
-		http.Error(w, "Failed to get usage: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+func (h *AdminUsageHandler) GetUsage(userID string, page, pageSize int) (*UsageResp, error) {
+	return h.svc.GetUsage(context.Background(), userID, page, pageSize)
 }

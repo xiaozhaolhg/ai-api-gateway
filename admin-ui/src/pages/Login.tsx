@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoginFormValues {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -20,7 +20,7 @@ export const Login: React.FC = () => {
   const onFinish = async (values: LoginFormValues) => {
     setLoading(true);
     try {
-      await login(values.username, values.password);
+      await login(values.email, values.password);
       message.success('Login successful');
       navigate(from, { replace: true });
     } catch (error) {
@@ -51,13 +51,13 @@ export const Login: React.FC = () => {
           layout="vertical"
         >
           <Form.Item
-            label="Username"
-            name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            label="Email or Username"
+            name="email"
+            rules={[{ required: true, message: 'Please input your email or username!' }]}
           >
             <Input
               prefix={<UserOutlined />}
-              placeholder="Username"
+              placeholder="Email or Username"
               size="large"
             />
           </Form.Item>
@@ -85,6 +85,10 @@ export const Login: React.FC = () => {
               Log in
             </Button>
           </Form.Item>
+
+          <div style={{ textAlign: 'center' }}>
+            Don't have an account? <Link to="/register">Register</Link>
+          </div>
         </Form>
       </Card>
     </div>

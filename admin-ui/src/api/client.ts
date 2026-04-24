@@ -260,19 +260,38 @@ class APIClient {
   }
 
   // Authentication endpoints
-  async login(username: string, password: string): Promise<{ token: string; user: User }> {
+  async login(emailOrUsername: string, password: string): Promise<{ token: string; user: User }> {
     const url = `${this.baseURL}/admin/auth/login`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email: emailOrUsername, password }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.message || `API error: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  }
+
+  async register(name: string, username: string, email: string, password: string): Promise<{ token: string; user: User }> {
+    const url = `${this.baseURL}/admin/auth/register`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, username, email, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || `API error: ${response.status} ${response.statusText}`;
       throw new Error(errorMessage);
     }
 

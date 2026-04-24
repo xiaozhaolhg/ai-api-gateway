@@ -173,3 +173,100 @@ func TestLogin_E2E_Roles(t *testing.T) {
 		})
 	}
 }
+
+func TestRegister_E2E(t *testing.T) {
+	db := setupLoginTestDB(t)
+	userRepo := repository.NewUserRepository(db)
+	authService := application.NewAuthService(userRepo, nil)
+	handler := NewHandler(authService, userRepo, nil)
+
+	ctx := context.Background()
+
+	resp, err := handler.Register(ctx, &authv1.RegisterRequest{
+		Name:     "New User",
+		Email:    "new@example.com",
+		Password: "securepassword123",
+	})
+	if err != nil {
+		t.Errorf("Register failed: %v", err)
+	}
+	if resp.User == nil {
+		t.Error("Register user = nil, want user")
+	}
+	if resp.Token == "" {
+		t.Error("Register token = empty, want token")
+	}
+	if resp.User.Name != "New User" {
+		t.Errorf("Register name = %s, want New User", resp.User.Name)
+	}
+}
+
+func TestRegister_E2E_WithUsername(t *testing.T) {
+	db := setupLoginTestDB(t)
+	userRepo := repository.NewUserRepository(db)
+	authService := application.NewAuthService(userRepo, nil)
+	handler := NewHandler(authService, userRepo, nil)
+
+	ctx := context.Background()
+
+	resp, err := handler.Register(ctx, &authv1.RegisterRequest{
+		Name:     "Username User",
+		Username: "newuser",
+		Password: "securepassword123",
+	})
+	if err != nil {
+		t.Errorf("Register with username failed: %v", err)
+	}
+	if resp.User == nil {
+		t.Error("Register user = nil, want user")
+	}
+	if resp.User.Email != "newuser@local.dev" {
+		t.Errorf("Register email = %s, want newuser@local.dev", resp.User.Email)
+	}
+}
+
+func TestRegister_E2E_WeakPassword(t *testing.T) {
+	db := setupLoginTestDB(t)
+	userRepo := repository.NewUserRepository(db)
+	authService := application.NewAuthService(userRepo, nil)
+	handler := NewHandler(authService, userRepo, nil)
+
+	ctx := context.Background()
+
+	_, err := handler.Register(ctx, &authv1.RegisterRequest{
+		Name:     "Weak Password User",
+		Email:    "weak@example.com",
+		Password: "short",
+	})
+	if err == nil {
+		t.Error("Register with weak password should fail")
+	}
+}
+
+func TestRegister_E2E_Duplicate(t *testing.T) {
+	db := setupLoginTestDB(t)
+	userRepo := repository.NewUserRepository(db)
+	authService := application.NewAuthService(userRepo, nil)
+	handler := NewHandler(authService, userRepo, nil)
+
+	ctx := context.Background()
+	hash, _ := application.HashPassword("existingpass")
+	existing := &entity.User{
+		ID:           "usr_existing",
+		Name:         "Existing User",
+		Email:        "existing@example.com",
+		Role:         "user",
+		Status:      "active",
+		PasswordHash: hash,
+	}
+	_ = userRepo.Create(existing)
+
+	_, err := handler.Register(ctx, &authv1.RegisterRequest{
+		Name:     "Duplicate User",
+		Email:    "existing@example.com",
+		Password: "securepassword123",
+	})
+	if err == nil {
+		t.Error("Register with duplicate email should fail")
+	}
+}

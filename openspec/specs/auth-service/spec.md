@@ -23,6 +23,7 @@
 | gateway-service | `ValidateAPIKey`, `CheckModelAuthorization` | Authenticate requests, check model permissions |
 | gateway-service | `CreateUser`, `UpdateUser`, `DeleteUser` | User CRUD |
 | gateway-service | `CreateAPIKey`, `DeleteAPIKey` | API key management |
+| gateway-service | `Register`, `Login` | User registration and login |
 
 ### Data Dependencies
 
@@ -47,6 +48,8 @@
 
 - **ValidateAPIKey**: API key → UserIdentity
 - **CheckModelAuthorization**: user/group + model → allowed/reason
+- **Register**: username/email + password → JWT token (new user)
+- **Login**: username/email + password → JWT token
 - **CreateUser/UpdateUser/DeleteUser**: User CRUD
 - **CreateAPIKey/DeleteAPIKey**: API key lifecycle (key returned once)
 - **CreateGroup/AddUserToGroup**: Group management (Phase 2+)

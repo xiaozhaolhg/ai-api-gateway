@@ -1,57 +1,31 @@
 package handler
 
-import (
-	"encoding/json"
-	"net/http"
+import "context"
 
-	"github.com/ai-api-gateway/gateway-service/internal/client"
-)
+type Model struct {
+	ID       string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	OwnedBy string `json:"owned_by"`
+}
 
-// ModelsHandler handles model listing requests
+type ModelsListResp struct {
+	Object string `json:"object"`
+	Data   []Model `json:"data"`
+}
+
+type ModelsService interface {
+	ListModels(ctx context.Context) (*ModelsListResp, error)
+}
+
 type ModelsHandler struct {
-	providerClient *client.ProviderClient
+	svc ModelsService
 }
 
-// NewModelsHandler creates a new models handler
-func NewModelsHandler(providerClient *client.ProviderClient) *ModelsHandler {
-	return &ModelsHandler{
-		providerClient: providerClient,
-	}
+func NewModelsHandler(svc ModelsService) *ModelsHandler {
+	return &ModelsHandler{svc: svc}
 }
 
-// ServeHTTP handles HTTP requests for /v1/models
-func (h *ModelsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// List all providers to get available models
-	providersResp, err := h.providerClient.ListProviders(r.Context(), 1, 100)
-	if err != nil {
-		http.Error(w, "Failed to list providers: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Collect all models from all providers
-	var models []map[string]interface{}
-	for _, provider := range providersResp.Providers {
-		for _, model := range provider.Models {
-			models = append(models, map[string]interface{}{
-				"id":      model,
-				"object":  "model",
-				"created": provider.CreatedAt,
-				"owned_by": provider.Name,
-			})
-		}
-	}
-
-	// Return OpenAI-compatible response
-	response := map[string]interface{}{
-		"object": "list",
-		"data":   models,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+func (h *ModelsHandler) ListModels() (*ModelsListResp, error) {
+	return h.svc.ListModels(context.Background())
 }

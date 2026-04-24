@@ -13,15 +13,13 @@ import (
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
 	"github.com/ai-api-gateway/provider-service/internal/infrastructure/crypto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Service handles provider request forwarding and callback dispatch
 type Service struct {
-	providerRepo port.ProviderRepository
+	providerRepo   port.ProviderRepository
 	adapterFactory *AdapterFactory
-	crypto         *crypto.Crypto
+	cryptoKey     string
 	subscribers    map[string]string // service_name -> gRPC endpoint
 	subscribersMu  sync.RWMutex
 }
@@ -30,12 +28,12 @@ type Service struct {
 func NewService(
 	providerRepo port.ProviderRepository,
 	adapterFactory *AdapterFactory,
-	crypto *crypto.Crypto,
+	cryptoKey string,
 ) *Service {
 	return &Service{
 		providerRepo:   providerRepo,
 		adapterFactory: adapterFactory,
-		crypto:         crypto,
+		cryptoKey:     cryptoKey,
 		subscribers:    make(map[string]string),
 	}
 }
@@ -53,7 +51,7 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 	}
 
 	// Decrypt credentials
-	decryptedCreds, err := s.crypto.Decrypt(provider.Credentials)
+	decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to decrypt credentials: %w", err)
 	}
@@ -135,7 +133,7 @@ func (s *Service) StreamRequest(ctx context.Context, providerID string, requestB
 		}
 
 		// Decrypt credentials
-		decryptedCreds, err := s.crypto.Decrypt(provider.Credentials)
+		decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to decrypt credentials: %w", err)
 			return
