@@ -81,6 +81,23 @@ make test
 cd auth-service && go test ./...
 ```
 
+### Validate Changes
+
+After making code changes, validate with Docker:
+
+```bash
+# Stop all containers
+make down
+
+# Clean and rebuild images
+make clean-images
+make up
+
+# Verify services are healthy
+curl http://localhost:8080/health
+curl http://localhost:3000/health
+```
+
 ### Run Locally (without Docker)
 
 ```bash

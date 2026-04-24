@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
@@ -86,9 +87,19 @@ func (s *AuthService) CheckModelAuthorization(userID string, groupIDs []string, 
 }
 
 // Login performs email/password authentication
-func (s *AuthService) Login(email, password string) (*entity.User, string, error) {
-	user, err := s.userRepo.GetByEmail(email)
+func (s *AuthService) Login(emailOrUsername, password string) (*entity.User, string, error) {
+	var user *entity.User
+	var err error
+
+	// Try email first, then username
+	log.Printf("[DEBUG] Login attempt with: %s", emailOrUsername)
+	user, err = s.userRepo.GetByEmail(emailOrUsername)
 	if err != nil {
+		log.Printf("[DEBUG] GetByEmail failed, trying username: %v", err)
+		user, err = s.userRepo.GetByUsername(emailOrUsername)
+	}
+	if err != nil {
+		log.Printf("[DEBUG] All login attempts failed: %v", err)
 		return nil, "", fmt.Errorf("invalid credentials")
 	}
 
@@ -100,7 +111,7 @@ func (s *AuthService) Login(email, password string) (*entity.User, string, error
 		return nil, "", fmt.Errorf("invalid credentials")
 	}
 
-	token, err := GenerateJWT(user.ID, user.Email, user.Role, 24*time.Hour)
+	token, err := GenerateJWT(user.ID, user.Name, user.Email, user.Role, 24*time.Hour)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -108,8 +119,18 @@ func (s *AuthService) Login(email, password string) (*entity.User, string, error
 	return user, token, nil
 }
 
+// Register creates a new user and returns it
+func (s *AuthService) Register(name, email, role, passwordHash string) (*entity.User, error) {
+	return s.CreateUser(name, "", email, role, passwordHash)
+}
+
+// RegisterWithUsername creates a new user with username
+func (s *AuthService) RegisterWithUsername(name, username, email, role, passwordHash string) (*entity.User, error) {
+	return s.CreateUser(name, username, email, role, passwordHash)
+}
+
 // CreateUser creates a new user
-func (s *AuthService) CreateUser(name, email, role, passwordHash string) (*entity.User, error) {
+func (s *AuthService) CreateUser(name, username, email, role, passwordHash string) (*entity.User, error) {
 	validRoles := map[string]bool{"admin": true, "user": true, "viewer": true}
 	if role == "" {
 		role = "user"
@@ -118,9 +139,12 @@ func (s *AuthService) CreateUser(name, email, role, passwordHash string) (*entit
 		role = "user"
 	}
 
+	log.Printf("[DEBUG] CreateUser: name=%s, username=%s, email=%s, role=%s", name, username, email, role)
+
 	user := &entity.User{
 		ID:           generateID(),
 		Name:         name,
+		Username:     username,
 		Email:        email,
 		Role:        role,
 		Status:      "active",

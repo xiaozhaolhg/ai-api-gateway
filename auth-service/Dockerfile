@@ -45,14 +45,15 @@ COPY --from=builder /bin/auth-service .
 COPY --from=builder /app/auth-service/configs ./configs
 
 # Create data directory and startup script before switching user
-RUN mkdir -p /root/data
+RUN mkdir -p /data
 RUN printf '#!/bin/sh\necho "Starting auth service..."\n./auth-service\n' > /root/start.sh
 RUN chmod +x /root/start.sh
 
 # Run as non-root user
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser && \
-    chown -R appuser:appuser /root
+    chown -R appuser:appuser /root && \
+    chown -R appuser:appuser /data
 USER appuser
 
 EXPOSE 50051

@@ -1,7 +1,6 @@
 package adapter
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -62,10 +61,16 @@ func (a *OpenAIAdapter) TransformResponse(response []byte) ([]byte, error) {
 }
 
 // CountTokens counts tokens in the request/response
-// For MVP, we'll use a simple estimation based on character count
-// In production, this would use tiktoken or similar
+// First tries to extract from response usage, falls back to character count estimation
 func (a *OpenAIAdapter) CountTokens(request []byte, response []byte) (int64, int64, error) {
-	// Simple estimation: ~4 characters per token
+	// Try to extract from response usage first
+	if len(response) > 0 {
+		if promptTokens, completionTokens, err := a.extractTokenUsage(response); err == nil && (promptTokens > 0 || completionTokens > 0) {
+			return promptTokens, completionTokens, nil
+		}
+	}
+
+	// Fallback: ~4 characters per token
 	promptTokens := int64(len(request) / 4)
 	completionTokens := int64(len(response) / 4)
 

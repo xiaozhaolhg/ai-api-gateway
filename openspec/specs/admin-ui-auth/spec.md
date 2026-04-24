@@ -1,6 +1,6 @@
 ## Purpose
 
-Authentication and session management for the admin UI, including login, logout, and protected routes.
+Authentication and session management for the admin UI, including login, logout, registration, and protected routes.
 
 ## Requirements
 
@@ -17,6 +17,20 @@ The admin-ui SHALL provide a login page at `/login` with username and password f
 - **WHEN** the user submits invalid credentials
 - **THEN** the admin-ui SHALL display an error message using antd `message.error`
 - **AND** remain on the login page with fields preserved
+
+### Requirement: Registration page
+The admin-ui SHALL provide a registration page at `/register` accessible from login page.
+
+#### Scenario: Successful registration
+- **WHEN** the user submits valid registration form (name, email/username, password)
+- **THEN** the admin-ui SHALL call `POST /admin/auth/register` via gateway-service
+- **AND** store the returned JWT token and user info in auth context
+- **AND** redirect to the dashboard page (`/`)
+
+#### Scenario: Registration failure
+- **WHEN** the user submits with duplicate email/username or weak password
+- **THEN** the admin-ui SHALL display an error message
+- **AND** remain on the registration page with fields preserved
 
 ### Requirement: Session management
 The admin-ui SHALL manage authentication session state using React Context.

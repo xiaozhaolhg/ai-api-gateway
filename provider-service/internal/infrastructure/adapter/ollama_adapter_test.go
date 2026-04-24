@@ -103,7 +103,8 @@ func TestOllamaAdapter_TransformRequest_WithMaxTokens(t *testing.T) {
 	var ollamaReq map[string]interface{}
 	json.Unmarshal(transformed, &ollamaReq)
 
-	if ollamaReq["num_predict"] != 100 {
+	numPredict, ok := ollamaReq["num_predict"].(float64)
+	if !ok || int64(numPredict) != 100 {
 		t.Errorf("Expected num_predict 100, got %v", ollamaReq["num_predict"])
 	}
 }
@@ -185,15 +186,18 @@ func TestOllamaAdapter_TransformResponse(t *testing.T) {
 		t.Error("Expected usage object")
 	}
 
-	if usage["prompt_tokens"] != int64(10) {
+	promptTokens, _ := usage["prompt_tokens"].(float64)
+	if int64(promptTokens) != 10 {
 		t.Errorf("Expected prompt_tokens 10, got %v", usage["prompt_tokens"])
 	}
 
-	if usage["completion_tokens"] != int64(20) {
+	completionTokens, _ := usage["completion_tokens"].(float64)
+	if int64(completionTokens) != 20 {
 		t.Errorf("Expected completion_tokens 20, got %v", usage["completion_tokens"])
 	}
 
-	if usage["total_tokens"] != int64(30) {
+	totalTokens, _ := usage["total_tokens"].(float64)
+	if int64(totalTokens) != 30 {
 		t.Errorf("Expected total_tokens 30, got %v", usage["total_tokens"])
 	}
 }

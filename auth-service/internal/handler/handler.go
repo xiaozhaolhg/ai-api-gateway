@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
 	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
@@ -21,6 +23,8 @@ type Handler struct {
 // UserRepository interface for handler
 type UserRepository interface {
 	GetByID(id string) (*entity.User, error)
+	GetByEmail(email string) (*entity.User, error)
+	GetByUsername(username string) (*entity.User, error)
 	Create(user *entity.User) error
 	Update(user *entity.User) error
 	Delete(id string) error
@@ -80,6 +84,65 @@ func (h *Handler) Login(ctx context.Context, req *authv1.LoginRequest) (*authv1.
 	}, nil
 }
 
+// Register handles user registration with username or email
+func (h *Handler) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.RegisterResponse, error) {
+	if len(req.Password) < 8 {
+		return nil, fmt.Errorf("password must be at least 8 characters")
+	}
+
+	email := req.Email
+	if email == "" && req.Username != "" {
+		email = req.Username + "@local.dev"
+	}
+
+	existing, _ := h.userRepo.GetByEmail(email)
+	if existing != nil {
+		return nil, fmt.Errorf("user already exists")
+	}
+
+	// Check username uniqueness if provided
+	if req.Username != "" {
+		existingUsername, _ := h.userRepo.GetByUsername(req.Username)
+		if existingUsername != nil {
+			return nil, fmt.Errorf("username already taken")
+		}
+	}
+
+	hash, err := application.HashPassword(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	role := req.Role
+	if role == "" {
+		role = "user"
+	}
+
+	log.Printf("[DEBUG] Register: name=%s, username=%s, email=%s, role=%s", req.Name, req.Username, email, role)
+
+	user, err := h.authService.RegisterWithUsername(req.Name, req.Username, email, role, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := application.GenerateJWT(user.ID, user.Name, user.Email, user.Role, 24*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	return &authv1.RegisterResponse{
+		Token: token,
+		User: &authv1.User{
+			Id:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			Status:    user.Status,
+			CreatedAt: user.CreatedAt.Unix(),
+		},
+	}, nil
+}
+
 // CheckModelAuthorization checks if a user is authorized to access a model
 func (h *Handler) CheckModelAuthorization(ctx context.Context, req *authv1.CheckModelAuthorizationRequest) (*authv1.AuthorizationResult, error) {
 	allowed, models, reason := h.authService.CheckModelAuthorization(req.UserId, req.GroupIds, req.Model)
@@ -121,7 +184,7 @@ func (h *Handler) CreateUser(ctx context.Context, req *authv1.CreateUserRequest)
 		hash, _ = application.HashPassword(req.Password)
 	}
 
-	user, err := h.authService.CreateUser(req.Name, req.Email, req.Role, hash)
+	user, err := h.authService.CreateUser(req.Name, req.Username, req.Email, req.Role, hash)
 	if err != nil {
 		return nil, err
 	}

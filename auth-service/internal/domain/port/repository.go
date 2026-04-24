@@ -9,6 +9,7 @@ type UserRepository interface {
 	Create(user *entity.User) error
 	GetByID(id string) (*entity.User, error)
 	GetByEmail(email string) (*entity.User, error)
+	GetByUsername(username string) (*entity.User, error)
 	Update(user *entity.User) error
 	Delete(id string) error
 	List(page, pageSize int) ([]*entity.User, int, error)
