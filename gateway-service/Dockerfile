@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -14,8 +14,7 @@ ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
 # Copy go mod files
-COPY ./gateway-service/go.mod ./
-COPY ./gateway-service/go.sum ./
+COPY ./go.mod ./
 
 # Copy api directory
 COPY ./api/ ./api/

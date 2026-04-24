@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ai-api-gateway/router-service/internal/handler"
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
+	"github.com/ai-api-gateway/router-service-legacy/internal/handler"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/config"
 	"github.com/gin-gonic/gin"
 )
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ai-api-gateway/router-service/internal/domain/port"
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
+	"github.com/ai-api-gateway/router-service-legacy/internal/domain/port"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/config"
 )
 
 // ProviderFactory defines the interface for creating provider instances

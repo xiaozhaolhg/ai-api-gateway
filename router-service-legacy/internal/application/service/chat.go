@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/ai-api-gateway/router-service/internal/domain/port"
+	"github.com/ai-api-gateway/router-service-legacy/internal/domain/port"
 )
 
 type ChatCompletionService struct {

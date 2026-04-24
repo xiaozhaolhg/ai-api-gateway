@@ -1,6 +1,6 @@
 package port
 
-import "github.com/ai-api-gateway/router-service/internal/domain/entity"
+import "github.com/ai-api-gateway/router-service-legacy/internal/domain/entity"
 
 type ChatCompletionRequest struct {
 	Model       string                 `json:"model"`

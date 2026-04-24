@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/ai-api-gateway/router-service/internal/domain/entity"
-	"github.com/ai-api-gateway/router-service/internal/domain/port"
+	"github.com/ai-api-gateway/router-service-legacy/internal/domain/entity"
+	"github.com/ai-api-gateway/router-service-legacy/internal/domain/port"
 )
 
 type ModelService struct {
