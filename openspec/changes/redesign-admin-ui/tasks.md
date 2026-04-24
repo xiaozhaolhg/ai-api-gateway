@@ -141,114 +141,116 @@ All 7 tasks complete. Tests passed:
 ### Task 2.1: Add POST /admin/login endpoint in gateway-service
 
 **Acceptance Criteria:**
-- [ ] Endpoint exists at `POST /admin/login`
-- [ ] Accepts JSON body with email/password
-- [ ] Calls auth-service Login RPC
-- [ ] Returns user info on success
+- [x] Endpoint exists at `POST /admin/login`
+- [x] Accepts JSON body with email/password
+- [x] Calls auth-service Login RPC
+- [x] Returns user info on success
 
 **Unit Tests:**
-- [ ] Handler unit tests with mock auth-service
+- [x] Handler unit tests with mock auth-service
 
 **FVT Test Plan:**
-- [ ] POST /admin/login with valid credentials, verify 200 + user
-- [ ] POST /admin/login with invalid credentials, verify 401
+- [x] POST /admin/login with valid credentials, verify 200 + user
+- [x] POST /admin/login with invalid credentials, verify 401
 
 ---
 
 ### Task 2.2: Add POST /admin/logout endpoint in gateway-service
 
 **Acceptance Criteria:**
-- [ ] Endpoint exists at `POST /admin/logout`
-- [ ] Clears auth cookie
-- [ ] Returns success response
+- [x] Endpoint exists at `POST /admin/logout`
+- [x] Clears auth cookie
+- [x] Returns success response
 
 **Unit Tests:**
-- [ ] Handler clears cookie correctly
+- [x] Handler clears cookie correctly
 
 **FVT Test Plan:**
-- [ ] POST /admin/logout after login, verify cookie cleared
+- [x] POST /admin/logout after login, verify cookie cleared
 
 ---
 
 ### Task 2.3: Implement auth middleware for admin routes
 
 **Acceptance Criteria:**
-- [ ] Middleware checks JWT cookie
-- [ ] Valid JWT allows request through
-- [ ] Missing/invalid JWT returns 401
+- [x] Middleware checks JWT cookie
+- [x] Valid JWT allows request through
+- [x] Missing/invalid JWT returns 401
 
 **Unit Tests:**
-- [ ] Middleware with valid token passes
-- [ ] Middleware with missing token returns 401
-- [ ] Middleware with invalid token returns 401
+- [x] Middleware with valid token passes
+- [x] Middleware with missing token returns 401
+- [x] Middleware with invalid token returns 401
 
 **FVT Test Plan:**
-- [ ] Access protected route with valid cookie, verify 200
-- [ ] Access protected route without cookie, verify 401
+- [x] Access protected route with valid cookie, verify 200
+- [x] Access protected route without cookie, verify 401
 
 ---
 
 ### Task 2.4: Configure JWT cookie handling (secure, HTTP-only, /admin path)
 
 **Acceptance Criteria:**
-- [ ] Cookie is HTTP-only
-- [ ] Cookie has Secure flag in production
-- [ ] Cookie Path is /admin
-- [ ] SameSite is strict
+- [x] Cookie is HTTP-only
+- [x] Cookie has Secure flag in production
+- [x] Cookie Path is /admin
+- [x] SameSite is strict
 
 **Unit Tests:**
-- [ ] Cookie attributes configured correctly
+- [x] Cookie attributes configured correctly
 
 **FVT Test Plan:**
-- [ ] Inspect cookie headers in response
+- [x] Inspect cookie headers in response
 
 ---
 
 ### Task 2.5: Add user context propagation to downstream services
 
 **Acceptance Criteria:**
-- [ ] User ID passed in gRPC metadata
-- [ ] Role passed in gRPC metadata
-- [ ] Downstream services can access context
+- [x] User ID passed in gRPC metadata
+- [x] Role passed in gRPC metadata
+- [x] Downstream services can access context
 
 **Unit Tests:**
-- [ ] Context propagation with mock downstream
+- [x] Context propagation with mock downstream
 
 **FVT Test Plan:**
-- [ ] Make request, verify downstream receives user context
+- [x] Make request, verify downstream receives user context
 
 ---
 
 ### Task 2.6: Update admin API handlers to check user role
 
 **Acceptance Criteria:**
-- [ ] Admin endpoints check user role
-- [ ] Viewer user blocked from write operations
-- [ ] Non-admin blocked from other users' resources
+- [x] Admin endpoints check user role
+- [x] Viewer user blocked from write operations
+- [x] Non-admin blocked from other users' resources
 
 **Unit Tests:**
-- [ ] Role check logic tested
+- [x] Role check logic tested
 
 **FVT Test Plan:**
-- [ ] Admin accesses all endpoints, verify 200
-- [ ] Viewer tries to create provider, verify 403
+- [x] Admin accesses all endpoints, verify 200
+- [x] Viewer tries to create provider, verify 403
 
 ---
 
 ### Task 2.7: Write integration tests for auth flow
 
 **Acceptance Criteria:**
-- [ ] Full login flow integration test
-- [ ] Logout flow integration test
-- [ ] Protected route integration test
+- [x] Full login flow integration test
+- [x] Logout flow integration test
+- [x] Protected route integration test
 
 **Unit Tests:**
-- [ ] Integration tests with test database
+- [x] Integration tests with test database
 
 **FVT Test Plan:**
-- [ ] Run `go test ./... -tags=integration`
+- [x] Run `go test ./... -tags=integration`
 
 ---
+
+## Phase 2 COMPLETE ✅
 
 ## Phase 3: Admin UI Dependencies and Setup
 

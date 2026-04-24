@@ -1,114 +1,61 @@
 package handler
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
 	"strconv"
-
-	"github.com/ai-api-gateway/api/gen/provider/v1"
-	"github.com/ai-api-gateway/gateway-service/internal/client"
 )
 
-// AdminProvidersHandler handles admin provider management requests
+// ProviderService defines the interface for provider operations
+type ProviderService interface {
+	ListProviders(ctx context.Context, page, pageSize int) (*ListProvidersResp, error)
+	CreateProvider(ctx context.Context, provider *Provider) (*Provider, error)
+	UpdateProvider(ctx context.Context, provider *Provider) (*Provider, error)
+	DeleteProvider(ctx context.Context, id string) error
+}
+
+type Provider struct {
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"`
+	Status string   `json:"status"`
+}
+
+type ListProvidersResp struct {
+	Providers []Provider `json:"providers"`
+}
+
 type AdminProvidersHandler struct {
-	providerClient *client.ProviderClient
+	svc ProviderService
 }
 
-// NewAdminProvidersHandler creates a new admin providers handler
-func NewAdminProvidersHandler(providerClient *client.ProviderClient) *AdminProvidersHandler {
-	return &AdminProvidersHandler{
-		providerClient: providerClient,
-	}
+func NewAdminProvidersHandler(svc ProviderService) *AdminProvidersHandler {
+	return &AdminProvidersHandler{svc: svc}
 }
 
-// ServeHTTP handles HTTP requests for /admin/providers
-func (h *AdminProvidersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.listProviders(w, r)
-	case http.MethodPost:
-		h.createProvider(w, r)
-	case http.MethodPut:
-		h.updateProvider(w, r)
-	case http.MethodDelete:
-		h.deleteProvider(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+func (h *AdminProvidersHandler) ListProviders(page, pageSize int) (*ListProvidersResp, error) {
+	return h.svc.ListProviders(context.Background(), page, pageSize)
 }
 
-// listProviders lists all providers
-func (h *AdminProvidersHandler) listProviders(w http.ResponseWriter, r *http.Request) {
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+func (h *AdminProvidersHandler) CreateProvider(provider *Provider) (*Provider, error) {
+	return h.svc.CreateProvider(context.Background(), provider)
+}
 
+func (h *AdminProvidersHandler) UpdateProvider(provider *Provider) (*Provider, error) {
+	return h.svc.UpdateProvider(context.Background(), provider)
+}
+
+func (h *AdminProvidersHandler) DeleteProvider(id string) error {
+	return h.svc.DeleteProvider(context.Background(), id)
+}
+
+func parsePageParams(r interface{ Get(string) string }) (int, int) {
+	page, _ := strconv.Atoi(r.Get("page"))
+	pageSize, _ := strconv.Atoi(r.Get("page_size"))
 	if page == 0 {
 		page = 1
 	}
 	if pageSize == 0 {
 		pageSize = 20
 	}
-
-	resp, err := h.providerClient.ListProviders(r.Context(), int32(page), int32(pageSize))
-	if err != nil {
-		http.Error(w, "Failed to list providers: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
-}
-
-// createProvider creates a new provider
-func (h *AdminProvidersHandler) createProvider(w http.ResponseWriter, r *http.Request) {
-	var provider providerv1.Provider
-	if err := json.NewDecoder(r.Body).Decode(&provider); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	resp, err := h.providerClient.CreateProvider(r.Context(), &provider)
-	if err != nil {
-		http.Error(w, "Failed to create provider: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
-}
-
-// updateProvider updates an existing provider
-func (h *AdminProvidersHandler) updateProvider(w http.ResponseWriter, r *http.Request) {
-	var provider providerv1.Provider
-	if err := json.NewDecoder(r.Body).Decode(&provider); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	resp, err := h.providerClient.UpdateProvider(r.Context(), &provider)
-	if err != nil {
-		http.Error(w, "Failed to update provider: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
-}
-
-// deleteProvider deletes a provider
-func (h *AdminProvidersHandler) deleteProvider(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Error(w, "Missing provider id", http.StatusBadRequest)
-		return
-	}
-
-	err := h.providerClient.DeleteProvider(r.Context(), id)
-	if err != nil {
-		http.Error(w, "Failed to delete provider: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
+	return page, pageSize
 }

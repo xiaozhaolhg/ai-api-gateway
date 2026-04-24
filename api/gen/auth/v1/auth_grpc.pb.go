@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AuthService_ValidateAPIKey_FullMethodName          = "/auth.v1.AuthService/ValidateAPIKey"
 	AuthService_Login_FullMethodName                   = "/auth.v1.AuthService/Login"
+	AuthService_Register_FullMethodName                = "/auth.v1.AuthService/Register"
 	AuthService_CheckModelAuthorization_FullMethodName = "/auth.v1.AuthService/CheckModelAuthorization"
 	AuthService_GetUser_FullMethodName                 = "/auth.v1.AuthService/GetUser"
 	AuthService_CreateUser_FullMethodName              = "/auth.v1.AuthService/CreateUser"
@@ -51,6 +52,8 @@ type AuthServiceClient interface {
 	ValidateAPIKey(ctx context.Context, in *ValidateAPIKeyRequest, opts ...grpc.CallOption) (*UserIdentity, error)
 	// Login (Email/Password)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	// Register (Username/Email + Password)
+	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	// Model Authorization
 	CheckModelAuthorization(ctx context.Context, in *CheckModelAuthorizationRequest, opts ...grpc.CallOption) (*AuthorizationResult, error)
 	// User Management
@@ -99,6 +102,16 @@ func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ..
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LoginResponse)
 	err := c.cc.Invoke(ctx, AuthService_Login_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterResponse)
+	err := c.cc.Invoke(ctx, AuthService_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -303,6 +316,8 @@ type AuthServiceServer interface {
 	ValidateAPIKey(context.Context, *ValidateAPIKeyRequest) (*UserIdentity, error)
 	// Login (Email/Password)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	// Register (Username/Email + Password)
+	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	// Model Authorization
 	CheckModelAuthorization(context.Context, *CheckModelAuthorizationRequest) (*AuthorizationResult, error)
 	// User Management
@@ -342,6 +357,9 @@ func (UnimplementedAuthServiceServer) ValidateAPIKey(context.Context, *ValidateA
 }
 func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*RegisterResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedAuthServiceServer) CheckModelAuthorization(context.Context, *CheckModelAuthorizationRequest) (*AuthorizationResult, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckModelAuthorization not implemented")
@@ -453,6 +471,24 @@ func _AuthService_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServiceServer).Login(ctx, req.(*LoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).Register(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_Register_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).Register(ctx, req.(*RegisterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -813,6 +849,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _AuthService_Login_Handler,
+		},
+		{
+			MethodName: "Register",
+			Handler:    _AuthService_Register_Handler,
 		},
 		{
 			MethodName: "CheckModelAuthorization",

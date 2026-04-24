@@ -48,6 +48,7 @@
 
 ### Key Operations
 
-- **HTTP Handling**: OpenAI-compatible (`/v1/chat`), custom (`/gateway/`), admin (`/admin/`)
+- **HTTP Handling**: OpenAI-compatible (`/v1/chat`), custom (`/gateway/`), admin (`/admin/`), auth (`/admin/auth/`)
+- **Admin Auth**: `POST /admin/auth/login`, `POST /admin/auth/register` (proxies to auth-service)
 - **Streaming**: SSE proxy from provider-service to consumer
 - **Middleware Orchestration**: Ordered pipeline execution

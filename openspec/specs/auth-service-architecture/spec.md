@@ -14,7 +14,7 @@ The auth-service SHALL implement four-layer Clean Architecture: Domain, Applicat
 - **THEN** it SHALL be implemented by creating a struct that implements the Repository interface defined in the domain layer
 
 ### Requirement: User entity and repository
-The auth-service SHALL own the User entity with fields: id, name, email, role, status, created_at. It SHALL provide a UserRepository interface for CRUD operations.
+The auth-service SHALL own the User entity with fields: id, name, **username**, email, role, status, created_at. It SHALL provide a UserRepository interface for CRUD operations.
 
 #### Scenario: Create user
 - **WHEN** a CreateUser request is received via gRPC
@@ -53,7 +53,7 @@ The auth-service SHALL implement the AuthService gRPC server as defined in the a
 
 #### Scenario: All proto RPCs are implemented
 - **WHEN** the auth-service starts
-- **THEN** it SHALL register all RPCs defined in auth.proto: ValidateAPIKey, CheckModelAuthorization, GetUser, CreateUser, UpdateUser, DeleteUser, ListUsers, CreateAPIKey, DeleteAPIKey, ListAPIKeys
+- **THEN** it SHALL register all RPCs defined in auth.proto: ValidateAPIKey, CheckModelAuthorization, GetUser, CreateUser, UpdateUser, DeleteUser, ListUsers, CreateAPIKey, DeleteAPIKey, ListAPIKeys, Register, Login
 
 ### Requirement: SQLite persistence
 The auth-service SHALL use SQLite as its database, with tables for users and api_keys, managed via migrations.
