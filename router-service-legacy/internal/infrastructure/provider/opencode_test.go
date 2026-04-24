@@ -3,7 +3,7 @@ package provider
 import (
 	"testing"
 
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/config"
 )
 
 func TestOpenCodeZenFactory_Type(t *testing.T) {

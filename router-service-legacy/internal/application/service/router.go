@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/ai-api-gateway/router-service/internal/domain/port"
+	"github.com/ai-api-gateway/router-service-legacy/internal/domain/port"
 )
 
 type ModelRouter struct {

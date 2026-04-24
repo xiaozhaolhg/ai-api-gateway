@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/provider"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/config"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/provider"
 	"github.com/gin-gonic/gin"
 )
 

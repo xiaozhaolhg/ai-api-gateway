@@ -6,10 +6,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ai-api-gateway/router-service/internal/application/service"
-	"github.com/ai-api-gateway/router-service/internal/domain/port"
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/config"
-	"github.com/ai-api-gateway/router-service/internal/infrastructure/provider"
+	"github.com/ai-api-gateway/router-service-legacy/internal/application/service"
+	"github.com/ai-api-gateway/router-service-legacy/internal/domain/port"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/config"
+	"github.com/ai-api-gateway/router-service-legacy/internal/infrastructure/provider"
 	"github.com/gin-gonic/gin"
 )
 
