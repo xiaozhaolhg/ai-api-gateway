@@ -1,32 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, InputNumber, Popconfirm, Spin, Empty, message } from 'antd';
+import React, { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, InputNumber, Popconfirm, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type PricingRule } from '../api/client';
 
 export const PricingRules: React.FC = () => {
   const { t } = useTranslation(['pricing', 'common']);
-  const [rules, setRules] = useState<PricingRule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRule, setEditingRule] = useState<PricingRule | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadRules();
-  }, []);
+  const { data: rules = [], isLoading } = useQuery({
+    queryKey: ['pricingRules'],
+    queryFn: () => apiClient.getPricingRules(),
+  });
 
-  const loadRules = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getPricingRules();
-      setRules(data);
-    } catch (error) {
-      message.error('Failed to load pricing rules');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<PricingRule, 'id' | 'created_at' | 'updated_at'>) => apiClient.createPricingRule(data),
+    onMutate: async (newRule) => {
+      await queryClient.cancelQueries({ queryKey: ['pricingRules'] });
+      const previous = queryClient.getQueryData<PricingRule[]>(['pricingRules']);
+      queryClient.setQueryData<PricingRule[]>(['pricingRules'], (old = []) => [
+        ...old, { ...newRule, id: `temp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as PricingRule,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['pricingRules'], context.previous);
+      message.error('Failed to create pricing rule');
+    },
+    onSuccess: () => {
+      message.success('Pricing rule created successfully');
+      queryClient.invalidateQueries({ queryKey: ['pricingRules'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<PricingRule> }) => apiClient.updatePricingRule(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['pricingRules'] });
+      const previous = queryClient.getQueryData<PricingRule[]>(['pricingRules']);
+      queryClient.setQueryData<PricingRule[]>(['pricingRules'], (old = []) => old.map(r => r.id === id ? { ...r, ...data } : r));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['pricingRules'], context.previous);
+      message.error('Failed to update pricing rule');
+    },
+    onSuccess: () => {
+      message.success('Pricing rule updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['pricingRules'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deletePricingRule(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['pricingRules'] });
+      const previous = queryClient.getQueryData<PricingRule[]>(['pricingRules']);
+      queryClient.setQueryData<PricingRule[]>(['pricingRules'], (old = []) => old.filter(r => r.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['pricingRules'], context.previous);
+      message.error('Failed to delete pricing rule');
+    },
+    onSuccess: () => {
+      message.success('Pricing rule deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingRule(null);
@@ -40,33 +84,14 @@ export const PricingRules: React.FC = () => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deletePricingRule(id);
-      message.success('Pricing rule deleted successfully');
-      loadRules();
-    } catch (error) {
-      message.error('Failed to delete pricing rule');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (editingRule) {
-        await apiClient.updatePricingRule(editingRule.id, values);
-        message.success('Pricing rule updated successfully');
-      } else {
-        await apiClient.createPricingRule(values);
-        message.success('Pricing rule created successfully');
-      }
-
-      setModalVisible(false);
-      loadRules();
-    } catch (error) {
-      message.error('Failed to save pricing rule');
+    const values = await form.validateFields();
+    if (editingRule) {
+      updateMutation.mutate({ id: editingRule.id, data: values });
+    } else {
+      createMutation.mutate(values);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -112,16 +137,12 @@ export const PricingRules: React.FC = () => {
       key: 'actions',
       render: (_: any, record: PricingRule) => (
         <div>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
+          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {t('common:edit')}
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this pricing rule?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -134,8 +155,8 @@ export const PricingRules: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -147,22 +168,20 @@ export const PricingRules: React.FC = () => {
         </Button>
       </div>
 
-      {rules.length === 0 ? (
-        <Empty description="No pricing rules found" />
-      ) : (
-        <Table
-          dataSource={rules}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      )}
+      <Table
+        dataSource={rules}
+        columns={columns}
+        rowKey="id"
+        pagination={{ pageSize: 10 }}
+        locale={{ emptyText: <Empty description="No pricing rules found" /> }}
+      />
 
       <Modal
         title={editingRule ? t('pricing:editRule') : t('pricing:addRule')}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">

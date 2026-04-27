@@ -43,17 +43,17 @@ function AppContent() {
                 }
               >
                 <Route index element={<Dashboard />} />
-                <Route path="providers" element={<Providers />} />
-                <Route path="routing" element={<RoutingRules />} />
-                <Route path="users" element={<Users />} />
-                <Route path="groups" element={<Groups />} />
-                <Route path="api-keys" element={<APIKeys />} />
-                <Route path="permissions" element={<Permissions />} />
+                <Route path="providers" element={<ProtectedRoute requiredRole="admin"><Providers /></ProtectedRoute>} />
+                <Route path="routing" element={<ProtectedRoute requiredRole="admin"><RoutingRules /></ProtectedRoute>} />
+                <Route path="users" element={<ProtectedRoute requiredRole="admin"><Users /></ProtectedRoute>} />
+                <Route path="groups" element={<ProtectedRoute requiredRole="admin"><Groups /></ProtectedRoute>} />
+                <Route path="api-keys" element={<ProtectedRoute requiredRole="user"><APIKeys /></ProtectedRoute>} />
+                <Route path="permissions" element={<ProtectedRoute requiredRole="admin"><Permissions /></ProtectedRoute>} />
                 <Route path="usage" element={<Usage />} />
-                <Route path="budgets" element={<Budgets />} />
-                <Route path="pricing" element={<PricingRules />} />
+                <Route path="budgets" element={<ProtectedRoute requiredRole="admin"><Budgets /></ProtectedRoute>} />
+                <Route path="pricing" element={<ProtectedRoute requiredRole="admin"><PricingRules /></ProtectedRoute>} />
                 <Route path="health" element={<Health />} />
-                <Route path="alerts" element={<Alerts />} />
+                <Route path="alerts" element={<ProtectedRoute requiredRole="admin"><Alerts /></ProtectedRoute>} />
               </Route>
             </Routes>
           </Router>

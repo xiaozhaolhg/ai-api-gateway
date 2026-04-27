@@ -1,16 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Table, DatePicker, Input, Button, Statistic, Card, Row, Col, Spin, Empty, message } from 'antd';
+import { useState } from 'react';
+import { Table, DatePicker, Input, Button, Statistic, Card, Row, Col, Empty } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { apiClient, type UsageRecord } from '../api/client';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 
 export default function Usage() {
   const { t } = useTranslation(['usage', 'common']);
-  const [usage, setUsage] = useState<UsageRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     userId: '',
     model: '',
@@ -19,28 +18,17 @@ export default function Usage() {
     endDate: null as dayjs.Dayjs | null,
   });
 
-  useEffect(() => {
-    loadUsage();
-  }, []);
-
-  const loadUsage = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getUsage(
-        filters.userId || undefined,
-        filters.startDate?.toISOString() || undefined,
-        filters.endDate?.toISOString() || undefined
-      );
-      setUsage(data);
-    } catch (error) {
-      message.error('Failed to load usage data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: usage = [], isLoading, refetch } = useQuery({
+    queryKey: ['usage', filters.userId, filters.startDate?.toISOString(), filters.endDate?.toISOString()],
+    queryFn: () => apiClient.getUsage(
+      filters.userId || undefined,
+      filters.startDate?.toISOString() || undefined,
+      filters.endDate?.toISOString() || undefined
+    ),
+  });
 
   const handleFilter = () => {
-    loadUsage();
+    refetch();
   };
 
   const totalTokens = usage.reduce((sum, record) => sum + record.total_tokens, 0);
@@ -90,10 +78,6 @@ export default function Usage() {
       render: (timestamp: string) => new Date(timestamp).toLocaleString(),
     },
   ];
-
-  if (loading) {
-    return <Spin size="large" />;
-  }
 
   return (
     <div>
@@ -161,16 +145,14 @@ export default function Usage() {
         </Col>
       </Row>
 
-      {usage.length === 0 ? (
-        <Empty description="No usage records found" />
-      ) : (
-        <Table
-          dataSource={usage}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 20 }}
-        />
-      )}
+      <Table
+        dataSource={usage}
+        columns={columns}
+        rowKey="id"
+        loading={isLoading}
+        pagination={{ pageSize: 20 }}
+        locale={{ emptyText: <Empty description="No usage records found" /> }}
+      />
     </div>
   );
 }

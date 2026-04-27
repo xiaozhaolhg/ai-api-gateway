@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Statistic, Row, Col, Button, Spin, Alert, Space } from 'antd';
+import React from 'react';
+import { Card, Statistic, Row, Col, Button, Alert, Space, Spin } from 'antd';
 import {
   UserOutlined,
   CloudServerOutlined,
@@ -9,76 +9,73 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalProviders: 0,
-    monthlySpend: 0,
-    activeAlerts: 0,
+  const { user } = useAuth();
+
+  const { data: users = [], isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.getUsers(),
   });
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const { data: providers = [], isLoading: providersLoading } = useQuery({
+    queryKey: ['providers'],
+    queryFn: () => apiClient.getProviders(),
+  });
 
-        const [users, providers, alerts] = await Promise.all([
-          apiClient.getUsers(),
-          apiClient.getProviders(),
-          apiClient.getAlerts(),
-        ]);
+  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: () => apiClient.getAlerts(),
+  });
 
-        setStats({
-          totalUsers: users.length,
-          totalProviders: providers.length,
-          monthlySpend: 0, // This would come from a dedicated endpoint
-          activeAlerts: alerts.filter((a) => a.status === 'firing').length,
-        });
-      } catch (err) {
-        setError('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const isLoading = usersLoading || providersLoading || alertsLoading;
 
-    fetchDashboardData();
-  }, []);
+  const stats = {
+    totalUsers: users.length,
+    totalProviders: providers.length,
+    monthlySpend: 0,
+    activeAlerts: alerts.filter((a) => a.status === 'firing').length,
+  };
+
+  const userRole = user?.role || 'viewer';
 
   const quickActions = [
-    {
-      key: 'add-provider',
-      icon: <CloudServerOutlined />,
-      label: t('dashboard.quickActions.addProvider'),
-      onClick: () => navigate('/providers'),
-    },
-    {
-      key: 'create-user',
-      icon: <UserOutlined />,
-      label: t('dashboard.quickActions.createUser'),
-      onClick: () => navigate('/users'),
-    },
+    ...(userRole === 'admin' ? [
+      {
+        key: 'add-provider',
+        icon: <CloudServerOutlined />,
+        label: t('dashboard.quickActions.addProvider'),
+        onClick: () => navigate('/providers'),
+      },
+      {
+        key: 'create-user',
+        icon: <UserOutlined />,
+        label: t('dashboard.quickActions.createUser'),
+        onClick: () => navigate('/users'),
+      },
+    ] : []),
     {
       key: 'issue-api-key',
       icon: <PlusOutlined />,
       label: t('dashboard.quickActions.issueApiKey'),
       onClick: () => navigate('/api-keys'),
     },
-    {
-      key: 'view-alerts',
-      icon: <BellOutlined />,
-      label: t('dashboard.quickActions.viewAlerts'),
-      onClick: () => navigate('/alerts'),
-    },
+    ...(userRole === 'admin' ? [
+      {
+        key: 'view-alerts',
+        icon: <BellOutlined />,
+        label: t('dashboard.quickActions.viewAlerts'),
+        onClick: () => navigate('/alerts'),
+      },
+    ] : []),
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
         <Spin size="large" />
@@ -86,8 +83,8 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  if (error) {
-    return <Alert message={error} type="error" showIcon />;
+  if (usersError) {
+    return <Alert message="Failed to load dashboard data" type="error" showIcon />;
   }
 
   return (

@@ -24,6 +24,50 @@ import { useTranslation } from 'react-i18next';
 
 const { Header, Sider, Content } = Layout;
 
+type Role = 'admin' | 'user' | 'viewer';
+
+const roleAccess: Record<string, Role[]> = {
+  '/': ['admin', 'user', 'viewer'],
+  '/providers': ['admin'],
+  '/routing': ['admin'],
+  '/users': ['admin'],
+  '/groups': ['admin'],
+  '/api-keys': ['admin', 'user'],
+  '/permissions': ['admin'],
+  '/usage': ['admin', 'user', 'viewer'],
+  '/budgets': ['admin'],
+  '/pricing': ['admin'],
+  '/health': ['admin', 'user', 'viewer'],
+  '/alerts': ['admin'],
+};
+
+function filterMenuByRole(
+  items: { type: 'group'; label: string; children: { key: string; icon: React.ReactNode; label: string }[] }[],
+  role: Role
+): { type: 'group'; label: string; children: { key: string; icon: React.ReactNode; label: string }[] }[] {
+  return items
+    .map(group => ({
+      ...group,
+      children: group.children.filter(item => {
+        const allowed = roleAccess[item.key];
+        return allowed ? allowed.includes(role) : true;
+      }),
+    }))
+    .filter(group => group.children.length > 0);
+}
+
+interface MenuItem {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+}
+
+interface MenuGroup {
+  type: 'group';
+  label: string;
+  children: MenuItem[];
+}
+
 export const AppShell: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
@@ -31,7 +75,9 @@ export const AppShell: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const menuItems = [
+  const userRole = (user?.role || 'viewer') as Role;
+
+  const allMenuItems: MenuGroup[] = [
     {
       type: 'group' as const,
       label: 'Infrastructure',
@@ -117,6 +163,8 @@ export const AppShell: React.FC = () => {
       ],
     },
   ];
+
+  const menuItems = filterMenuByRole(allMenuItems, userRole);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key);

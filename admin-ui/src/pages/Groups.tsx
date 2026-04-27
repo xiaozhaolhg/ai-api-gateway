@@ -1,32 +1,76 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Popconfirm, Spin, Empty, message } from 'antd';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Popconfirm, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Group } from '../api/client';
 
 export const Groups: React.FC = () => {
   const { t } = useTranslation(['groups', 'common']);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadGroups();
-  }, []);
+  const { data: groups = [], isLoading } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => apiClient.getGroups(),
+  });
 
-  const loadGroups = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getGroups();
-      setGroups(data);
-    } catch (error) {
-      message.error('Failed to load groups');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<Group, 'id' | 'created_at' | 'updated_at' | 'member_count'>) => apiClient.createGroup(data),
+    onMutate: async (newGroup) => {
+      await queryClient.cancelQueries({ queryKey: ['groups'] });
+      const previous = queryClient.getQueryData<Group[]>(['groups']);
+      queryClient.setQueryData<Group[]>(['groups'], (old = []) => [
+        ...old, { ...newGroup, id: `temp-${Date.now()}`, member_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Group,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['groups'], context.previous);
+      message.error('Failed to create group');
+    },
+    onSuccess: () => {
+      message.success('Group created successfully');
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Group> }) => apiClient.updateGroup(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['groups'] });
+      const previous = queryClient.getQueryData<Group[]>(['groups']);
+      queryClient.setQueryData<Group[]>(['groups'], (old = []) => old.map(g => g.id === id ? { ...g, ...data } : g));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['groups'], context.previous);
+      message.error('Failed to update group');
+    },
+    onSuccess: () => {
+      message.success('Group updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteGroup(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['groups'] });
+      const previous = queryClient.getQueryData<Group[]>(['groups']);
+      queryClient.setQueryData<Group[]>(['groups'], (old = []) => old.filter(g => g.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['groups'], context.previous);
+      message.error('Failed to delete group');
+    },
+    onSuccess: () => {
+      message.success('Group deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingGroup(null);
@@ -40,33 +84,14 @@ export const Groups: React.FC = () => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deleteGroup(id);
-      message.success('Group deleted successfully');
-      loadGroups();
-    } catch (error) {
-      message.error('Failed to delete group');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (editingGroup) {
-        await apiClient.updateGroup(editingGroup.id, values);
-        message.success('Group updated successfully');
-      } else {
-        await apiClient.createGroup(values);
-        message.success('Group created successfully');
-      }
-
-      setModalVisible(false);
-      loadGroups();
-    } catch (error) {
-      message.error('Failed to save group');
+    const values = await form.validateFields();
+    if (editingGroup) {
+      updateMutation.mutate({ id: editingGroup.id, data: values });
+    } else {
+      createMutation.mutate(values);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -100,16 +125,12 @@ export const Groups: React.FC = () => {
       key: 'actions',
       render: (_: any, record: Group) => (
         <div>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
+          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {t('common:edit')}
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this group?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -122,8 +143,8 @@ export const Groups: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -135,22 +156,20 @@ export const Groups: React.FC = () => {
         </Button>
       </div>
 
-      {groups.length === 0 ? (
-        <Empty description="No groups found" />
-      ) : (
-        <Table
-          dataSource={groups}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      )}
+      <Table
+        dataSource={groups}
+        columns={columns}
+        rowKey="id"
+        pagination={{ pageSize: 10 }}
+        locale={{ emptyText: <Empty description="No groups found" /> }}
+      />
 
       <Modal
         title={editingGroup ? t('groups:editGroup') : t('groups:addGroup')}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">

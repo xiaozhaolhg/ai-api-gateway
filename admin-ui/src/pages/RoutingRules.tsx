@@ -1,32 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Spin, Empty, message } from 'antd';
+import React, { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type RoutingRule } from '../api/client';
 
 export const RoutingRules: React.FC = () => {
   const { t } = useTranslation(['routing', 'common']);
-  const [rules, setRules] = useState<RoutingRule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRule, setEditingRule] = useState<RoutingRule | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadRules();
-  }, []);
+  const { data: rules = [], isLoading } = useQuery({
+    queryKey: ['routingRules'],
+    queryFn: () => apiClient.getRoutingRules(),
+  });
 
-  const loadRules = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getRoutingRules();
-      setRules(data);
-    } catch (error) {
-      message.error('Failed to load routing rules');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<RoutingRule, 'id' | 'created_at' | 'updated_at'>) => apiClient.createRoutingRule(data),
+    onMutate: async (newRule) => {
+      await queryClient.cancelQueries({ queryKey: ['routingRules'] });
+      const previous = queryClient.getQueryData<RoutingRule[]>(['routingRules']);
+      queryClient.setQueryData<RoutingRule[]>(['routingRules'], (old = []) => [
+        ...old, { ...newRule, id: `temp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as RoutingRule,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['routingRules'], context.previous);
+      message.error('Failed to create routing rule');
+    },
+    onSuccess: () => {
+      message.success('Routing rule created successfully');
+      queryClient.invalidateQueries({ queryKey: ['routingRules'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<RoutingRule> }) => apiClient.updateRoutingRule(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['routingRules'] });
+      const previous = queryClient.getQueryData<RoutingRule[]>(['routingRules']);
+      queryClient.setQueryData<RoutingRule[]>(['routingRules'], (old = []) => old.map(r => r.id === id ? { ...r, ...data } : r));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['routingRules'], context.previous);
+      message.error('Failed to update routing rule');
+    },
+    onSuccess: () => {
+      message.success('Routing rule updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['routingRules'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteRoutingRule(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['routingRules'] });
+      const previous = queryClient.getQueryData<RoutingRule[]>(['routingRules']);
+      queryClient.setQueryData<RoutingRule[]>(['routingRules'], (old = []) => old.filter(r => r.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['routingRules'], context.previous);
+      message.error('Failed to delete routing rule');
+    },
+    onSuccess: () => {
+      message.success('Routing rule deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingRule(null);
@@ -43,37 +87,19 @@ export const RoutingRules: React.FC = () => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deleteRoutingRule(id);
-      message.success('Routing rule deleted successfully');
-      loadRules();
-    } catch (error) {
-      message.error('Failed to delete routing rule');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-      const ruleData = {
-        ...values,
-        fallback_chain: values.fallback_chain.split(',').map((m: string) => m.trim()),
-      };
+    const values = await form.validateFields();
+    const ruleData = {
+      ...values,
+      fallback_chain: values.fallback_chain.split(',').map((m: string) => m.trim()),
+    };
 
-      if (editingRule) {
-        await apiClient.updateRoutingRule(editingRule.id, ruleData);
-        message.success('Routing rule updated successfully');
-      } else {
-        await apiClient.createRoutingRule(ruleData);
-        message.success('Routing rule created successfully');
-      }
-
-      setModalVisible(false);
-      loadRules();
-    } catch (error) {
-      message.error('Failed to save routing rule');
+    if (editingRule) {
+      updateMutation.mutate({ id: editingRule.id, data: ruleData });
+    } else {
+      createMutation.mutate(ruleData);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -130,7 +156,7 @@ export const RoutingRules: React.FC = () => {
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this routing rule?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -143,8 +169,8 @@ export const RoutingRules: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -156,22 +182,20 @@ export const RoutingRules: React.FC = () => {
         </Button>
       </div>
 
-      {rules.length === 0 ? (
-        <Empty description="No routing rules found" />
-      ) : (
-        <Table
-          dataSource={rules}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      )}
+      <Table
+        dataSource={rules}
+        columns={columns}
+        rowKey="id"
+        pagination={{ pageSize: 10 }}
+        locale={{ emptyText: <Empty description="No routing rules found" /> }}
+      />
 
       <Modal
         title={editingRule ? t('routing:editRule') : t('routing:addRule')}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">

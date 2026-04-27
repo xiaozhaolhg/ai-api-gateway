@@ -1,54 +1,23 @@
-import { useState, useEffect } from 'react';
-import { Table, Tag, Spin, Empty, Card, Statistic, Row, Col, message, Switch, InputNumber, Space, Button } from 'antd';
+import { useState } from 'react';
+import { Table, Tag, Empty, Card, Statistic, Row, Col, Switch, InputNumber, Space, Button } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { apiClient, type ProviderHealth } from '../api/client';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
 
 export default function Health() {
   const { t } = useTranslation(['health', 'common']);
-  const [health, setHealth] = useState<ProviderHealth[]>([]);
-  const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
+  const [refreshInterval, setRefreshInterval] = useState(30);
 
-  useEffect(() => {
-    loadHealth(true);
-  }, []);
-
-  useEffect(() => {
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    if (autoRefresh) {
-      intervalId = setInterval(() => {
-        loadHealth(false);
-      }, refreshInterval * 1000);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [autoRefresh, refreshInterval]);
-
-  const loadHealth = async (isInitial: boolean = false) => {
-    try {
-      if (isInitial) {
-        setLoading(true);
-      }
-      const data = await apiClient.getProviderHealth();
-      setHealth(data);
-    } catch (error) {
-      message.error('Failed to load provider health data');
-    } finally {
-      if (isInitial) {
-        setLoading(false);
-      }
-    }
-  };
+  const { data: health = [], isLoading, refetch } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => apiClient.getProviderHealth(),
+    refetchInterval: autoRefresh ? refreshInterval * 1000 : false,
+  });
 
   const handleManualRefresh = () => {
-    loadHealth(true);
+    refetch();
   };
 
   const getStatusTag = (status: string) => {
@@ -100,16 +69,12 @@ export default function Health() {
     ? health.reduce((sum, h) => sum + h.latency_ms, 0) / health.length
     : 0;
 
-  if (loading) {
-    return <Spin size="large" />;
-  }
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>{t('health:title')}</h2>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={handleManualRefresh} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={handleManualRefresh} loading={isLoading}>
             {t('common:refresh')}
           </Button>
           <Space size="middle">
@@ -161,16 +126,14 @@ export default function Health() {
         </Col>
       </Row>
 
-      {health.length === 0 ? (
-        <Empty description="No provider health data found" />
-      ) : (
-        <Table
-          dataSource={health}
-          columns={columns}
-          rowKey="id"
-          pagination={false}
-        />
-      )}
+      <Table
+        dataSource={health}
+        columns={columns}
+        rowKey="id"
+        loading={isLoading}
+        pagination={false}
+        locale={{ emptyText: <Empty description="No provider health data found" /> }}
+      />
     </div>
   );
 }
