@@ -1,32 +1,79 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Spin, Empty, message } from 'antd';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type User } from '../api/client';
 
 export default function Users() {
   const { t } = useTranslation(['users', 'common']);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.getUsers(),
+  });
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getUsers();
-      setUsers(data);
-    } catch (error) {
-      message.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<User, 'id' | 'created_at'>) => apiClient.createUser(data),
+    onMutate: async (newUser) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<User[]>(['users']);
+      queryClient.setQueryData<User[]>(['users'], (old = []) => [
+        ...old,
+        { ...newUser, id: `temp-${Date.now()}`, created_at: new Date().toISOString() } as User,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      message.error('Failed to create user');
+    },
+    onSuccess: () => {
+      message.success('User created successfully');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => apiClient.updateUser(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<User[]>(['users']);
+      queryClient.setQueryData<User[]>(['users'], (old = []) =>
+        old.map(u => u.id === id ? { ...u, ...data } : u)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      message.error('Failed to update user');
+    },
+    onSuccess: () => {
+      message.success('User updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteUser(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<User[]>(['users']);
+      queryClient.setQueryData<User[]>(['users'], (old = []) => old.filter(u => u.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      message.error('Failed to delete user');
+    },
+    onSuccess: () => {
+      message.success('User deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingUser(null);
@@ -40,33 +87,15 @@ export default function Users() {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deleteUser(id);
-      message.success('User deleted successfully');
-      loadUsers();
-    } catch (error) {
-      message.error('Failed to delete user');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
+    const values = await form.validateFields();
 
-      if (editingUser) {
-        await apiClient.updateUser(editingUser.id, values);
-        message.success('User updated successfully');
-      } else {
-        await apiClient.createUser(values);
-        message.success('User created successfully');
-      }
-
-      setModalVisible(false);
-      loadUsers();
-    } catch (error) {
-      message.error('Failed to save user');
+    if (editingUser) {
+      updateMutation.mutate({ id: editingUser.id, data: values });
+    } else {
+      createMutation.mutate(values);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -90,7 +119,7 @@ export default function Users() {
       dataIndex: 'role',
       key: 'role',
       render: (role: string) => (
-        <Tag color={role === 'admin' ? 'blue' : 'default'}>{role}</Tag>
+        <Tag color={role === 'admin' ? 'blue' : role === 'viewer' ? 'orange' : 'default'}>{role}</Tag>
       ),
     },
     {
@@ -120,7 +149,7 @@ export default function Users() {
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this user?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -133,8 +162,8 @@ export default function Users() {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -162,6 +191,7 @@ export default function Users() {
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">
@@ -189,6 +219,7 @@ export default function Users() {
             <Select>
               <Select.Option value="user">User</Select.Option>
               <Select.Option value="admin">Admin</Select.Option>
+              <Select.Option value="viewer">Viewer</Select.Option>
             </Select>
           </Form.Item>
 

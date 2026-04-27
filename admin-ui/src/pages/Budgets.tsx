@@ -1,32 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, InputNumber, Popconfirm, Tag, Spin, Empty, message } from 'antd';
+import React, { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, InputNumber, Popconfirm, Tag, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Budget } from '../api/client';
 
 export const Budgets: React.FC = () => {
   const { t } = useTranslation(['budgets', 'common']);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadBudgets();
-  }, []);
+  const { data: budgets = [], isLoading } = useQuery({
+    queryKey: ['budgets'],
+    queryFn: () => apiClient.getBudgets(),
+  });
 
-  const loadBudgets = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getBudgets();
-      setBudgets(data);
-    } catch (error) {
-      message.error('Failed to load budgets');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<Budget, 'id' | 'created_at' | 'updated_at' | 'current_spend'>) => apiClient.createBudget(data),
+    onMutate: async (newBudget) => {
+      await queryClient.cancelQueries({ queryKey: ['budgets'] });
+      const previous = queryClient.getQueryData<Budget[]>(['budgets']);
+      queryClient.setQueryData<Budget[]>(['budgets'], (old = []) => [
+        ...old, { ...newBudget, id: `temp-${Date.now()}`, current_spend: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Budget,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['budgets'], context.previous);
+      message.error('Failed to create budget');
+    },
+    onSuccess: () => {
+      message.success('Budget created successfully');
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Budget> }) => apiClient.updateBudget(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['budgets'] });
+      const previous = queryClient.getQueryData<Budget[]>(['budgets']);
+      queryClient.setQueryData<Budget[]>(['budgets'], (old = []) => old.map(b => b.id === id ? { ...b, ...data } : b));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['budgets'], context.previous);
+      message.error('Failed to update budget');
+    },
+    onSuccess: () => {
+      message.success('Budget updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteBudget(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['budgets'] });
+      const previous = queryClient.getQueryData<Budget[]>(['budgets']);
+      queryClient.setQueryData<Budget[]>(['budgets'], (old = []) => old.filter(b => b.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['budgets'], context.previous);
+      message.error('Failed to delete budget');
+    },
+    onSuccess: () => {
+      message.success('Budget deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingBudget(null);
@@ -40,33 +84,14 @@ export const Budgets: React.FC = () => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deleteBudget(id);
-      message.success('Budget deleted successfully');
-      loadBudgets();
-    } catch (error) {
-      message.error('Failed to delete budget');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (editingBudget) {
-        await apiClient.updateBudget(editingBudget.id, values);
-        message.success('Budget updated successfully');
-      } else {
-        await apiClient.createBudget(values);
-        message.success('Budget created successfully');
-      }
-
-      setModalVisible(false);
-      loadBudgets();
-    } catch (error) {
-      message.error('Failed to save budget');
+    const values = await form.validateFields();
+    if (editingBudget) {
+      updateMutation.mutate({ id: editingBudget.id, data: values });
+    } else {
+      createMutation.mutate(values);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -132,16 +157,12 @@ export const Budgets: React.FC = () => {
       key: 'actions',
       render: (_: any, record: Budget) => (
         <div>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
+          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {t('common:edit')}
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this budget?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -154,8 +175,8 @@ export const Budgets: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -167,22 +188,20 @@ export const Budgets: React.FC = () => {
         </Button>
       </div>
 
-      {budgets.length === 0 ? (
-        <Empty description="No budgets found" />
-      ) : (
-        <Table
-          dataSource={budgets}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      )}
+      <Table
+        dataSource={budgets}
+        columns={columns}
+        rowKey="id"
+        pagination={{ pageSize: 10 }}
+        locale={{ emptyText: <Empty description="No budgets found" /> }}
+      />
 
       <Modal
         title={editingBudget ? t('budgets:editBudget') : t('budgets:addBudget')}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">

@@ -1,106 +1,147 @@
 ## Context
 
-The current admin UI is a minimal React + Tailwind prototype with 5 pages (Providers, Users, API Keys, Usage, Health), a plain sidebar layout, and no authentication or role-based access. The API client calls gateway-service endpoints directly without any auth headers. The auth-service supports API key validation and user CRUD but has no login/session mechanism for UI users.
+The admin UI is a React 19 + TypeScript application using Vite, antd 6, Tailwind CSS 4, and react-router-dom v7. It communicates with gateway-service (port 8080) which proxies to backend gRPC services (auth-service, billing-service, monitor-service, etc.).
 
-The redesign must introduce a complete auth flow, role-based navigation, a modern component library, and a professional visual design — while aligning the login mechanism with auth-service capabilities.
+The redesign introduced a complete auth flow (login/register), role-based navigation, antd component library, i18n support, and a professional visual design.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Add email/password login flow aligned with auth-service
+- Add email/username + password login and registration flows
 - Implement role-based access control with three roles: admin, user, viewer
-- Redesign UI with shadcn/ui components and Lucide icons
-- Add collapsible sidebar with role-filtered navigation
+- Redesign UI with antd 6 components and Tailwind CSS 4
+- Add AppShell layout with sidebar navigation and role-filtered tabs
 - Add dashboard as the authenticated landing page
-- Redirect `/admin` to login (unauthenticated) or dashboard (authenticated)
+- Add i18n support (English/Chinese)
+- Redirect `/` to login (unauthenticated) or dashboard (authenticated)
 - Upgrade data fetching and form handling
 
 **Non-Goals:**
 - Changing the existing admin API endpoints (CRUD operations remain the same)
-- Modifying auth-service gRPC protocol beyond adding the Login RPC
+- Modifying auth-service gRPC protocol beyond adding Login/Register RPCs
 - Implementing group-based permissions (Phase 2+ feature)
 - Adding real-time notifications or WebSocket support
-- Mobile-responsive design (focus on desktop admin panel)
 
 ## Decisions
 
 ### UI Component Library
-**Decision**: Use shadcn/ui with Tailwind CSS and Lucide React icons
-- **Rationale**: shadcn/ui provides accessible, composable components that integrate with Tailwind. Not a dependency — components are copied into the project. Lucide pairs perfectly with shadcn/ui.
+**Decision**: Use antd 6 with Tailwind CSS 4
+- **Rationale**: antd provides comprehensive, production-ready components out of the box. Tailwind handles custom styling. Together they provide both speed and flexibility.
+- **Alternative**: shadcn/ui — rejected due to manual component management overhead
 - **Alternative**: Material UI — rejected due to opinionated styling that conflicts with Tailwind
-- **Alternative**: Chakra UI — rejected due to runtime overhead and CSS-in-JS
 
 ### State Management
 **Decision**: React Context for auth state + TanStack Query for server state
-- **Rationale**: Auth context is minimal (user, role, token). TanStack Query handles caching, refetching, and loading states for API data — eliminates manual useState+useEffect patterns.
+- **Rationale**: Auth context is minimal (user, role, token). TanStack Query handles caching, refetching, and loading states for API data.
 - **Alternative**: Zustand — adds a dependency for minimal benefit over Context
 - **Alternative**: Redux — overkill for this scale
 
 ### Authentication Flow
-**Decision**: Email/password login → gateway-service `POST /admin/login` → auth-service `Login` RPC → JWT in HTTP-only cookie
-- **Rationale**: HTTP-only cookies are XSS-resistant. Gateway-service sets the cookie after auth-service validates credentials. Subsequent requests include the cookie automatically.
-- **Alternative**: Bearer token in localStorage — simpler but vulnerable to XSS
-- **Alternative**: API key as login credential — rejected per user requirement (API keys are for AI requests, not admin login)
+**Decision**: Email/username + password login → gateway-service `POST /admin/auth/login` → auth-service `Login` RPC → JWT token stored in localStorage + Bearer header
+- **Rationale**: Current implementation uses localStorage for token persistence and `Authorization: Bearer <token>` header for API calls. This is simpler to implement and works with the existing gateway middleware that accepts both cookie and Bearer token.
+- **Security note**: localStorage is vulnerable to XSS. Mitigation: strict Content-Security-Policy headers, no inline scripts, sanitize all user input. Future improvement: migrate to HTTP-only cookies.
+- **Alternative**: HTTP-only cookies — more secure but requires gateway to set cookie and complicates CORS configuration
 
 ### Role-Based Access Control
 **Decision**: Three roles with navigation filtering: admin (full access), user (limited), viewer (read-only)
-- **Rationale**: Matches the user's requirement for viewer role. Uses existing `role` field in auth-service user entity, extended with a third value.
+- **Rationale**: Matches the user entity `role` field. Uses existing role values.
+- **Implementation**: 
+  - `AuthContext.User` includes `role` field for role checks
+  - `ProtectedRoute` accepts optional `requiredRole` prop for per-page guards
+  - `AppShell` filters `menuItems` based on `user.role`
 - **Navigation matrix**:
 
 | Tab | admin | user | viewer |
 |-----|-------|------|--------|
 | Dashboard | ✓ | ✓ | ✓ |
 | Providers | ✓ | ✗ | ✗ |
+| Routing | ✓ | ✗ | ✗ |
 | Users | ✓ | ✗ | ✗ |
+| Groups | ✓ | ✗ | ✗ |
 | API Keys | ✓ | ✓ (own) | ✗ |
+| Permissions | ✓ | ✗ | ✗ |
 | Usage | ✓ | ✓ (own) | ✓ (own) |
+| Budgets | ✓ | ✗ | ✗ |
+| Pricing | ✓ | ✗ | ✗ |
 | Health | ✓ | ✓ | ✓ |
+| Alerts | ✓ | ✗ | ✗ |
 | Settings | ✓ | ✓ | ✗ |
 
 ### Routing and Auth Guards
-**Decision**: React Router with a ProtectedRoute wrapper that checks auth context
-- **Rationale**: Standard pattern. `/admin` redirects to `/admin/login` or `/admin/dashboard` based on auth state. All management routes are nested under a protected layout.
-- **Alternative**: Middleware-based auth — not supported by React Router v7
+**Decision**: React Router v7 with ProtectedRoute wrapper that checks auth context and optional role
+- **Rationale**: Standard pattern. `/` redirects to `/login` or `/dashboard` based on auth state. All management routes are nested under a protected layout.
+- **Route structure**:
+  - `/login` — Login page (public)
+  - `/register` — Registration page (public)
+  - `/` — Protected layout (AppShell) with nested routes:
+    - `/` (index) — Dashboard
+    - `/providers` — Provider management (admin only)
+    - `/routing` — Routing rules (admin only)
+    - `/users` — User management (admin only)
+    - `/groups` — Group management (admin only)
+    - `/api-keys` — API key management (admin + user)
+    - `/permissions` — Permission management (admin only)
+    - `/usage` — Usage analytics (all roles, filtered by ownership)
+    - `/budgets` — Budget management (admin only)
+    - `/pricing` — Pricing rules (admin only)
+    - `/health` — Service health (admin + user + viewer)
+    - `/alerts` — Alert management (admin only)
+    - `/settings` — User settings (admin + user)
+
+### Sidebar Design
+**Decision**: antd Menu-based sidebar with role-filtered items and collapsible behavior
+- **Rationale**: antd Menu provides built-in active state, icons, and collapsible behavior. Toggle button collapses to icon-only view.
+- **Menu structure**: Grouped by domain (Infrastructure, Access Control, Billing, Observability)
+- **Role filtering**: Menu items filtered at render time based on `user.role` from AuthContext
+
+### i18n
+**Decision**: i18next with react-i18next
+- **Rationale**: Industry standard for React i18n. Supports lazy loading, pluralization, and context.
+- **Supported locales**: English (en), Chinese (zh)
+- **Implementation**: Language switcher in header, antd locale sync via ConfigProvider
+
+### Error Handling
+**Decision**: antd message.error for API errors + ErrorBoundary for render failures
+- **Rationale**: antd message provides consistent error feedback. ErrorBoundary catches unexpected render errors and shows fallback UI.
+- **API errors**: Handled in APIClient.request() with message.error display
+- **Render errors**: ErrorBoundary wrapper around AppShell content area
+
+### Loading States
+**Decision**: antd Spin for page-level loading + antd Skeleton for data loading
+- **Rationale**: antd Spin provides full-page loading overlay. Skeleton provides content-area placeholders during data fetch.
+- **Page loading**: Spin with fullscreen overlay during route transitions
+- **Data loading**: Skeleton matching table/card layout during TanStack Query fetch
 
 ```mermaid
 graph TD
-    A[User visits /admin] --> B{Authenticated?}
-    B -->|No| C[Redirect to /admin/login]
-    B -->|Yes| D[Redirect to /admin/dashboard]
-    C --> E[Email/Password Form]
-    E --> F[POST /admin/login]
+    A[User visits /] --> B{Authenticated?}
+    B -->|No| C[Redirect to /login]
+    B -->|Yes| D[Redirect to /dashboard]
+    C --> E[Email/Username + Password Form]
+    E --> F[POST /admin/auth/login]
     F --> G{Valid?}
     G -->|Yes| D
     G -->|No| H[Show error]
-    D --> I[Protected Layout]
-    I --> J[Dashboard]
-    I --> K[Providers]
-    I --> L[Users]
-    I --> M[API Keys]
-    I --> N[Usage]
-    I --> O[Health]
-    I --> P[Settings]
+    D --> I[AppShell Layout]
+    I --> J{Role Check}
+    J -->|admin| K[All 12 pages]
+    J -->|user| L[6 pages: Dashboard, API Keys, Usage, Health, Settings]
+    J -->|viewer| M[3 pages: Dashboard, Usage, Health]
 ```
-
-### Sidebar Design
-**Decision**: Collapsible sidebar with icon-only mode
-- **Rationale**: Maximizes content area on smaller screens. Toggle button collapses to icon-only view. Active tab highlighted with accent color and background.
-- **Alternative**: Always-expanded sidebar — wastes space
-- **Alternative**: Off-canvas drawer — less discoverable
 
 ## Risks / Trade-offs
 
 **[Risk]** Auth-service has no `Login` RPC yet — must be added
-→ Mitigation: Add `Login` RPC to auth-service proto and handler as part of this change. Requires user entity to store password hash.
+→ Mitigation: Add `Login` RPC to auth-service proto and handler. Requires user entity to store password hash.
 
-**[Risk]** HTTP-only cookie requires gateway-service to set it, adding coupling
-→ Mitigation: Gateway already proxies admin requests; adding a login endpoint is a natural extension. Cookie is scoped to `/admin` path.
+**[Risk]** localStorage token storage is XSS-vulnerable
+→ Mitigation: Strict CSP headers, no inline scripts, sanitize user input. Future: migrate to HTTP-only cookies.
 
-**[Risk]** shadcn/ui components are copied into the project, increasing maintenance surface
-→ Mitigation: shadcn/ui components are stable and rarely need updates. CLI makes updates easy.
+**[Risk]** Role filtering is client-side only — determined users can bypass via direct API calls
+→ Mitigation: Server-side role checks in gateway middleware. Client-side filtering is UX convenience, not security boundary.
+
+**[Trade-off]** JWT in localStorage vs HTTP-only cookie
+→ Chose: localStorage for simplicity and current gateway support. Trade-off is XSS vulnerability. Cookie path requires gateway changes and CORS configuration.
 
 **[Trade-off]** Adding viewer role changes auth-service user entity
 → Chose: Extend role field to support `admin` | `user` | `viewer`. Minimal proto change, backward-compatible.
-
-**[Trade-off]** JWT in cookie vs Bearer token
-→ Chose: Cookie for security (XSS-resistant). Trade-off is slightly more complex logout (must clear cookie server-side).

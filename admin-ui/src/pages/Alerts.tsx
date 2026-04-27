@@ -1,37 +1,105 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, InputNumber, Popconfirm, Tag, Tabs, Spin, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CheckOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type AlertRule, type Alert } from '../api/client';
 
 export const Alerts: React.FC = () => {
   const { t } = useTranslation(['alerts', 'common']);
-  const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: alertRules = [], isLoading: rulesLoading } = useQuery({
+    queryKey: ['alertRules'],
+    queryFn: () => apiClient.getAlertRules(),
+  });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [rulesData, alertsData] = await Promise.all([
-        apiClient.getAlertRules(),
-        apiClient.getAlerts(),
+  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: () => apiClient.getAlerts(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<AlertRule, 'id' | 'created_at' | 'updated_at'>) => apiClient.createAlertRule(data),
+    onMutate: async (newRule) => {
+      await queryClient.cancelQueries({ queryKey: ['alertRules'] });
+      const previous = queryClient.getQueryData<AlertRule[]>(['alertRules']);
+      queryClient.setQueryData<AlertRule[]>(['alertRules'], (old = []) => [
+        ...old,
+        { ...newRule, id: `temp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as AlertRule,
       ]);
-      setAlertRules(rulesData);
-      setAlerts(alertsData);
-    } catch (error) {
-      message.error('Failed to load alerts');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['alertRules'], context.previous);
+      message.error('Failed to create alert rule');
+    },
+    onSuccess: () => {
+      message.success('Alert rule created successfully');
+      queryClient.invalidateQueries({ queryKey: ['alertRules'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<AlertRule> }) => apiClient.updateAlertRule(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['alertRules'] });
+      const previous = queryClient.getQueryData<AlertRule[]>(['alertRules']);
+      queryClient.setQueryData<AlertRule[]>(['alertRules'], (old = []) =>
+        old.map(r => r.id === id ? { ...r, ...data } : r)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['alertRules'], context.previous);
+      message.error('Failed to update alert rule');
+    },
+    onSuccess: () => {
+      message.success('Alert rule updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['alertRules'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteAlertRule(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['alertRules'] });
+      const previous = queryClient.getQueryData<AlertRule[]>(['alertRules']);
+      queryClient.setQueryData<AlertRule[]>(['alertRules'], (old = []) => old.filter(r => r.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['alertRules'], context.previous);
+      message.error('Failed to delete alert rule');
+    },
+    onSuccess: () => {
+      message.success('Alert rule deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['alertRules'] });
+    },
+  });
+
+  const acknowledgeMutation = useMutation({
+    mutationFn: (id: string) => apiClient.acknowledgeAlert(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['alerts'] });
+      const previous = queryClient.getQueryData<Alert[]>(['alerts']);
+      queryClient.setQueryData<Alert[]>(['alerts'], (old = []) =>
+        old.map(a => a.id === id ? { ...a, status: 'acknowledged' } : a)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['alerts'], context.previous);
+      message.error('Failed to acknowledge alert');
+    },
+    onSuccess: () => {
+      message.success('Alert acknowledged successfully');
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    },
+  });
 
   const handleAdd = () => {
     setEditingRule(null);
@@ -46,23 +114,11 @@ export const Alerts: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deleteAlertRule(id);
-      message.success('Alert rule deleted successfully');
-      loadData();
-    } catch (error) {
-      message.error('Failed to delete alert rule');
-    }
+    deleteMutation.mutate(id);
   };
 
   const handleAcknowledge = async (id: string) => {
-    try {
-      await apiClient.acknowledgeAlert(id);
-      message.success('Alert acknowledged successfully');
-      loadData();
-    } catch (error) {
-      message.error('Failed to acknowledge alert');
-    }
+    acknowledgeMutation.mutate(id);
   };
 
   const handleModalOk = async () => {
@@ -70,17 +126,15 @@ export const Alerts: React.FC = () => {
       const values = await form.validateFields();
 
       if (editingRule) {
-        await apiClient.updateAlertRule(editingRule.id, values);
-        message.success('Alert rule updated successfully');
+        updateMutation.mutate({ id: editingRule.id, data: values });
       } else {
-        await apiClient.createAlertRule(values);
-        message.success('Alert rule created successfully');
+        createMutation.mutate(values);
       }
 
       setModalVisible(false);
-      loadData();
+      form.resetFields();
     } catch (error) {
-      message.error('Failed to save alert rule');
+      // Validation error - do nothing
     }
   };
 
@@ -120,30 +174,28 @@ export const Alerts: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
+        <Tag color={status === 'active' ? 'green' : 'default'}>
+          {status}
+        </Tag>
       ),
     },
     {
       title: t('common:actions'),
       key: 'actions',
-      render: (_: any, record: AlertRule) => (
-        <div>
+      render: (_: unknown, rule: AlertRule) => (
+        <div style={{ display: 'flex', gap: 8 }}>
           <Button
             type="link"
             icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            {t('common:edit')}
-          </Button>
+            onClick={() => handleEdit(rule)}
+          />
           <Popconfirm
-            title="Are you sure you want to delete this alert rule?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            title={t('common:confirmDelete')}
+            onConfirm={() => handleDelete(rule.id)}
+            okText={t('common:ok')}
+            cancelText={t('common:cancel')}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              {t('common:delete')}
-            </Button>
+            <Button type="link" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </div>
       ),
@@ -155,23 +207,11 @@ export const Alerts: React.FC = () => {
       title: t('alerts:fields.severity'),
       dataIndex: 'severity',
       key: 'severity',
-      render: (severity: string) => {
-        const color = severity === 'critical' ? 'red' : severity === 'warning' ? 'orange' : 'blue';
-        return <Tag color={color}>{severity}</Tag>;
-      },
-    },
-    {
-      title: t('alerts:fields.status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'firing' ? 'red' : 'green'}>{status}</Tag>
+      render: (severity: string) => (
+        <Tag color={severity === 'critical' ? 'red' : severity === 'warning' ? 'orange' : 'blue'}>
+          {severity}
+        </Tag>
       ),
-    },
-    {
-      title: t('alerts:fields.triggeredAt'),
-      dataIndex: 'triggered_at',
-      key: 'triggered_at',
     },
     {
       title: t('alerts:fields.description'),
@@ -179,17 +219,33 @@ export const Alerts: React.FC = () => {
       key: 'description',
     },
     {
+      title: t('alerts:fields.triggered_at'),
+      dataIndex: 'triggered_at',
+      key: 'triggered_at',
+      render: (date: string) => new Date(date).toLocaleString(),
+    },
+    {
+      title: t('alerts:fields.status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={status === 'acknowledged' ? 'green' : 'red'}>
+          {status}
+        </Tag>
+      ),
+    },
+    {
       title: t('common:actions'),
       key: 'actions',
-      render: (_: any, record: Alert) => (
-        <div>
-          {record.status === 'firing' && (
+      render: (_: unknown, alert: Alert) => (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {alert.status === 'triggered' && (
             <Button
               type="link"
               icon={<CheckOutlined />}
-              onClick={() => handleAcknowledge(record.id)}
+              onClick={() => handleAcknowledge(alert.id)}
             >
-              {t('alerts:acknowledge')}
+              {t('alerts:actions.acknowledge')}
             </Button>
           )}
         </div>
@@ -197,107 +253,105 @@ export const Alerts: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  const tabItems = [
+    {
+      key: 'rules',
+      label: t('alerts:tabs.rules'),
+      children: (
+        <Table
+          columns={ruleColumns}
+          dataSource={alertRules}
+          rowKey="id"
+          loading={rulesLoading}
+          pagination={{ pageSize: 10 }}
+        />
+      ),
+    },
+    {
+      key: 'alerts',
+      label: t('alerts:tabs.alerts'),
+      children: (
+        <Table
+          columns={alertColumns}
+          dataSource={alerts}
+          rowKey="id"
+          loading={alertsLoading}
+          pagination={{ pageSize: 10 }}
+        />
+      ),
+    },
+  ];
+
+  if (rulesLoading && alertsLoading) {
+    return <Spin size="large" style={{ display: 'block', margin: '48px auto' }} />;
   }
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h2>{t('alerts:title')}</h2>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>{t('alerts:title')}</h1>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          {t('alerts:addRule')}
+          {t('alerts:actions.addRule')}
         </Button>
       </div>
 
-      <Tabs
-        defaultActiveKey="rules"
-        items={[
-          {
-            key: 'rules',
-            label: t('alerts:tabs.rules'),
-            children: (
-              <Table
-                dataSource={alertRules}
-                columns={ruleColumns}
-                rowKey="id"
-                pagination={{ pageSize: 10 }}
-              />
-            ),
-          },
-          {
-            key: 'alerts',
-            label: t('alerts:tabs.activeAlerts'),
-            children: (
-              <Table
-                dataSource={alerts}
-                columns={alertColumns}
-                rowKey="id"
-                pagination={{ pageSize: 10 }}
-              />
-            ),
-          },
-        ]}
-      />
+      <Tabs items={tabItems} />
 
       <Modal
-        title={editingRule ? t('alerts:editRule') : t('alerts:addRule')}
+        title={editingRule ? t('alerts:actions.editRule') : t('alerts:actions.addRule')}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
-        width={600}
+        okText={t('common:ok')}
+        cancelText={t('common:cancel')}
       >
         <Form form={form} layout="vertical">
           <Form.Item
-            label={t('alerts:fields.name')}
             name="name"
-            rules={[{ required: true, message: 'Please input rule name' }]}
+            label={t('alerts:fields.name')}
+            rules={[{ required: true, message: t('alerts:validation.nameRequired') }]}
           >
-            <Input />
+            <Input placeholder={t('alerts:placeholders.name')} />
           </Form.Item>
-
           <Form.Item
-            label={t('alerts:fields.metric')}
             name="metric"
-            rules={[{ required: true, message: 'Please select metric' }]}
+            label={t('alerts:fields.metric')}
+            rules={[{ required: true, message: t('alerts:validation.metricRequired') }]}
           >
-            <Select>
-              <Select.Option value="spend">Spend</Select.Option>
-              <Select.Option value="tokens">Tokens</Select.Option>
-              <Select.Option value="requests">Requests</Select.Option>
-              <Select.Option value="errors">Errors</Select.Option>
+            <Select placeholder={t('alerts:placeholders.metric')}>
+              <Select.Option value="error_rate">{t('alerts:metrics.errorRate')}</Select.Option>
+              <Select.Option value="latency">{t('alerts:metrics.latency')}</Select.Option>
+              <Select.Option value="cost">{t('alerts:metrics.cost')}</Select.Option>
+              <Select.Option value="usage">{t('alerts:metrics.usage')}</Select.Option>
             </Select>
           </Form.Item>
-
           <Form.Item
-            label={t('alerts:fields.condition')}
             name="condition"
-            rules={[{ required: true, message: 'Please select condition' }]}
+            label={t('alerts:fields.condition')}
+            rules={[{ required: true, message: t('alerts:validation.conditionRequired') }]}
           >
-            <Select>
-              <Select.Option value="greater_than">Greater Than</Select.Option>
-              <Select.Option value="less_than">Less Than</Select.Option>
-              <Select.Option value="equals">Equals</Select.Option>
+            <Select placeholder={t('alerts:placeholders.condition')}>
+              <Select.Option value="gt">{t('alerts:conditions.greaterThan')}</Select.Option>
+              <Select.Option value="lt">{t('alerts:conditions.lessThan')}</Select.Option>
+              <Select.Option value="eq">{t('alerts:conditions.equals')}</Select.Option>
             </Select>
           </Form.Item>
-
           <Form.Item
-            label={t('alerts:fields.threshold')}
             name="threshold"
-            rules={[{ required: true, message: 'Please input threshold' }]}
+            label={t('alerts:fields.threshold')}
+            rules={[{ required: true, message: t('alerts:validation.thresholdRequired') }]}
           >
-            <InputNumber style={{ width: '100%' }} />
+            <InputNumber style={{ width: '100%' }} placeholder={t('alerts:placeholders.threshold')} />
           </Form.Item>
-
           <Form.Item
-            label={t('alerts:fields.channel')}
             name="channel"
-            rules={[{ required: true, message: 'Please select channel' }]}
+            label={t('alerts:fields.channel')}
+            rules={[{ required: true, message: t('alerts:validation.channelRequired') }]}
           >
-            <Select>
-              <Select.Option value="email">Email</Select.Option>
-              <Select.Option value="slack">Slack</Select.Option>
-              <Select.Option value="webhook">Webhook</Select.Option>
+            <Select placeholder={t('alerts:placeholders.channel')}>
+              <Select.Option value="email">{t('alerts:channels.email')}</Select.Option>
+              <Select.Option value="slack">{t('alerts:channels.slack')}</Select.Option>
+              <Select.Option value="webhook">{t('alerts:channels.webhook')}</Select.Option>
             </Select>
           </Form.Item>
         </Form>

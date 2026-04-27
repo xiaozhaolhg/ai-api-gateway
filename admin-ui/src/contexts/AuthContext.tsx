@@ -6,6 +6,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role: string;
 }
 
 interface AuthContextType {
@@ -49,36 +50,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const data = await apiClient.login(email, password);
     const { token: newToken, user: newUser } = data;
 
+    const userObj = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+    };
     setToken(newToken);
-    setUser({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-    });
+    setUser(userObj);
     localStorage.setItem(TOKEN_KEY, newToken);
-    localStorage.setItem(USER_KEY, JSON.stringify({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-    }));
+    localStorage.setItem(USER_KEY, JSON.stringify(userObj));
   };
 
   const register = async (name: string, username: string, email: string, password: string) => {
     const data = await apiClient.register(name, username, email, password);
     const { token: newToken, user: newUser } = data;
 
+    const userObj = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+    };
     setToken(newToken);
-    setUser({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-    });
+    setUser(userObj);
     localStorage.setItem(TOKEN_KEY, newToken);
-    localStorage.setItem(USER_KEY, JSON.stringify({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-    }));
+    localStorage.setItem(USER_KEY, JSON.stringify(userObj));
   };
 
   const logout = () => {

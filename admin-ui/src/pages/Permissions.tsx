@@ -1,37 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Spin, Empty, message } from 'antd';
+import React, { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { apiClient, type Permission } from '../api/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient, type Permission, type Group } from '../api/client';
 
 export const Permissions: React.FC = () => {
   const { t } = useTranslation(['permissions', 'common']);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: permissions = [], isLoading: permsLoading } = useQuery({
+    queryKey: ['permissions'],
+    queryFn: () => apiClient.getPermissions(),
+  });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [permsData, groupsData] = await Promise.all([
-        apiClient.getPermissions(),
-        apiClient.getGroups(),
+  const { data: groups = [] } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => apiClient.getGroups(),
+  });
+
+  const isLoading = permsLoading;
+
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<Permission, 'id' | 'created_at' | 'updated_at'>) => apiClient.createPermission(data),
+    onMutate: async (newPerm) => {
+      await queryClient.cancelQueries({ queryKey: ['permissions'] });
+      const previous = queryClient.getQueryData<Permission[]>(['permissions']);
+      queryClient.setQueryData<Permission[]>(['permissions'], (old = []) => [
+        ...old, { ...newPerm, id: `temp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Permission,
       ]);
-      setPermissions(permsData);
-      setGroups(groupsData);
-    } catch (error) {
-      message.error('Failed to load permissions');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['permissions'], context.previous);
+      message.error('Failed to create permission');
+    },
+    onSuccess: () => {
+      message.success('Permission created successfully');
+      queryClient.invalidateQueries({ queryKey: ['permissions'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Permission> }) => apiClient.updatePermission(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['permissions'] });
+      const previous = queryClient.getQueryData<Permission[]>(['permissions']);
+      queryClient.setQueryData<Permission[]>(['permissions'], (old = []) => old.map(p => p.id === id ? { ...p, ...data } : p));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['permissions'], context.previous);
+      message.error('Failed to update permission');
+    },
+    onSuccess: () => {
+      message.success('Permission updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['permissions'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deletePermission(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['permissions'] });
+      const previous = queryClient.getQueryData<Permission[]>(['permissions']);
+      queryClient.setQueryData<Permission[]>(['permissions'], (old = []) => old.filter(p => p.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['permissions'], context.previous);
+      message.error('Failed to delete permission');
+    },
+    onSuccess: () => {
+      message.success('Permission deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingPermission(null);
@@ -45,33 +91,14 @@ export const Permissions: React.FC = () => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deletePermission(id);
-      message.success('Permission deleted successfully');
-      loadData();
-    } catch (error) {
-      message.error('Failed to delete permission');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (editingPermission) {
-        await apiClient.updatePermission(editingPermission.id, values);
-        message.success('Permission updated successfully');
-      } else {
-        await apiClient.createPermission(values);
-        message.success('Permission created successfully');
-      }
-
-      setModalVisible(false);
-      loadData();
-    } catch (error) {
-      message.error('Failed to save permission');
+    const values = await form.validateFields();
+    if (editingPermission) {
+      updateMutation.mutate({ id: editingPermission.id, data: values });
+    } else {
+      createMutation.mutate(values);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -85,7 +112,7 @@ export const Permissions: React.FC = () => {
       dataIndex: 'group_id',
       key: 'group_id',
       render: (groupId: string) => {
-        const group = groups.find(g => g.id === groupId);
+        const group = groups.find((g: Group) => g.id === groupId);
         return group ? group.name : groupId;
       },
     },
@@ -120,16 +147,12 @@ export const Permissions: React.FC = () => {
       key: 'actions',
       render: (_: any, record: Permission) => (
         <div>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
+          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {t('common:edit')}
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this permission?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -142,8 +165,8 @@ export const Permissions: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -155,22 +178,20 @@ export const Permissions: React.FC = () => {
         </Button>
       </div>
 
-      {permissions.length === 0 ? (
-        <Empty description="No permissions found" />
-      ) : (
-        <Table
-          dataSource={permissions}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      )}
+      <Table
+        dataSource={permissions}
+        columns={columns}
+        rowKey="id"
+        pagination={{ pageSize: 10 }}
+        locale={{ emptyText: <Empty description="No permissions found" /> }}
+      />
 
       <Modal
         title={editingPermission ? t('permissions:editPermission') : t('permissions:addPermission')}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">
@@ -180,7 +201,7 @@ export const Permissions: React.FC = () => {
             rules={[{ required: true, message: 'Please select group' }]}
           >
             <Select>
-              {groups.map(group => (
+              {groups.map((group: Group) => (
                 <Select.Option key={group.id} value={group.id}>
                   {group.name}
                 </Select.Option>

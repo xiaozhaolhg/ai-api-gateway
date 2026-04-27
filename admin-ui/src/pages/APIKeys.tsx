@@ -1,71 +1,61 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, Spin, Empty, Alert, message } from 'antd';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Empty, Alert, message } from 'antd';
 import { PlusOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { apiClient, type APIKey, type User } from '../api/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient, type APIKey } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function APIKeys() {
   const { t } = useTranslation(['apiKeys', 'common']);
-  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [selectedUserId, setSelectedUserId] = useState(user?.id || '');
   const [modalVisible, setModalVisible] = useState(false);
   const [createdKey, setCreatedKey] = useState<{ api_key_id: string; api_key: string } | null>(null);
   const [newKeyName, setNewKeyName] = useState('');
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.getUsers(),
+  });
 
-  useEffect(() => {
-    if (selectedUserId) {
-      loadAPIKeys();
-    }
-  }, [selectedUserId]);
+  const { data: apiKeys = [], isLoading: keysLoading } = useQuery({
+    queryKey: ['apiKeys', selectedUserId],
+    queryFn: () => apiClient.getAPIKeys(selectedUserId),
+    enabled: !!selectedUserId,
+  });
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getUsers();
-      setUsers(data);
-    } catch (error) {
-      message.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAPIKeys = async () => {
-    try {
-      const data = await apiClient.getAPIKeys(selectedUserId);
-      setApiKeys(data);
-    } catch (error) {
-      message.error('Failed to load API keys');
-    }
-  };
-
-  const handleCreateAPIKey = async () => {
-    try {
-      const result = await apiClient.createAPIKey(selectedUserId, newKeyName);
+  const createMutation = useMutation({
+    mutationFn: ({ userId, name }: { userId: string; name: string }) => apiClient.createAPIKey(userId, name),
+    onSuccess: (result) => {
       setCreatedKey(result);
       setModalVisible(false);
       setNewKeyName('');
-      loadAPIKeys();
-    } catch (error) {
+      message.success('API key created successfully');
+      queryClient.invalidateQueries({ queryKey: ['apiKeys', selectedUserId] });
+    },
+    onError: () => {
       message.error('Failed to create API key');
-    }
-  };
+    },
+  });
 
-  const handleDeleteAPIKey = async (id: string) => {
-    try {
-      await apiClient.deleteAPIKey(id);
-      message.success('API key revoked successfully');
-      loadAPIKeys();
-    } catch (error) {
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteAPIKey(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['apiKeys', selectedUserId] });
+      const previous = queryClient.getQueryData<APIKey[]>(['apiKeys', selectedUserId]);
+      queryClient.setQueryData<APIKey[]>(['apiKeys', selectedUserId], (old = []) => old.filter(k => k.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['apiKeys', selectedUserId], context.previous);
       message.error('Failed to revoke API key');
-    }
-  };
+    },
+    onSuccess: () => {
+      message.success('API key revoked successfully');
+    },
+  });
 
   const handleCopyKey = (key: string) => {
     navigator.clipboard.writeText(key);
@@ -101,7 +91,7 @@ export default function APIKeys() {
       render: (_: any, record: APIKey) => (
         <Popconfirm
           title="Are you sure you want to revoke this API key?"
-          onConfirm={() => handleDeleteAPIKey(record.id)}
+          onConfirm={() => deleteMutation.mutate(record.id)}
           okText="Yes"
           cancelText="No"
         >
@@ -113,8 +103,8 @@ export default function APIKeys() {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (usersLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -164,27 +154,28 @@ export default function APIKeys() {
             />
           )}
 
-          {apiKeys.length === 0 ? (
-            <Empty description="No API keys found" />
-          ) : (
-            <Table
-              dataSource={apiKeys}
-              columns={columns}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-            />
-          )}
+          <Table
+            dataSource={apiKeys}
+            columns={columns}
+            rowKey="id"
+            loading={keysLoading}
+            pagination={{ pageSize: 10 }}
+            locale={{ emptyText: <Empty description="No API keys found" /> }}
+          />
         </>
       )}
 
       <Modal
         title={t('apiKeys:addKey')}
         open={modalVisible}
-        onOk={handleCreateAPIKey}
+        onOk={() => {
+          if (newKeyName) createMutation.mutate({ userId: selectedUserId, name: newKeyName });
+        }}
         onCancel={() => {
           setModalVisible(false);
           setNewKeyName('');
         }}
+        confirmLoading={createMutation.isPending}
       >
         <Form layout="vertical">
           <Form.Item

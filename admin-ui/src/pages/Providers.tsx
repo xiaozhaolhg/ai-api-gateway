@@ -1,32 +1,79 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Spin, Empty, message } from 'antd';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Provider } from '../api/client';
 
 export default function Providers() {
   const { t } = useTranslation(['providers', 'common']);
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadProviders();
-  }, []);
+  const { data: providers = [], isLoading } = useQuery({
+    queryKey: ['providers'],
+    queryFn: () => apiClient.getProviders(),
+  });
 
-  const loadProviders = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getProviders();
-      setProviders(data);
-    } catch (error) {
-      message.error('Failed to load providers');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<Provider, 'id' | 'created_at' | 'updated_at'>) => apiClient.createProvider(data),
+    onMutate: async (newProvider) => {
+      await queryClient.cancelQueries({ queryKey: ['providers'] });
+      const previous = queryClient.getQueryData<Provider[]>(['providers']);
+      queryClient.setQueryData<Provider[]>(['providers'], (old = []) => [
+        ...old,
+        { ...newProvider, id: `temp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Provider,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['providers'], context.previous);
+      message.error('Failed to create provider');
+    },
+    onSuccess: () => {
+      message.success('Provider created successfully');
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Provider> }) => apiClient.updateProvider(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['providers'] });
+      const previous = queryClient.getQueryData<Provider[]>(['providers']);
+      queryClient.setQueryData<Provider[]>(['providers'], (old = []) =>
+        old.map(p => p.id === id ? { ...p, ...data } : p)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['providers'], context.previous);
+      message.error('Failed to update provider');
+    },
+    onSuccess: () => {
+      message.success('Provider updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteProvider(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['providers'] });
+      const previous = queryClient.getQueryData<Provider[]>(['providers']);
+      queryClient.setQueryData<Provider[]>(['providers'], (old = []) => old.filter(p => p.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['providers'], context.previous);
+      message.error('Failed to delete provider');
+    },
+    onSuccess: () => {
+      message.success('Provider deleted successfully');
+    },
+  });
 
   const handleAdd = () => {
     setEditingProvider(null);
@@ -43,37 +90,19 @@ export default function Providers() {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.deleteProvider(id);
-      message.success('Provider deleted successfully');
-      loadProviders();
-    } catch (error) {
-      message.error('Failed to delete provider');
-    }
-  };
-
   const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-      const providerData = {
-        ...values,
-        models: values.models.split(',').map((m: string) => m.trim()),
-      };
+    const values = await form.validateFields();
+    const providerData = {
+      ...values,
+      models: values.models.split(',').map((m: string) => m.trim()),
+    };
 
-      if (editingProvider) {
-        await apiClient.updateProvider(editingProvider.id, providerData);
-        message.success('Provider updated successfully');
-      } else {
-        await apiClient.createProvider(providerData);
-        message.success('Provider created successfully');
-      }
-
-      setModalVisible(false);
-      loadProviders();
-    } catch (error) {
-      message.error('Failed to save provider');
+    if (editingProvider) {
+      updateMutation.mutate({ id: editingProvider.id, data: providerData });
+    } else {
+      createMutation.mutate(providerData);
     }
+    setModalVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -125,7 +154,7 @@ export default function Providers() {
           </Button>
           <Popconfirm
             title="Are you sure you want to delete this provider?"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => deleteMutation.mutate(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -138,8 +167,8 @@ export default function Providers() {
     },
   ];
 
-  if (loading) {
-    return <Spin size="large" />;
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
@@ -167,6 +196,7 @@ export default function Providers() {
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form form={form} layout="vertical">
