@@ -1,0 +1,14 @@
+{
+  "title": "API密钥",
+  "addKey": "添加API密钥",
+  "editKey": "编辑API密钥",
+  "deleteKey": "删除API密钥",
+  "fields": {
+    "key": "API密钥",
+    "user": "用户",
+    "status": "状态",
+    "expiresAt": "过期时间"
+  },
+  "copyKey": "复制密钥",
+  "keyCopied": "密钥已复制到剪贴板"
+}

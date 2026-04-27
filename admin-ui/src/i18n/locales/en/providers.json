@@ -1,0 +1,13 @@
+{
+  "title": "Providers",
+  "addProvider": "Add Provider",
+  "editProvider": "Edit Provider",
+  "deleteProvider": "Delete Provider",
+  "fields": {
+    "name": "Provider Name",
+    "type": "Provider Type",
+    "endpoint": "API Endpoint",
+    "apiKey": "API Key",
+    "enabled": "Enabled"
+  }
+}

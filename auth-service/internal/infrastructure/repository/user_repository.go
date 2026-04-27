@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"log"
+
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
 	"github.com/ai-api-gateway/auth-service/internal/domain/port"
 	"gorm.io/gorm"
@@ -38,6 +40,19 @@ func (r *UserRepository) GetByEmail(email string) (*entity.User, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &user, nil
+}
+
+// GetByUsername retrieves a user by username
+func (r *UserRepository) GetByUsername(username string) (*entity.User, error) {
+	var user entity.User
+	log.Printf("[DEBUG] GetByUsername query: username=%s", username)
+	err := r.db.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		log.Printf("[DEBUG] GetByUsername result: error=%v", err)
+		return nil, err
+	}
+	log.Printf("[DEBUG] GetByUsername found: user_id=%s, username=%s", user.ID, user.Username)
 	return &user, nil
 }
 

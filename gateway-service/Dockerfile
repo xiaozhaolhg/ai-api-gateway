@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -13,8 +13,10 @@ RUN apk add --no-cache git
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
-# Copy go mod files and api directory
+# Copy go mod files
 COPY ./go.mod ./
+
+# Copy api directory
 COPY ./api/ ./api/
 
 # Copy source code

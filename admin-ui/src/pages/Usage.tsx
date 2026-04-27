@@ -1,127 +1,158 @@
-import { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
-import { apiClient, type UsageRecord } from '../api/client';
+import { useState } from 'react';
+import { Table, DatePicker, Input, Button, Statistic, Card, Row, Col, Empty } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
+import dayjs from 'dayjs';
+
+const { RangePicker } = DatePicker;
 
 export default function Usage() {
-  const [usage, setUsage] = useState<UsageRecord[]>([]);
+  const { t } = useTranslation(['usage', 'common']);
   const [filters, setFilters] = useState({
     userId: '',
-    startDate: '',
-    endDate: '',
+    model: '',
+    provider: '',
+    startDate: null as dayjs.Dayjs | null,
+    endDate: null as dayjs.Dayjs | null,
   });
 
-  useEffect(() => {
-    loadUsage();
-  }, []);
+  const { data: usage = [], isLoading, refetch } = useQuery({
+    queryKey: ['usage', filters.userId, filters.startDate?.toISOString(), filters.endDate?.toISOString()],
+    queryFn: () => apiClient.getUsage(
+      filters.userId || undefined,
+      filters.startDate?.toISOString() || undefined,
+      filters.endDate?.toISOString() || undefined
+    ),
+  });
 
-  const loadUsage = async () => {
-    try {
-      const data = await apiClient.getUsage(
-        filters.userId || undefined,
-        filters.startDate || undefined,
-        filters.endDate || undefined
-      );
-      setUsage(data);
-    } catch (error) {
-      console.error('Failed to load usage:', error);
-    }
-  };
-
-  const handleFilter = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadUsage();
+  const handleFilter = () => {
+    refetch();
   };
 
   const totalTokens = usage.reduce((sum, record) => sum + record.total_tokens, 0);
   const totalCost = usage.reduce((sum, record) => sum + record.cost, 0);
 
+  const columns = [
+    {
+      title: t('usage:fields.user'),
+      dataIndex: 'user_id',
+      key: 'user_id',
+    },
+    {
+      title: t('usage:fields.model'),
+      dataIndex: 'model',
+      key: 'model',
+    },
+    {
+      title: t('usage:fields.provider'),
+      dataIndex: 'provider',
+      key: 'provider',
+    },
+    {
+      title: t('usage:fields.promptTokens'),
+      dataIndex: 'prompt_tokens',
+      key: 'prompt_tokens',
+    },
+    {
+      title: t('usage:fields.completionTokens'),
+      dataIndex: 'completion_tokens',
+      key: 'completion_tokens',
+    },
+    {
+      title: t('usage:fields.totalTokens'),
+      dataIndex: 'total_tokens',
+      key: 'total_tokens',
+    },
+    {
+      title: t('usage:fields.cost'),
+      dataIndex: 'cost',
+      key: 'cost',
+      render: (cost: number) => `$${cost.toFixed(4)}`,
+    },
+    {
+      title: t('common:timestamp'),
+      dataIndex: 'timestamp',
+      key: 'timestamp',
+      render: (timestamp: string) => new Date(timestamp).toLocaleString(),
+    },
+  ];
+
   return (
-    <Layout>
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Usage Dashboard</h2>
+    <div>
+      <h2 style={{ marginBottom: 16 }}>{t('usage:title')}</h2>
 
-        <form onSubmit={handleFilter} className="bg-white shadow rounded-lg p-6 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">User ID</label>
-              <input
-                type="text"
-                value={filters.userId}
-                onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">End Date</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Apply Filters
-          </button>
-        </form>
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={16} style={{ marginBottom: 12 }}>
+          <Col span={6}>
+            <Input
+              placeholder={t('usage:fields.userId')}
+              value={filters.userId}
+              onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
+            />
+          </Col>
+          <Col span={6}>
+            <Input
+              placeholder={t('usage:fields.model')}
+              value={filters.model}
+              onChange={(e) => setFilters({ ...filters, model: e.target.value })}
+            />
+          </Col>
+          <Col span={6}>
+            <Input
+              placeholder={t('usage:fields.provider')}
+              value={filters.provider}
+              onChange={(e) => setFilters({ ...filters, provider: e.target.value })}
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={16}>
+            <RangePicker
+              value={filters.startDate && filters.endDate ? [filters.startDate, filters.endDate] : null}
+              onChange={(dates) => setFilters({
+                ...filters,
+                startDate: dates?.[0] || null,
+                endDate: dates?.[1] || null,
+              })}
+              style={{ width: '100%' }}
+            />
+          </Col>
+          <Col span={8}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleFilter} block>
+              {t('common:search')}
+            </Button>
+          </Col>
+        </Row>
+      </Card>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900">Total Requests</h3>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{usage.length}</p>
-          </div>
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900">Total Tokens</h3>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{totalTokens.toLocaleString()}</p>
-          </div>
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900">Total Cost</h3>
-            <p className="text-3xl font-bold text-gray-900 mt-2">${totalCost.toFixed(2)}</p>
-          </div>
-        </div>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={8}>
+          <Card>
+            <Statistic title={t('usage:stats.totalRequests')} value={usage.length} />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic title={t('usage:stats.totalTokens')} value={totalTokens} />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic title={t('usage:stats.totalCost')} value={totalCost} precision={2} prefix="$" />
+          </Card>
+        </Col>
+      </Row>
 
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prompt Tokens</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion Tokens</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Tokens</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {usage.map((record) => (
-                <tr key={record.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.user_id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.model}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.prompt_tokens}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.completion_tokens}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.total_tokens}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.cost.toFixed(4)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(record.timestamp).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </Layout>
+      <Table
+        dataSource={usage}
+        columns={columns}
+        rowKey="id"
+        loading={isLoading}
+        pagination={{ pageSize: 20 }}
+        locale={{ emptyText: <Empty description="No usage records found" /> }}
+      />
+    </div>
   );
 }

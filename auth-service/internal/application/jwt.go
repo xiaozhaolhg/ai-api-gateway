@@ -9,23 +9,27 @@ import (
 
 type JWTClaims struct {
 	jwt.RegisteredClaims
+	UserID string `json:"user_id"`
+	Name  string `json:"name"`
 	Email string `json:"email"`
 	Role  string `json:"role"`
 }
 
-func GenerateJWT(userID, email, role string, expiry time.Duration) (string, error) {
+func GenerateJWT(userID, name, email, role string, expiry time.Duration) (string, error) {
 	claims := JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:  userID,
+			Subject:   userID,
 		},
+		UserID: userID,
+		Name:   name,
 		Email: email,
 		Role:  role,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte("your-secret-key"))
+	return token.SignedString([]byte("your-secret-key-change-in-production"))
 }
 
 func ValidateJWT(tokenString string) (*JWTClaims, error) {
@@ -33,7 +37,7 @@ func ValidateJWT(tokenString string) (*JWTClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte("your-secret-key"), nil
+		return []byte("your-secret-key-change-in-production"), nil
 	})
 	if err != nil {
 		return nil, err

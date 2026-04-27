@@ -15,11 +15,6 @@ services:
       - AUTH_SERVICE_ADDRESS=auth-service:50051
       - ROUTER_SERVICE_ADDRESS=router-service:50052
       - PROVIDER_SERVICE_ADDRESS=provider-service:50053
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   auth-service:
     build:
@@ -31,11 +26,7 @@ services:
       - auth-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50051"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
 
   router-service:
     build:
@@ -47,11 +38,6 @@ services:
       - router-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50052"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   provider-service:
     build:
@@ -69,11 +55,6 @@ services:
     environment:
       - BILLING_SERVICE_ADDRESS=billing-service:50054
       - MONITOR_SERVICE_ADDRESS=monitor-service:50055
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50053"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   billing-service:
     build:
@@ -85,11 +66,6 @@ services:
       - billing-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50054"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   monitor-service:
     build:
@@ -101,11 +77,6 @@ services:
       - monitor-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50055"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   admin-ui:
     build:

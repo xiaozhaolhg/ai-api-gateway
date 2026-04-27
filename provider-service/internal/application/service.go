@@ -17,7 +17,7 @@ import (
 
 // Service handles provider request forwarding and callback dispatch
 type Service struct {
-	providerRepo port.ProviderRepository
+	providerRepo   port.ProviderRepository
 	adapterFactory *AdapterFactory
 	cryptoKey      string // Encryption key for credential decryption
 	subscribers    map[string]string // service_name -> gRPC endpoint
@@ -28,6 +28,8 @@ type Service struct {
 func NewService(
 	providerRepo port.ProviderRepository,
 	adapterFactory *AdapterFactory,
+	cryptoKey      string // Encryption key for credential decryption
+	cryptoKey      string // Encryption key for credential decryption
 	cryptoKey string,
 ) *Service {
 	return &Service{

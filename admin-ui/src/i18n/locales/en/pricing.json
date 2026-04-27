@@ -1,0 +1,14 @@
+{
+  "title": "Pricing Rules",
+  "addRule": "Add Pricing Rule",
+  "editRule": "Edit Pricing Rule",
+  "deleteRule": "Delete Pricing Rule",
+  "fields": {
+    "model": "Model",
+    "provider": "Provider",
+    "promptPrice": "Prompt Price",
+    "completionPrice": "Completion Price",
+    "currency": "Currency",
+    "effectiveDate": "Effective Date"
+  }
+}

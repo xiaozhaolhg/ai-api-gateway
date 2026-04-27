@@ -1,0 +1,12 @@
+{
+  "title": "权限",
+  "addPermission": "添加权限",
+  "editPermission": "编辑权限",
+  "deletePermission": "删除权限",
+  "fields": {
+    "group": "分组",
+    "modelPattern": "模型模式",
+    "effect": "效果",
+    "status": "状态"
+  }
+}

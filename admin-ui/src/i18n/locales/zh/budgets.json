@@ -1,0 +1,14 @@
+{
+  "title": "预算",
+  "addBudget": "添加预算",
+  "editBudget": "编辑预算",
+  "deleteBudget": "删除预算",
+  "fields": {
+    "name": "预算名称",
+    "scope": "范围",
+    "limit": "限制",
+    "currentSpend": "当前支出",
+    "remaining": "剩余",
+    "period": "周期"
+  }
+}

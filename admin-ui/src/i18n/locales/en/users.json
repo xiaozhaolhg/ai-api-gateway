@@ -1,0 +1,12 @@
+{
+  "title": "Users",
+  "addUser": "Add User",
+  "editUser": "Edit User",
+  "deleteUser": "Delete User",
+  "fields": {
+    "username": "Username",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status"
+  }
+}

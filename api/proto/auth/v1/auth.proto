@@ -13,6 +13,9 @@ service AuthService {
   // Login (Email/Password)
   rpc Login(LoginRequest) returns (LoginResponse);
 
+  // Register (Username/Email + Password)
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
   // Model Authorization
   rpc CheckModelAuthorization(CheckModelAuthorizationRequest) returns (AuthorizationResult);
 
@@ -58,6 +61,19 @@ message LoginResponse {
   User user = 2;
 }
 
+message RegisterRequest {
+  string username = 1;
+  string email = 2;
+  string name = 3;
+  string password = 4;
+  string role = 5;
+}
+
+message RegisterResponse {
+  string token = 1;
+  User user = 2;
+}
+
 message UserIdentity {
   string user_id = 1;
   string role = 2;              // "admin" | "user" | "viewer"
@@ -95,9 +111,10 @@ message GetUserRequest {
 
 message CreateUserRequest {
   string name = 1;
-  string email = 2;
-  string role = 3;
-  string password = 4;
+  string username = 2;
+  string email = 3;
+  string role = 4;
+  string password = 5;
 }
 
 message UpdateUserRequest {

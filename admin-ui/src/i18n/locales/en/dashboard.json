@@ -1,0 +1,16 @@
+{
+  "title": "Dashboard",
+  "summary": {
+    "totalUsers": "Total Users",
+    "totalProviders": "Total Providers",
+    "monthlySpend": "Monthly Spend",
+    "activeAlerts": "Active Alerts"
+  },
+  "quickActions": {
+    "title": "Quick Actions",
+    "addProvider": "Add Provider",
+    "createUser": "Create User",
+    "issueApiKey": "Issue API Key",
+    "viewAlerts": "View Alerts"
+  }
+}

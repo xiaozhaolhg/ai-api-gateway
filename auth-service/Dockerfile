@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -13,8 +13,10 @@ RUN apk add --no-cache git gcc musl-dev
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
-# Copy go mod files and api directory
+# Copy go mod files
 COPY ./go.mod ./
+
+# Copy api directory
 COPY ./api/ ./api/
 
 # Copy source code
@@ -42,14 +44,18 @@ COPY --from=builder /bin/auth-service .
 # Copy config
 COPY --from=builder /app/auth-service/configs ./configs
 
-# Create data directory
-RUN mkdir -p /root/data
+# Create data directory and startup script before switching user
+RUN mkdir -p /data
+RUN printf '#!/bin/sh\necho "Starting auth service..."\n./auth-service\n' > /root/start.sh
+RUN chmod +x /root/start.sh
 
 # Run as non-root user
 RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
+    adduser -D -u 1000 -G appuser appuser && \
+    chown -R appuser:appuser /root && \
+    chown -R appuser:appuser /data
 USER appuser
 
 EXPOSE 50051
 
-CMD ["./auth-service"]
+CMD ["/root/start.sh"]

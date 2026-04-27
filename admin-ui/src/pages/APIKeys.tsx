@@ -1,169 +1,195 @@
-import { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Empty, Alert, message } from 'antd';
+import { PlusOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type APIKey } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function APIKeys() {
-  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
+  const { t } = useTranslation(['apiKeys', 'common']);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [selectedUserId, setSelectedUserId] = useState(user?.id || '');
+  const [modalVisible, setModalVisible] = useState(false);
   const [createdKey, setCreatedKey] = useState<{ api_key_id: string; api_key: string } | null>(null);
+  const [newKeyName, setNewKeyName] = useState('');
 
-  useEffect(() => {
-    if (selectedUserId) {
-      loadAPIKeys();
-    }
-  }, [selectedUserId]);
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.getUsers(),
+  });
 
-  const loadAPIKeys = async () => {
-    try {
-      const data = await apiClient.getAPIKeys(selectedUserId);
-      setApiKeys(data);
-    } catch (error) {
-      console.error('Failed to load API keys:', error);
-    }
-  };
+  const { data: apiKeys = [], isLoading: keysLoading } = useQuery({
+    queryKey: ['apiKeys', selectedUserId],
+    queryFn: () => apiClient.getAPIKeys(selectedUserId),
+    enabled: !!selectedUserId,
+  });
 
-  const handleCreateAPIKey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const result = await apiClient.createAPIKey(selectedUserId, newKeyName);
+  const createMutation = useMutation({
+    mutationFn: ({ userId, name }: { userId: string; name: string }) => apiClient.createAPIKey(userId, name),
+    onSuccess: (result) => {
       setCreatedKey(result);
-      setShowCreateForm(false);
-      loadAPIKeys();
-    } catch (error) {
-      console.error('Failed to create API key:', error);
-    }
+      setModalVisible(false);
+      setNewKeyName('');
+      message.success('API key created successfully');
+      queryClient.invalidateQueries({ queryKey: ['apiKeys', selectedUserId] });
+    },
+    onError: () => {
+      message.error('Failed to create API key');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteAPIKey(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['apiKeys', selectedUserId] });
+      const previous = queryClient.getQueryData<APIKey[]>(['apiKeys', selectedUserId]);
+      queryClient.setQueryData<APIKey[]>(['apiKeys', selectedUserId], (old = []) => old.filter(k => k.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['apiKeys', selectedUserId], context.previous);
+      message.error('Failed to revoke API key');
+    },
+    onSuccess: () => {
+      message.success('API key revoked successfully');
+    },
+  });
+
+  const handleCopyKey = (key: string) => {
+    navigator.clipboard.writeText(key);
+    message.success(t('apiKeys:keyCopied'));
   };
 
-  const handleDeleteAPIKey = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this API key?')) return;
-    try {
-      await apiClient.deleteAPIKey(id);
-      loadAPIKeys();
-    } catch (error) {
-      console.error('Failed to delete API key:', error);
-    }
-  };
+  const columns = [
+    {
+      title: t('apiKeys:fields.name'),
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: t('apiKeys:fields.scopes'),
+      dataIndex: 'scopes',
+      key: 'scopes',
+      render: (scopes: string[]) => scopes.join(', '),
+    },
+    {
+      title: t('common:createdAt'),
+      dataIndex: 'created_at',
+      key: 'created_at',
+    },
+    {
+      title: t('apiKeys:fields.expiresAt'),
+      dataIndex: 'expires_at',
+      key: 'expires_at',
+      render: (expiresAt: string) => expiresAt ? new Date(expiresAt).toLocaleString() : 'Never',
+    },
+    {
+      title: t('common:actions'),
+      key: 'actions',
+      render: (_: any, record: APIKey) => (
+        <Popconfirm
+          title="Are you sure you want to revoke this API key?"
+          onConfirm={() => deleteMutation.mutate(record.id)}
+          okText="Yes"
+          cancelText="No"
+        >
+          <Button type="link" danger icon={<DeleteOutlined />}>
+            {t('common:delete')}
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
+  if (usersLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
+  }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">API Keys</h2>
+    <div>
+      <h2 style={{ marginBottom: 16 }}>{t('apiKeys:title')}</h2>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Select User</label>
-          <select
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-          >
-            <option value="">Select a user...</option>
-            {/* In a real app, you'd fetch users here */}
-            <option value="user-1">User 1</option>
-            <option value="user-2">User 2</option>
-          </select>
-        </div>
-
-        {selectedUserId && (
-          <>
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">API Keys for {selectedUserId}</h3>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
-                Issue API Key
-              </button>
-            </div>
-
-            {showCreateForm && (
-              <div className="bg-white shadow rounded-lg p-6">
-                <form onSubmit={handleCreateAPIKey} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Key Name</label>
-                    <input
-                      type="text"
-                      value={newKeyName}
-                      onChange={(e) => setNewKeyName(e.target.value)}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      required
-                    />
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      type="submit"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    >
-                      Create
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateForm(false)}
-                      className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {createdKey && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-medium text-yellow-800">API Key Created</h4>
-                <p className="text-sm text-yellow-700 mt-1">This key will only be shown once. Copy it now.</p>
-                <div className="mt-2 flex items-center space-x-2">
-                  <code className="bg-yellow-100 px-2 py-1 rounded text-sm">{createdKey.api_key}</code>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(createdKey.api_key);
-                      setCreatedKey(null);
-                    }}
-                    className="text-blue-600 hover:text-blue-800 text-sm"
-                  >
-                    Copy & Close
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scopes</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires At</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {apiKeys.map((key) => (
-                    <tr key={key.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{key.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{key.scopes.join(', ')}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(key.created_at).toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {key.expires_at ? new Date(key.expires_at).toLocaleString() : 'Never'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleDeleteAPIKey(key.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Revoke
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+      <div style={{ marginBottom: 16 }}>
+        <Select
+          style={{ width: 300 }}
+          placeholder={t('apiKeys:fields.user')}
+          value={selectedUserId}
+          onChange={setSelectedUserId}
+          options={users.map(user => ({ label: user.name, value: user.id }))}
+        />
       </div>
-    </Layout>
+
+      {selectedUserId && (
+        <>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+            <h3>API Keys for {users.find(u => u.id === selectedUserId)?.name}</h3>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
+              {t('apiKeys:addKey')}
+            </Button>
+          </div>
+
+          {createdKey && (
+            <Alert
+              type="success"
+              message={t('apiKeys:title')}
+              description={
+                <div>
+                  <p style={{ marginBottom: 8 }}>This key will only be shown once. Copy it now.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <code style={{ background: '#f6ffed', padding: '4px 8px', borderRadius: 4 }}>{createdKey.api_key}</code>
+                    <Button
+                      icon={<CopyOutlined />}
+                      onClick={() => handleCopyKey(createdKey.api_key)}
+                    >
+                      {t('apiKeys:copyKey')}
+                    </Button>
+                  </div>
+                </div>
+              }
+              closable
+              onClose={() => setCreatedKey(null)}
+              style={{ marginBottom: 16 }}
+            />
+          )}
+
+          <Table
+            dataSource={apiKeys}
+            columns={columns}
+            rowKey="id"
+            loading={keysLoading}
+            pagination={{ pageSize: 10 }}
+            locale={{ emptyText: <Empty description="No API keys found" /> }}
+          />
+        </>
+      )}
+
+      <Modal
+        title={t('apiKeys:addKey')}
+        open={modalVisible}
+        onOk={() => {
+          if (newKeyName) createMutation.mutate({ userId: selectedUserId, name: newKeyName });
+        }}
+        onCancel={() => {
+          setModalVisible(false);
+          setNewKeyName('');
+        }}
+        confirmLoading={createMutation.isPending}
+      >
+        <Form layout="vertical">
+          <Form.Item
+            label={t('apiKeys:fields.name')}
+            rules={[{ required: true, message: 'Please input key name' }]}
+          >
+            <Input
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="Production Key"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   );
 }

@@ -1,0 +1,9 @@
+{
+  "title": "健康状态",
+  "fields": {
+    "provider": "提供商",
+    "status": "状态",
+    "lastCheck": "最后检查",
+    "responseTime": "响应时间"
+  }
+}

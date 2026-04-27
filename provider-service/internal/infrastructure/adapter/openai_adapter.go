@@ -1,7 +1,6 @@
 package adapter
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"

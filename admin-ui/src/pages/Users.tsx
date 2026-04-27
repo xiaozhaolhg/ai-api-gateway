@@ -1,177 +1,240 @@
-import { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, message } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type User } from '../api/client';
 
 export default function Users() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newUser, setNewUser] = useState({
-    name: '',
-    email: '',
-    role: 'user',
-    status: 'active',
+  const { t } = useTranslation(['users', 'common']);
+  const queryClient = useQueryClient();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [form] = Form.useForm();
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.getUsers(),
   });
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<User, 'id' | 'created_at'>) => apiClient.createUser(data),
+    onMutate: async (newUser) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<User[]>(['users']);
+      queryClient.setQueryData<User[]>(['users'], (old = []) => [
+        ...old,
+        { ...newUser, id: `temp-${Date.now()}`, created_at: new Date().toISOString() } as User,
+      ]);
+      return { previous };
+    },
+    onError: (_err, _new, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      message.error('Failed to create user');
+    },
+    onSuccess: () => {
+      message.success('User created successfully');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
 
-  const loadUsers = async () => {
-    try {
-      const data = await apiClient.getUsers();
-      setUsers(data);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-    } finally {
-      setLoading(false);
-    }
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => apiClient.updateUser(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<User[]>(['users']);
+      queryClient.setQueryData<User[]>(['users'], (old = []) =>
+        old.map(u => u.id === id ? { ...u, ...data } : u)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      message.error('Failed to update user');
+    },
+    onSuccess: () => {
+      message.success('User updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteUser(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<User[]>(['users']);
+      queryClient.setQueryData<User[]>(['users'], (old = []) => old.filter(u => u.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      message.error('Failed to delete user');
+    },
+    onSuccess: () => {
+      message.success('User deleted successfully');
+    },
+  });
+
+  const handleAdd = () => {
+    setEditingUser(null);
+    form.resetFields();
+    setModalVisible(true);
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await apiClient.createUser(newUser);
-      setShowAddForm(false);
-      loadUsers();
-    } catch (error) {
-      console.error('Failed to create user:', error);
-    }
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    form.setFieldsValue(user);
+    setModalVisible(true);
   };
 
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
-    try {
-      await apiClient.deleteUser(id);
-      loadUsers();
-    } catch (error) {
-      console.error('Failed to delete user:', error);
+  const handleModalOk = async () => {
+    const values = await form.validateFields();
+
+    if (editingUser) {
+      updateMutation.mutate({ id: editingUser.id, data: values });
+    } else {
+      createMutation.mutate(values);
     }
+    setModalVisible(false);
   };
 
-  const handleDisableUser = async (id: string) => {
-    try {
-      await apiClient.updateUser(id, { status: 'disabled' });
-      loadUsers();
-    } catch (error) {
-      console.error('Failed to disable user:', error);
-    }
+  const handleModalCancel = () => {
+    setModalVisible(false);
+    form.resetFields();
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div>Loading...</div>
-      </Layout>
-    );
+  const columns = [
+    {
+      title: t('users:fields.name'),
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: t('users:fields.email'),
+      dataIndex: 'email',
+      key: 'email',
+    },
+    {
+      title: t('users:fields.role'),
+      dataIndex: 'role',
+      key: 'role',
+      render: (role: string) => (
+        <Tag color={role === 'admin' ? 'blue' : role === 'viewer' ? 'orange' : 'default'}>{role}</Tag>
+      ),
+    },
+    {
+      title: t('users:fields.status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
+      ),
+    },
+    {
+      title: t('common:createdAt'),
+      dataIndex: 'created_at',
+      key: 'created_at',
+    },
+    {
+      title: t('common:actions'),
+      key: 'actions',
+      render: (_: any, record: User) => (
+        <div>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
+            {t('common:edit')}
+          </Button>
+          <Popconfirm
+            title="Are you sure you want to delete this user?"
+            onConfirm={() => deleteMutation.mutate(record.id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              {t('common:delete')}
+            </Button>
+          </Popconfirm>
+        </div>
+      ),
+    },
+  ];
+
+  if (isLoading) {
+    return <Table loading={true} columns={columns} dataSource={[]} rowKey="id" />;
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Users</h2>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Add User
-          </button>
-        </div>
-
-        {showAddForm && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Role</label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  Create
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.role}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.status}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    {user.status === 'active' && (
-                      <button
-                        onClick={() => handleDisableUser(user.id)}
-                        className="text-yellow-600 hover:text-yellow-900"
-                      >
-                        Disable
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+        <h2>{t('users:title')}</h2>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          {t('users:addUser')}
+        </Button>
       </div>
-    </Layout>
+
+      {users.length === 0 ? (
+        <Empty description="No users found" />
+      ) : (
+        <Table
+          dataSource={users}
+          columns={columns}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+        />
+      )}
+
+      <Modal
+        title={editingUser ? t('users:editUser') : t('users:addUser')}
+        open={modalVisible}
+        onOk={handleModalOk}
+        onCancel={handleModalCancel}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
+        width={600}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            label={t('users:fields.name')}
+            name="name"
+            rules={[{ required: true, message: 'Please input user name' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            label={t('users:fields.email')}
+            name="email"
+            rules={[{ required: true, message: 'Please input email' }]}
+          >
+            <Input type="email" />
+          </Form.Item>
+
+          <Form.Item
+            label={t('users:fields.role')}
+            name="role"
+            rules={[{ required: true, message: 'Please select role' }]}
+          >
+            <Select>
+              <Select.Option value="user">User</Select.Option>
+              <Select.Option value="admin">Admin</Select.Option>
+              <Select.Option value="viewer">Viewer</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label={t('users:fields.status')}
+            name="status"
+            initialValue="active"
+          >
+            <Select>
+              <Select.Option value="active">Active</Select.Option>
+              <Select.Option value="inactive">Inactive</Select.Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   );
 }

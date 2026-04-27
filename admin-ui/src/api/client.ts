@@ -1,5 +1,8 @@
 // API client for admin endpoints
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { message } from 'antd';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const TOKEN_KEY = 'auth_token';
 
 export interface Provider {
   id: string;
@@ -34,11 +37,99 @@ export interface UsageRecord {
   id: string;
   user_id: string;
   model: string;
+  provider: string;
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
   cost: number;
   timestamp: string;
+}
+
+export interface RoutingRule {
+  id: string;
+  model_pattern: string;
+  provider: string;
+  adapter_type: string;
+  priority: number;
+  fallback_chain: string[];
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description: string;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Permission {
+  id: string;
+  group_id: string;
+  model_pattern: string;
+  effect: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Budget {
+  id: string;
+  name: string;
+  scope: string;
+  scope_id?: string;
+  limit: number;
+  current_spend: number;
+  period: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PricingRule {
+  id: string;
+  model: string;
+  provider: string;
+  prompt_price: number;
+  completion_price: number;
+  currency: string;
+  effective_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  metric: string;
+  condition: string;
+  threshold: number;
+  channel: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Alert {
+  id: string;
+  rule_id: string;
+  severity: string;
+  status: string;
+  triggered_at: string;
+  description: string;
+  acknowledged_at?: string;
+}
+
+export interface ProviderHealth {
+  id: string;
+  name: string;
+  status: string;
+  latency_ms: number;
+  error_rate: number;
+  last_check: string;
 }
 
 class APIClient {
@@ -48,24 +139,45 @@ class APIClient {
     this.baseURL = baseURL;
   }
 
+  private getAuthHeader(): Record<string, string> {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+    return {};
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    const authHeader = this.getAuthHeader();
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader,
+          ...options.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `API error: ${response.status} ${response.statusText}`;
+        message.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        message.error(error.message);
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   // Provider endpoints
@@ -120,13 +232,13 @@ class APIClient {
 
   // API Key endpoints
   async getAPIKeys(userId: string): Promise<APIKey[]> {
-    return this.request<APIKey[]>(`/admin/users/${userId}/api-keys`);
+    return this.request<APIKey[]>(`/admin/api-keys/${userId}`);
   }
 
   async createAPIKey(userId: string, name: string): Promise<{ api_key_id: string; api_key: string }> {
-    return this.request<{ api_key_id: string; api_key: string }>(`/admin/users/${userId}/api-keys`, {
+    return this.request<{ api_key_id: string; api_key: string }>('/admin/api-keys', {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ user_id: userId, name }),
     });
   }
 
@@ -145,6 +257,233 @@ class APIClient {
 
     const query = params.toString();
     return this.request<UsageRecord[]>(`/admin/usage${query ? `?${query}` : ''}`);
+  }
+
+  // Authentication endpoints
+  async login(emailOrUsername: string, password: string): Promise<{ token: string; user: User }> {
+    const url = `${this.baseURL}/admin/auth/login`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: emailOrUsername, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.message || `API error: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  }
+
+  async register(name: string, username: string, email: string, password: string): Promise<{ token: string; user: User }> {
+    const url = `${this.baseURL}/admin/auth/register`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, username, email, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || `API error: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  }
+
+  async logout(): Promise<void> {
+    await this.request<void>('/admin/auth/logout', {
+      method: 'POST',
+    });
+  }
+
+  async getCurrentUser(): Promise<User> {
+    return this.request<User>('/admin/auth/me');
+  }
+
+  // Routing rule endpoints
+  async getRoutingRules(): Promise<RoutingRule[]> {
+    return this.request<RoutingRule[]>('/admin/routing-rules');
+  }
+
+  async createRoutingRule(rule: Omit<RoutingRule, 'id' | 'created_at' | 'updated_at'>): Promise<RoutingRule> {
+    return this.request<RoutingRule>('/admin/routing-rules', {
+      method: 'POST',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  async updateRoutingRule(id: string, rule: Partial<RoutingRule>): Promise<RoutingRule> {
+    return this.request<RoutingRule>(`/admin/routing-rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  async deleteRoutingRule(id: string): Promise<void> {
+    await this.request<void>(`/admin/routing-rules/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Group endpoints
+  async getGroups(): Promise<Group[]> {
+    return this.request<Group[]>('/admin/groups');
+  }
+
+  async createGroup(group: Omit<Group, 'id' | 'created_at' | 'updated_at' | 'member_count'>): Promise<Group> {
+    return this.request<Group>('/admin/groups', {
+      method: 'POST',
+      body: JSON.stringify(group),
+    });
+  }
+
+  async updateGroup(id: string, group: Partial<Group>): Promise<Group> {
+    return this.request<Group>(`/admin/groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(group),
+    });
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    await this.request<void>(`/admin/groups/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addGroupMember(groupId: string, userId: string): Promise<void> {
+    await this.request<void>(`/admin/groups/${groupId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    });
+  }
+
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    await this.request<void>(`/admin/groups/${groupId}/members/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Permission endpoints
+  async getPermissions(): Promise<Permission[]> {
+    return this.request<Permission[]>('/admin/permissions');
+  }
+
+  async createPermission(permission: Omit<Permission, 'id' | 'created_at' | 'updated_at'>): Promise<Permission> {
+    return this.request<Permission>('/admin/permissions', {
+      method: 'POST',
+      body: JSON.stringify(permission),
+    });
+  }
+
+  async updatePermission(id: string, permission: Partial<Permission>): Promise<Permission> {
+    return this.request<Permission>(`/admin/permissions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(permission),
+    });
+  }
+
+  async deletePermission(id: string): Promise<void> {
+    await this.request<void>(`/admin/permissions/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Budget endpoints
+  async getBudgets(): Promise<Budget[]> {
+    return this.request<Budget[]>('/admin/budgets');
+  }
+
+  async createBudget(budget: Omit<Budget, 'id' | 'created_at' | 'updated_at' | 'current_spend'>): Promise<Budget> {
+    return this.request<Budget>('/admin/budgets', {
+      method: 'POST',
+      body: JSON.stringify(budget),
+    });
+  }
+
+  async updateBudget(id: string, budget: Partial<Budget>): Promise<Budget> {
+    return this.request<Budget>(`/admin/budgets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(budget),
+    });
+  }
+
+  async deleteBudget(id: string): Promise<void> {
+    await this.request<void>(`/admin/budgets/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Pricing rule endpoints
+  async getPricingRules(): Promise<PricingRule[]> {
+    return this.request<PricingRule[]>('/admin/pricing-rules');
+  }
+
+  async createPricingRule(rule: Omit<PricingRule, 'id' | 'created_at' | 'updated_at'>): Promise<PricingRule> {
+    return this.request<PricingRule>('/admin/pricing-rules', {
+      method: 'POST',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  async updatePricingRule(id: string, rule: Partial<PricingRule>): Promise<PricingRule> {
+    return this.request<PricingRule>(`/admin/pricing-rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  async deletePricingRule(id: string): Promise<void> {
+    await this.request<void>(`/admin/pricing-rules/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Alert endpoints
+  async getAlertRules(): Promise<AlertRule[]> {
+    return this.request<AlertRule[]>('/admin/alert-rules');
+  }
+
+  async createAlertRule(rule: Omit<AlertRule, 'id' | 'created_at' | 'updated_at'>): Promise<AlertRule> {
+    return this.request<AlertRule>('/admin/alert-rules', {
+      method: 'POST',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  async updateAlertRule(id: string, rule: Partial<AlertRule>): Promise<AlertRule> {
+    return this.request<AlertRule>(`/admin/alert-rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(rule),
+    });
+  }
+
+  async deleteAlertRule(id: string): Promise<void> {
+    await this.request<void>(`/admin/alert-rules/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAlerts(): Promise<Alert[]> {
+    return this.request<Alert[]>('/admin/alerts');
+  }
+
+  async acknowledgeAlert(id: string): Promise<void> {
+    await this.request<void>(`/admin/alerts/${id}/acknowledge`, {
+      method: 'PUT',
+    });
+  }
+
+  // Health endpoint
+  async getProviderHealth(): Promise<ProviderHealth[]> {
+    return this.request<ProviderHealth[]>('/admin/health');
   }
 }
 

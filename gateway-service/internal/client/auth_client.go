@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ai-api-gateway/api/gen/auth/v1"
 	"google.golang.org/grpc"
@@ -197,6 +196,24 @@ func (c *AuthClient) ListAPIKeys(ctx context.Context, userID string, page, pageS
 	resp, err := c.client.ListAPIKeys(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list API keys: %w", err)
+	}
+
+	return resp, nil
+}
+
+// Register creates a new user account
+func (c *AuthClient) Register(ctx context.Context, username, email, name, password, role string) (*authv1.RegisterResponse, error) {
+	req := &authv1.RegisterRequest{
+		Username: username,
+		Email:    email,
+		Name:     name,
+		Password: password,
+		Role:     role,
+	}
+
+	resp, err := c.client.Register(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register: %w", err)
 	}
 
 	return resp, nil

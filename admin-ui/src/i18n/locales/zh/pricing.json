@@ -1,0 +1,14 @@
+{
+  "title": "定价规则",
+  "addRule": "添加定价规则",
+  "editRule": "编辑定价规则",
+  "deleteRule": "删除定价规则",
+  "fields": {
+    "model": "模型",
+    "provider": "提供商",
+    "promptPrice": "提示价格",
+    "completionPrice": "完成价格",
+    "currency": "货币",
+    "effectiveDate": "生效日期"
+  }
+}

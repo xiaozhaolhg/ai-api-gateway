@@ -1,0 +1,14 @@
+{
+  "title": "Groups",
+  "addGroup": "Add Group",
+  "editGroup": "Edit Group",
+  "deleteGroup": "Delete Group",
+  "fields": {
+    "name": "Group Name",
+    "description": "Description",
+    "memberCount": "Member Count"
+  },
+  "members": "Members",
+  "addMember": "Add Member",
+  "removeMember": "Remove Member"
+}
