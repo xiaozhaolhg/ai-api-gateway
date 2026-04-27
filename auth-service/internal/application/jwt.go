@@ -37,7 +37,7 @@ func ValidateJWT(tokenString string) (*JWTClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte("your-secret-key"), nil
+		return []byte("your-secret-key-change-in-production"), nil
 	})
 	if err != nil {
 		return nil, err
