@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
 )
 
@@ -103,7 +104,7 @@ func TestOllamaAdapter_TransformRequest_WithMaxTokens(t *testing.T) {
 	var ollamaReq map[string]interface{}
 	json.Unmarshal(transformed, &ollamaReq)
 
-	if ollamaReq["num_predict"] != 100 {
+	if int(ollamaReq["num_predict"].(float64)) != 100 {
 		t.Errorf("Expected num_predict 100, got %v", ollamaReq["num_predict"])
 	}
 }
@@ -146,18 +147,32 @@ func TestOllamaAdapter_TransformResponse(t *testing.T) {
 
 	// Create a sample Ollama format response
 	ollamaResp := map[string]interface{}{
-		"model": "llama2",
-		"response": "Hello! How can I help you today?",
-		"done": true,
+		"model":             "llama2",
+		"response":          "Hello! How can I help you today?",
+		"done":              true,
 		"prompt_eval_count": 10,
-		"eval_count": 20,
+		"eval_count":        20,
 	}
 
 	responseJSON, _ := json.Marshal(ollamaResp)
 
-	transformed, err := adapter.TransformResponse(responseJSON)
+	transformed, tokenCounts, isFinal, err := adapter.TransformResponse(responseJSON, false, entity.TokenCounts{})
 	if err != nil {
 		t.Errorf("TransformResponse() error = %v", err)
+	}
+
+	// Should be final for non-streaming
+	if !isFinal {
+		t.Error("Expected isFinal to be true for non-streaming")
+	}
+
+	// Check token counts
+	if tokenCounts.PromptTokens != 10 {
+		t.Errorf("Expected prompt tokens 10, got %d", tokenCounts.PromptTokens)
+	}
+
+	if tokenCounts.CompletionTokens != 20 {
+		t.Errorf("Expected completion tokens 20, got %d", tokenCounts.CompletionTokens)
 	}
 
 	// Parse the transformed response
@@ -185,15 +200,15 @@ func TestOllamaAdapter_TransformResponse(t *testing.T) {
 		t.Error("Expected usage object")
 	}
 
-	if usage["prompt_tokens"] != int64(10) {
+	if int64(usage["prompt_tokens"].(float64)) != 10 {
 		t.Errorf("Expected prompt_tokens 10, got %v", usage["prompt_tokens"])
 	}
 
-	if usage["completion_tokens"] != int64(20) {
+	if int64(usage["completion_tokens"].(float64)) != 20 {
 		t.Errorf("Expected completion_tokens 20, got %v", usage["completion_tokens"])
 	}
 
-	if usage["total_tokens"] != int64(30) {
+	if int64(usage["total_tokens"].(float64)) != 30 {
 		t.Errorf("Expected total_tokens 30, got %v", usage["total_tokens"])
 	}
 }
@@ -202,17 +217,22 @@ func TestOllamaAdapter_TransformResponse_NotDone(t *testing.T) {
 	adapter := NewOllamaAdapter()
 
 	ollamaResp := map[string]interface{}{
-		"model": "llama2",
-		"response": "Hello!",
-		"done": false,
-		"prompt_eval_count": 5,
-		"eval_count": 10,
+		"model":             "llama2",
+		"response":          "Hello! How can I help you today?",
+		"done":              false,
+		"prompt_eval_count": 10,
+		"eval_count":        20,
 	}
 
 	responseJSON, _ := json.Marshal(ollamaResp)
-	transformed, err := adapter.TransformResponse(responseJSON)
+	transformed, _, isFinal, err := adapter.TransformResponse(responseJSON, false, entity.TokenCounts{})
 	if err != nil {
 		t.Errorf("TransformResponse() error = %v", err)
+	}
+
+	// Should still be final for non-streaming even if done=false
+	if !isFinal {
+		t.Error("Expected isFinal to be true for non-streaming response")
 	}
 
 	var openAIResp map[string]interface{}
@@ -232,11 +252,11 @@ func TestOllamaAdapter_CountTokens_WithResponse(t *testing.T) {
 
 	response := map[string]interface{}{
 		"prompt_eval_count": 15,
-		"eval_count": 25,
+		"eval_count":        25,
 	}
 	responseJSON, _ := json.Marshal(response)
 
-	reqTokens, respTokens, err := adapter.CountTokens([]byte("request"), responseJSON)
+	reqTokens, respTokens, err := adapter.CountTokens([]byte("request"), responseJSON, false)
 	if err != nil {
 		t.Errorf("CountTokens() error = %v", err)
 	}
@@ -256,7 +276,7 @@ func TestOllamaAdapter_CountTokens_Fallback(t *testing.T) {
 	request := []byte("This is a test request")
 	response := []byte("This is a test response")
 
-	reqTokens, respTokens, err := adapter.CountTokens(request, response)
+	reqTokens, respTokens, err := adapter.CountTokens(request, response, false)
 	if err != nil {
 		t.Errorf("CountTokens() error = %v", err)
 	}
@@ -317,7 +337,7 @@ func TestOllamaAdapter_InvalidResponse(t *testing.T) {
 	adapter := NewOllamaAdapter()
 
 	invalidJSON := []byte("invalid json")
-	_, err := adapter.TransformResponse(invalidJSON)
+	_, _, _, err := adapter.TransformResponse(invalidJSON, false, entity.TokenCounts{})
 	if err == nil {
 		t.Error("Expected error for invalid JSON, got nil")
 	}

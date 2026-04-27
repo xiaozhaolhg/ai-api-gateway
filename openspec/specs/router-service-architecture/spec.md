@@ -13,6 +13,10 @@ The router-service SHALL implement four-layer Clean Architecture: Domain, Applic
 - **WHEN** a new routing strategy is needed
 - **THEN** it SHALL be implemented by creating a struct that implements the Router interface defined in the domain layer
 
+#### Scenario: Router interface definition
+- **WHEN** the Router interface is used
+- **THEN** it SHALL define methods: ResolveRoute, CreateRoutingRule, UpdateRoutingRule, DeleteRoutingRule, ListRoutingRules, RefreshRoutingTable
+
 #### Scenario: Handler is gRPC server
 - **WHEN** the router-service starts
 - **THEN** it SHALL listen on a gRPC port (not HTTP) and serve RouterService RPCs
@@ -29,13 +33,33 @@ The router-service SHALL resolve model names to provider identifiers via gRPC ca
 - **WHEN** a ResolveRoute request is received with a model that has no matching routing rule
 - **THEN** the router SHALL return a NOT_FOUND gRPC error
 
-### Requirement: RoutingRule entity and repository
-The router-service SHALL own the RoutingRule entity with fields: id, model_pattern, provider_id, priority, fallback_provider_id. It SHALL provide a RoutingRuleRepository interface for CRUD operations.
+### Requirement: RoutingRule and RouteResult entities
+The router-service SHALL own the RoutingRule entity with fields: id, model_pattern, provider_id, priority, fallback_provider_id. It SHALL provide a RoutingRuleRepository interface for CRUD operations. It SHALL also define a RouteResult entity with fields: provider_id, adapter_type for route resolution responses.
 
 #### Scenario: Create routing rule
 - **WHEN** a CreateRoutingRule request is received via gRPC
 - **THEN** the service SHALL persist a new RoutingRule to SQLite
 - **AND** return the created rule with generated id
+
+#### Scenario: Update routing rule
+- **WHEN** an UpdateRoutingRule request is received with rule id
+- **THEN** the service SHALL update the existing RoutingRule in SQLite
+- **AND** return the updated rule
+
+#### Scenario: Delete routing rule
+- **WHEN** a DeleteRoutingRule request is received with rule id
+- **THEN** the service SHALL delete the RoutingRule from SQLite
+- **AND** invalidate any cached routes matching this pattern
+
+#### Scenario: List routing rules
+- **WHEN** a ListRoutingRules request is received with page and pageSize
+- **THEN** the service SHALL return a paginated list of RoutingRules ordered by priority
+- **AND** return the total count of all rules
+
+#### Scenario: Refresh routing table
+- **WHEN** a RefreshRoutingTable request is received
+- **THEN** the service SHALL invalidate the routing table cache
+- **AND** ensure subsequent ResolveRoute calls use fresh data
 
 #### Scenario: Model pattern matching
 - **WHEN** a model name is matched against routing rules

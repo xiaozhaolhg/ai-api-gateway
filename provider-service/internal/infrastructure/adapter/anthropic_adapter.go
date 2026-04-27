@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
 )
 
@@ -29,6 +31,10 @@ func (a *AnthropicAdapter) TransformRequest(request []byte, headers map[string]s
 
 	if err := json.Unmarshal(request, &openAIReq); err != nil {
 		return nil, nil, fmt.Errorf("invalid OpenAI request format: %w", err)
+	}
+
+	if openAIReq.Model == "" {
+		return nil, nil, fmt.Errorf("model field is required")
 	}
 
 	// Transform to Anthropic format
@@ -59,8 +65,27 @@ func (a *AnthropicAdapter) TransformRequest(request []byte, headers map[string]s
 	return transformedRequest, transformedHeaders, nil
 }
 
-// TransformResponse transforms Anthropic format response back to OpenAI format
-func (a *AnthropicAdapter) TransformResponse(response []byte) ([]byte, error) {
+// TransformResponse transforms Anthropic format response back to OpenAI format.
+//
+// For non-streaming (isStreaming=false):
+//   - Transforms complete Anthropic response to OpenAI format
+//   - Extracts token counts from usage data
+//
+// For streaming (isStreaming=true):
+//   - Parses Anthropic SSE chunk format
+//   - Transforms content_block_delta events to OpenAI delta format
+//   - Detects message_stop event for final chunk
+//   - Accumulates token counts during streaming
+func (a *AnthropicAdapter) TransformResponse(response []byte, isStreaming bool, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
+	if !isStreaming {
+		return a.transformNonStreamingResponse(response, accumulatedTokens)
+	}
+
+	return a.transformStreamingChunk(response, accumulatedTokens)
+}
+
+// transformNonStreamingResponse handles non-streaming response transformation
+func (a *AnthropicAdapter) transformNonStreamingResponse(response []byte, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
 	// Parse Anthropic format response
 	var anthropicResp struct {
 		ID      string `json:"id"`
@@ -78,7 +103,7 @@ func (a *AnthropicAdapter) TransformResponse(response []byte) ([]byte, error) {
 	}
 
 	if err := json.Unmarshal(response, &anthropicResp); err != nil {
-		return nil, fmt.Errorf("invalid Anthropic response format: %w", err)
+		return nil, accumulatedTokens, false, fmt.Errorf("invalid Anthropic response format: %w", err)
 	}
 
 	// Transform to OpenAI format
@@ -106,31 +131,236 @@ func (a *AnthropicAdapter) TransformResponse(response []byte) ([]byte, error) {
 
 	transformedResponse, err := json.Marshal(openAIResp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal OpenAI response: %w", err)
+		return nil, accumulatedTokens, false, fmt.Errorf("failed to marshal OpenAI response: %w", err)
 	}
 
-	return transformedResponse, nil
+	tokenCounts := entity.TokenCounts{
+		PromptTokens:      anthropicResp.Usage.InputTokens,
+		CompletionTokens:  anthropicResp.Usage.OutputTokens,
+		AccumulatedTokens: anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens,
+	}
+
+	return transformedResponse, tokenCounts, true, nil
 }
 
-// CountTokens counts tokens in the request/response
-func (a *AnthropicAdapter) CountTokens(request []byte, response []byte) (int64, int64, error) {
-	// Try to extract from response if available
-	var resp struct {
+// transformStreamingChunk handles streaming SSE chunk transformation
+func (a *AnthropicAdapter) transformStreamingChunk(chunk []byte, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
+	// Check for message_stop event (final chunk indicator in Anthropic)
+	if bytes.Contains(chunk, []byte("event: message_stop")) {
+		return chunk, accumulatedTokens, true, nil
+	}
+
+	// Parse SSE data line
+	data, err := a.parseSSEData(chunk)
+	if err != nil {
+		// If parsing fails, return chunk as-is
+		return chunk, accumulatedTokens, false, nil
+	}
+
+	// Try to parse the event type
+	if eventType, ok := a.extractSSEEventType(chunk); ok {
+		switch eventType {
+		case "content_block_delta":
+			return a.transformContentBlockDelta(data, accumulatedTokens)
+		case "message_delta":
+			// Message delta contains usage data in some Anthropic versions
+			return a.transformMessageDelta(data, accumulatedTokens)
+		default:
+			// Other events pass through or get transformed
+			return chunk, accumulatedTokens, false, nil
+		}
+	}
+
+	// If no event type, try to parse as JSON
+	var event map[string]interface{}
+	if err := json.Unmarshal(data, &event); err != nil {
+		return chunk, accumulatedTokens, false, nil
+	}
+
+	// Accumulate content length
+	contentLength := len(data)
+	accumulatedTokens.AccumulatedTokens += int64(contentLength / 4)
+
+	return chunk, accumulatedTokens, false, nil
+}
+
+// transformContentBlockDelta transforms Anthropic content_block_delta to OpenAI delta format
+func (a *AnthropicAdapter) transformContentBlockDelta(data []byte, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
+	var delta struct {
+		Type  string `json:"type"`
+		Index int    `json:"index"`
+		Delta struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"delta"`
+	}
+
+	if err := json.Unmarshal(data, &delta); err != nil {
+		// Return as-is if parsing fails
+		return []byte("data: " + string(data) + "\n\n"), accumulatedTokens, false, nil
+	}
+
+	// Transform to OpenAI streaming format
+	openAIChunk := map[string]interface{}{
+		"id":      "chatcmpl-anthropic",
+		"object":  "chat.completion.chunk",
+		"created": 0,
+		"model":   "claude-model",
+		"choices": []map[string]interface{}{
+			{
+				"index": delta.Index,
+				"delta": map[string]interface{}{
+					"content": delta.Delta.Text,
+				},
+				"finish_reason": nil,
+			},
+		},
+	}
+
+	transformed, err := json.Marshal(openAIChunk)
+	if err != nil {
+		return []byte("data: " + string(data) + "\n\n"), accumulatedTokens, false, nil
+	}
+
+	// Accumulate token count based on content
+	accumulatedTokens.AccumulatedTokens += int64(len(delta.Delta.Text) / 4)
+
+	return []byte("data: " + string(transformed) + "\n\n"), accumulatedTokens, false, nil
+}
+
+// transformMessageDelta transforms Anthropic message_delta to OpenAI format with usage
+func (a *AnthropicAdapter) transformMessageDelta(data []byte, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
+	var delta struct {
+		Type  string `json:"type"`
+		Delta struct {
+			StopReason   *string `json:"stop_reason"`
+			Usage        struct {
+				OutputTokens int64 `json:"output_tokens"`
+			} `json:"usage"`
+		} `json:"delta"`
 		Usage struct {
-			InputTokens  int64 `json:"input_tokens"`
 			OutputTokens int64 `json:"output_tokens"`
 		} `json:"usage"`
 	}
 
-	if err := json.Unmarshal(response, &resp); err == nil {
-		return resp.Usage.InputTokens, resp.Usage.OutputTokens, nil
+	if err := json.Unmarshal(data, &delta); err != nil {
+		return []byte("data: " + string(data) + "\n\n"), accumulatedTokens, false, nil
 	}
 
-	// Fallback to estimation
-	promptTokens := int64(len(request) / 4)
-	completionTokens := int64(len(response) / 4)
+	// Update token counts if available
+	if delta.Usage.OutputTokens > 0 {
+		accumulatedTokens.CompletionTokens = delta.Usage.OutputTokens
+		accumulatedTokens.AccumulatedTokens = accumulatedTokens.PromptTokens + accumulatedTokens.CompletionTokens
+	}
 
-	return promptTokens, completionTokens, nil
+	// Transform to OpenAI format with finish_reason
+	openAIChunk := map[string]interface{}{
+		"id":      "chatcmpl-anthropic",
+		"object":  "chat.completion.chunk",
+		"created": 0,
+		"model":   "claude-model",
+		"choices": []map[string]interface{}{
+			{
+				"index":         0,
+				"delta":         map[string]interface{}{},
+				"finish_reason": a.convertStopReason(delta.Delta.StopReason),
+			},
+		},
+	}
+
+	transformed, err := json.Marshal(openAIChunk)
+	if err != nil {
+		return []byte("data: " + string(data) + "\n\n"), accumulatedTokens, false, nil
+	}
+
+	return []byte("data: " + string(transformed) + "\n\n"), accumulatedTokens, false, nil
+}
+
+// extractSSEEventType extracts the event type from SSE format
+func (a *AnthropicAdapter) extractSSEEventType(chunk []byte) (string, bool) {
+	chunkStr := string(chunk)
+	
+	// Look for "event: " prefix
+	const eventPrefix = "event: "
+	if idx := strings.Index(chunkStr, eventPrefix); idx != -1 {
+		// Extract event type
+		eventStart := idx + len(eventPrefix)
+		eventEnd := strings.Index(chunkStr[eventStart:], "\n")
+		if eventEnd == -1 {
+			eventEnd = len(chunkStr) - eventStart
+		}
+		return strings.TrimSpace(chunkStr[eventStart : eventStart+eventEnd]), true
+	}
+	
+	return "", false
+}
+
+// CountTokens counts tokens in the request/response.
+//
+// For non-streaming (isStreaming=false):
+//   - Returns actual token counts from response usage field if available
+//   - Falls back to character-based estimation
+//
+// For streaming (isStreaming=true):
+//   - Returns (0, 0) for intermediate chunks
+//   - Returns actual counts for final chunk
+//   - May estimate tokens if usage data not available
+func (a *AnthropicAdapter) CountTokens(request []byte, response []byte, isStreaming bool) (int64, int64, error) {
+	if !isStreaming {
+		// Try to extract from response if available
+		var resp struct {
+			Usage struct {
+				InputTokens  int64 `json:"input_tokens"`
+				OutputTokens int64 `json:"output_tokens"`
+			} `json:"usage"`
+		}
+
+		if err := json.Unmarshal(response, &resp); err == nil {
+			return resp.Usage.InputTokens, resp.Usage.OutputTokens, nil
+		}
+
+		// Fallback to estimation
+		promptTokens := int64(len(request) / 4)
+		completionTokens := int64(len(response) / 4)
+		return promptTokens, completionTokens, nil
+	}
+
+	// Streaming: check for final chunk with usage data
+	if bytes.Contains(response, []byte("event: message_stop")) {
+		// Final chunk - extract any usage data if present
+		var resp struct {
+			Usage struct {
+				OutputTokens int64 `json:"output_tokens"`
+			} `json:"usage"`
+		}
+		if err := json.Unmarshal(response, &resp); err == nil {
+			return 0, resp.Usage.OutputTokens, nil
+		}
+		return 0, 0, nil
+	}
+
+	// Intermediate chunk: return 0, 0
+	return 0, 0, nil
+}
+
+// parseSSEData extracts JSON data from SSE format (data: {...})
+func (a *AnthropicAdapter) parseSSEData(chunk []byte) ([]byte, error) {
+	chunkStr := string(chunk)
+
+	// Look for "data: " prefix
+	const dataPrefix = "data: "
+	if idx := strings.Index(chunkStr, dataPrefix); idx != -1 {
+		dataStart := idx + len(dataPrefix)
+		// Find end of data (next newline or end of string)
+		dataEnd := strings.Index(chunkStr[dataStart:], "\n")
+		if dataEnd == -1 {
+			dataEnd = len(chunkStr) - dataStart
+		}
+		data := strings.TrimSpace(chunkStr[dataStart : dataStart+dataEnd])
+		return []byte(data), nil
+	}
+
+	return nil, fmt.Errorf("not a valid SSE data line")
 }
 
 // convertModelName converts OpenAI model names to Anthropic model names
