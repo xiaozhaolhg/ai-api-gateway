@@ -7,10 +7,11 @@ import (
 
 func TestGenerateJWT(t *testing.T) {
 	userID := "usr_test123"
+	name := "Test User"
 	email := "test@example.com"
 	role := "admin"
 
-	token, err := GenerateJWT(userID, email, role, 24*time.Hour)
+	token, err := GenerateJWT(userID, name, email, role, 24*time.Hour)
 	if err != nil {
 		t.Fatalf("GenerateJWT failed: %v", err)
 	}
@@ -21,10 +22,11 @@ func TestGenerateJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	userID := "usr_test123"
+	name := "Test User"
 	email := "test@example.com"
 	role := "admin"
 
-	token, err := GenerateJWT(userID, email, role, 24*time.Hour)
+	token, err := GenerateJWT(userID, name, email, role, 24*time.Hour)
 	if err != nil {
 		t.Fatalf("GenerateJWT failed: %v", err)
 	}
@@ -46,8 +48,7 @@ func TestValidateJWT_Invalid(t *testing.T) {
 }
 
 func TestValidateJWT_Expired(t *testing.T) {
-	userID := "usr_test123"
-	token, _ := GenerateJWT(userID, "test@example.com", "admin", -1*time.Hour)
+	token, _ := GenerateJWT("usr_test123", "Test User", "test@example.com", "admin", -1*time.Hour)
 
 	_, err := ValidateJWT(token)
 	if err == nil {

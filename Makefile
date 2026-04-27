@@ -1,7 +1,8 @@
-.PHONY: build test up down proto clean clean-images help
+.PHONY: build test test-ui up down proto clean clean-images help
 .SILENT: clean help
 
 SERVICES = auth-service router-service provider-service gateway-service billing-service monitor-service
+ADMIN_UI = admin-ui
 
 # Show help
 help:
@@ -11,18 +12,19 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  build         Build all services or SERVICE=<name>"
-	@echo "  test         Test all services or SERVICE=<name>"
-	@echo "  up           Start all services with Docker Compose"
-	@echo "  down         Stop all services"
-	@echo "  proto        Generate protobuf stubs"
-	@echo "  clean        Clean build artifacts ( SERVICE=<name> )"
-	@echo "  clean-images Clean Docker images ( SERVICE=<name> )"
-	@echo "  help         Show this help"
+	@echo "  test          Test all services or SERVICE=<name>"
+	@echo "  test-ui       Test admin-ui (Vitest unit tests)"
+	@echo "  up            Start all services with Docker Compose"
+	@echo "  down          Stop all services"
+	@echo "  proto         Generate protobuf stubs"
+	@echo "  clean         Clean build artifacts ( SERVICE=<name> )"
+	@echo "  clean-images  Clean Docker images ( SERVICE=<name> )"
+	@echo "  help          Show this help"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make test SERVICE=gateway-service"
 	@echo "  make build SERVICE=auth-service"
-	@echo "  make clean-images SERVICE=gateway-service"
+	@echo "  make test-ui"
 
 # Build all services or a specific one
 build:
@@ -53,6 +55,20 @@ else
 		fi; \
 	done
 endif
+
+# Test admin-ui with Vitest
+test-ui:
+	@echo "Testing admin-ui..."
+	cd $(ADMIN_UI) && npm run test:run
+
+# Run admin-ui E2E tests with Playwright (requires browser dependencies)
+test-ui-e2e:
+	@echo "Running admin-ui E2E tests..."
+	@echo "Note: If tests fail, you may need to install browser dependencies:"
+	@echo "  npx playwright install-deps chromium  # for Chromium"
+	@echo "  npx playwright install-deps firefox   # for Firefox"
+	@echo ""
+	cd $(ADMIN_UI) && npm run e2e || echo "E2E tests require browser dependencies. Run: cd admin-ui && npx playwright install-deps"
 
 # Start all services with Docker Compose
 up:

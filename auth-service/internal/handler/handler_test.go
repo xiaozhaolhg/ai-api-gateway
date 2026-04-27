@@ -64,6 +64,15 @@ func (m *mockUserRepository) GetByEmail(email string) (*entity.User, error) {
 	return nil, gorm.ErrRecordNotFound
 }
 
+func (m *mockUserRepository) GetByUsername(username string) (*entity.User, error) {
+	for _, user := range m.users {
+		if user.Username == username {
+			return user, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
 // MockAPIKeyRepository for testing
 type mockAPIKeyRepository struct {
 	apiKeys map[string]*entity.APIKey
