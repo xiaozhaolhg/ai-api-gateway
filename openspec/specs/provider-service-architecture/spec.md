@@ -16,6 +16,18 @@ The provider-service SHALL implement four-layer Clean Architecture: Domain, Appl
 ### Requirement: Provider entity and repository
 The provider-service SHALL own the Provider entity with fields: id, name, type, base_url, credentials (encrypted), models, status, created_at, updated_at. It SHALL provide a ProviderRepository interface for CRUD operations.
 
+### Requirement: StreamingResult and TokenCounts entities
+The provider-service SHALL define `StreamingResult` and `TokenCounts` entities in the domain layer for streaming response handling and token accumulation.
+
+#### Scenario: TokenCounts entity structure
+- **WHEN** the TokenCounts entity is used
+- **THEN** it SHALL contain fields: PromptTokens, CompletionTokens, AccumulatedTokens
+- **AND** it SHALL provide a Total() method that returns the accumulated or computed total
+
+#### Scenario: StreamingResult entity structure  
+- **WHEN** the StreamingResult entity is used
+- **THEN** it SHALL contain fields: TransformedData []byte, TokenCounts TokenCounts, IsFinal bool
+
 #### Scenario: Create provider
 - **WHEN** a CreateProvider request is received via gRPC
 - **THEN** the service SHALL encrypt credentials with AES-256-GCM, persist the Provider to SQLite, and return the Provider (with credentials redacted)
@@ -25,15 +37,28 @@ The provider-service SHALL own the Provider entity with fields: id, name, type, 
 - **THEN** the service SHALL return all providers with credentials redacted
 
 ### Requirement: Provider adapter interface
-The provider-service SHALL define a ProviderAdapter interface in the domain layer with methods: TransformRequest, TransformResponse, StreamResponse, CountTokens.
+The provider-service SHALL define a ProviderAdapter interface in the domain layer with methods: TransformRequest, TransformResponse, CountTokens. The TransformResponse method SHALL support both streaming and non-streaming via a unified interface with `isStreaming` flag.
+
+#### Scenario: Unified TransformResponse interface
+- **WHEN** TransformResponse is called with `isStreaming=false`
+- **THEN** the adapter SHALL process the complete response body and return (transformedData, tokenCounts, isFinal=true, error)
+- **WHEN** TransformResponse is called with `isStreaming=true`
+- **THEN** the adapter SHALL process a single SSE chunk and return (transformedChunk, updatedTokenCounts, isFinal, error)
+
+#### Scenario: Token accumulation during streaming
+- **WHEN** streaming chunks are processed
+- **THEN** the adapter SHALL accumulate token counts progressively via the `accumulatedTokens` parameter
+- **AND** the final chunk SHALL contain the complete token counts
 
 #### Scenario: OpenAI-compatible adapter
 - **WHEN** a request is forwarded to an OpenAI-type provider
 - **THEN** the OpenAI adapter SHALL pass the request through (already in OpenAI format) and parse the response
+- **AND** for streaming, the adapter SHALL detect the `[DONE]` marker for final chunk identification
 
 #### Scenario: Anthropic adapter
 - **WHEN** a request is forwarded to an Anthropic-type provider
 - **THEN** the Anthropic adapter SHALL transform the request to Anthropic format and parse the Anthropic response back to OpenAI format
+- **AND** for streaming, the adapter SHALL detect the `message_stop` event for final chunk identification
 
 #### Scenario: Ollama adapter
 - **WHEN** a request is forwarded to an Ollama-type provider

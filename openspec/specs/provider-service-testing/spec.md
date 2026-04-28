@@ -13,6 +13,15 @@ The provider-service SHALL have unit tests for domain layer components with no e
 - **WHEN** unit tests run for ProviderAdapter interface
 - **THEN** mock implementations SHALL verify request/response transformation contracts
 
+#### Scenario: SSE streaming tests
+- **WHEN** unit tests run for streaming adapters
+- **THEN** the tests SHALL verify SSE chunk parsing, token accumulation, and final chunk detection
+
+#### Scenario: Token accumulation tests
+- **WHEN** streaming chunks are processed in tests
+- **THEN** the tests SHALL verify that token counts accumulate correctly across chunks
+- **AND** the final chunk SHALL contain accurate total token counts
+
 ### Requirement: Adapter integration tests
 The provider-service SHALL have integration tests that verify provider adapters work with their respective APIs.
 

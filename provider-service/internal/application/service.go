@@ -19,7 +19,7 @@ import (
 type Service struct {
 	providerRepo   port.ProviderRepository
 	adapterFactory *AdapterFactory
-	cryptoKey     string
+	cryptoKey      string // Encryption key for credential decryption
 	subscribers    map[string]string // service_name -> gRPC endpoint
 	subscribersMu  sync.RWMutex
 }
@@ -28,12 +28,14 @@ type Service struct {
 func NewService(
 	providerRepo port.ProviderRepository,
 	adapterFactory *AdapterFactory,
+	cryptoKey      string // Encryption key for credential decryption
+	cryptoKey      string // Encryption key for credential decryption
 	cryptoKey string,
 ) *Service {
 	return &Service{
 		providerRepo:   providerRepo,
 		adapterFactory: adapterFactory,
-		cryptoKey:     cryptoKey,
+		cryptoKey:      cryptoKey,
 		subscribers:    make(map[string]string),
 	}
 }
@@ -90,19 +92,26 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 		return nil, 0, 0, 0, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Transform response back to OpenAI format
-	transformedResponse, err := adapter.TransformResponse(responseBody)
+	// Transform response back to OpenAI format (non-streaming)
+	transformedResponse, tokenCounts, _, err := adapter.TransformResponse(responseBody, false, entity.TokenCounts{})
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to transform response: %w", err)
 	}
 
-	// Count tokens
-	promptTokens, completionTokens, err := adapter.CountTokens(requestBody, transformedResponse)
-	if err != nil {
-		// Log error but don't fail the request
-		log.Printf("Failed to count tokens: %v", err)
-		promptTokens = 0
-		completionTokens = 0
+	// Use token counts from TransformResponse if available, otherwise fall back to CountTokens
+	promptTokens := tokenCounts.PromptTokens
+	completionTokens := tokenCounts.CompletionTokens
+	
+	if promptTokens == 0 && completionTokens == 0 {
+		// Fall back to explicit counting if TransformResponse didn't extract tokens
+		var err error
+		promptTokens, completionTokens, err = adapter.CountTokens(requestBody, transformedResponse, false)
+		if err != nil {
+			// Log error but don't fail the request
+			log.Printf("Failed to count tokens: %v", err)
+			promptTokens = 0
+			completionTokens = 0
+		}
 	}
 
 	// Dispatch callbacks asynchronously
