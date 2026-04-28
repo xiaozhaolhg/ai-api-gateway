@@ -45,11 +45,6 @@ COPY --from=builder /app/router-service/configs ./configs
 # Create data directory
 RUN mkdir -p /root/data
 
-# Run as non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
-USER appuser
-
 EXPOSE 50052
 
 CMD ["./router-service"]
