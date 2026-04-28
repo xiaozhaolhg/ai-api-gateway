@@ -52,3 +52,25 @@
 - **Admin Auth**: `POST /admin/auth/login`, `POST /admin/auth/register` (proxies to auth-service)
 - **Streaming**: SSE proxy from provider-service to consumer
 - **Middleware Orchestration**: Ordered pipeline execution
+
+## Requirements
+
+### Requirement: Streaming Proxy
+
+Gateway service shall proxy SSE streaming responses from providers to consumers.
+
+#### Scenario: Streaming Request
+- **WHEN** a chat completion request with `stream: true` is received
+- **THEN** establish SSE connection to consumer and stream chunks from provider-service
+
+#### Scenario: Token Accumulation During Streaming
+- **WHEN** processing SSE chunks from provider
+- **THEN** accumulate token counts across all chunks and report final count on completion
+
+### Requirement: Non-Streaming Proxy
+
+Gateway service shall proxy non-streaming requests to providers.
+
+#### Scenario: Non-Streaming Request
+- **WHEN** a chat completion request without `stream: true` (or `stream: false`)
+- **THEN** call `ForwardRequest`, return complete response with token counts

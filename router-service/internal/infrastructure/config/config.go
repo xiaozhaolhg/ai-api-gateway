@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
+	Cache    CacheConfig    `yaml:"cache"`
 }
 
 // ServerConfig holds server configuration
@@ -22,6 +23,19 @@ type ServerConfig struct {
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
 	Path string `yaml:"path"`
+}
+
+// CacheConfig holds cache configuration
+type CacheConfig struct {
+	Redis RedisConfig `yaml:"redis"`
+}
+
+// RedisConfig holds Redis configuration
+type RedisConfig struct {
+	Address     string `yaml:"address"`
+	Password    string `yaml:"password"`
+	DB          int    `yaml:"db"`
+	TTLSeconds  int    `yaml:"ttl_seconds"`
 }
 
 // Load loads configuration from a YAML file and environment variables
@@ -46,6 +60,25 @@ func Load(path string) (*Config, error) {
 	if dbPath := os.Getenv("DATABASE_PATH"); dbPath != "" {
 		cfg.Database.Path = dbPath
 	}
+	if redisAddr := os.Getenv("REDIS_ADDRESS"); redisAddr != "" {
+		cfg.Cache.Redis.Address = redisAddr
+	}
+	if redisPass := os.Getenv("REDIS_PASSWORD"); redisPass != "" {
+		cfg.Cache.Redis.Password = redisPass
+	}
+	if redisDB := os.Getenv("REDIS_DB"); redisDB != "" {
+		// Parse as int
+		var db int
+		if _, err := fmt.Sscanf(redisDB, "%d", &db); err == nil {
+			cfg.Cache.Redis.DB = db
+		}
+	}
+	if redisTTL := os.Getenv("REDIS_TTL_SECONDS"); redisTTL != "" {
+		var ttl int
+		if _, err := fmt.Sscanf(redisTTL, "%d", &ttl); err == nil {
+			cfg.Cache.Redis.TTLSeconds = ttl
+		}
+	}
 
 	// Set defaults
 	if cfg.Server.Port == "" {
@@ -56,6 +89,12 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Database.Path == "" {
 		cfg.Database.Path = "./data/router.db"
+	}
+	if cfg.Cache.Redis.Address == "" {
+		cfg.Cache.Redis.Address = "localhost:6379"
+	}
+	if cfg.Cache.Redis.TTLSeconds == 0 {
+		cfg.Cache.Redis.TTLSeconds = 300
 	}
 
 	return &cfg, nil

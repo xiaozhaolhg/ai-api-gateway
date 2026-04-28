@@ -4,3 +4,10 @@ server:
 
 database:
   path: "./data/router.db"
+
+cache:
+  redis:
+    address: "localhost:6379"
+    password: ""
+    db: 0
+    ttl_seconds: 300

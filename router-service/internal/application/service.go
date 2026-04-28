@@ -1,6 +1,8 @@
 package application
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,17 +14,36 @@ import (
 // Service handles route resolution logic
 type Service struct {
 	ruleRepo port.RoutingRuleRepository
+	cache    port.Cache
+	ttl      int // Cache TTL in seconds
 }
 
 // NewService creates a new application service
-func NewService(ruleRepo port.RoutingRuleRepository) *Service {
+func NewService(ruleRepo port.RoutingRuleRepository, cache port.Cache) *Service {
 	return &Service{
 		ruleRepo: ruleRepo,
+		cache:    cache,
+		ttl:      300, // Default 5 minutes
 	}
 }
 
 // ResolveRoute resolves a model name to a provider based on routing rules
-func (s *Service) ResolveRoute(model string) (*entity.RouteResult, error) {
+func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedModels []string) (*entity.RouteResult, error) {
+	// Check cache first if available
+	if s.cache != nil {
+		cacheKey := fmt.Sprintf("router:route:%s", model)
+		cached, err := s.cache.Get(ctx, cacheKey)
+		if err == nil && cached != "" {
+			var result entity.RouteResult
+			if err := json.Unmarshal([]byte(cached), &result); err == nil {
+				// Verify cached result is still authorized
+				if s.isAuthorized(result.ProviderID, authorizedModels) {
+					return &result, nil
+				}
+			}
+		}
+	}
+
 	// Get all routing rules
 	rules, _, err := s.ruleRepo.List(0, 1000) // Get all rules
 	if err != nil {
@@ -46,19 +67,58 @@ func (s *Service) ResolveRoute(model string) (*entity.RouteResult, error) {
 		return matchingRules[i].Priority > matchingRules[j].Priority
 	})
 
-	// Use the highest priority rule
-	rule := matchingRules[0]
+	// Filter by authorized models
+	var authorizedRules []*entity.RoutingRule
+	for _, rule := range matchingRules {
+		if s.isAuthorized(rule.ModelPattern, authorizedModels) {
+			authorizedRules = append(authorizedRules, rule)
+		}
+	}
+
+	if len(authorizedRules) == 0 {
+		return nil, fmt.Errorf("no authorized route found for model: %s", model)
+	}
+
+	// Use the highest priority authorized rule
+	rule := authorizedRules[0]
 
 	// Determine adapter type based on provider ID
 	// In production, this would call provider-service to get provider details
 	// For MVP, we'll infer from provider ID or use a default
 	adapterType := s.inferAdapterType(rule.ProviderID)
 
-	return &entity.RouteResult{
-		ProviderID:           rule.ProviderID,
-		AdapterType:          adapterType,
-		FallbackProviderIDs:  s.getFallbackProviders(rule, matchingRules),
-	}, nil
+	result := &entity.RouteResult{
+		ProviderID:          rule.ProviderID,
+		AdapterType:         adapterType,
+		FallbackProviderIDs: s.getFallbackProviders(rule, authorizedRules),
+	}
+
+	// Cache the result if cache is available
+	if s.cache != nil {
+		cacheKey := fmt.Sprintf("router:route:%s", model)
+		resultJSON, _ := json.Marshal(result)
+		s.cache.Set(ctx, cacheKey, string(resultJSON), s.ttl)
+	}
+
+	return result, nil
+}
+
+// isAuthorized checks if a provider is in the authorized models list
+func (s *Service) isAuthorized(providerID string, authorizedModels []string) bool {
+	// If no authorized models specified, allow all (MVP behavior)
+	if len(authorizedModels) == 0 {
+		return true
+	}
+
+	// Check if provider ID matches any authorized model pattern
+	// For MVP, we do a simple string match. In production, this would be more sophisticated.
+	for _, model := range authorizedModels {
+		if strings.Contains(providerID, model) || s.matchPattern(model, providerID) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // matchPattern checks if a model name matches a pattern
@@ -158,8 +218,10 @@ func (s *Service) ListRoutingRules(page, pageSize int) ([]*entity.RoutingRule, i
 }
 
 // RefreshRoutingTable refreshes the routing table cache
-// For MVP, this is a no-op since we don't have Redis caching yet
-func (s *Service) RefreshRoutingTable() error {
-	// In production, this would invalidate Redis cache
+func (s *Service) RefreshRoutingTable(ctx context.Context) error {
+	if s.cache != nil {
+		// Clear all router:* keys from cache
+		return s.cache.ClearPrefix(ctx, "router:")
+	}
 	return nil
 }
