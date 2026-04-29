@@ -29,8 +29,10 @@ type ProviderAdapter interface {
 	//   - Returns the actual prompt and completion token counts
 	//
 	// For streaming (isStreaming=true):
-	//   - Returns (0, 0) for intermediate chunks
+	//   - Returns (0,0) for intermediate chunks
 	//   - Returns actual counts for the final chunk
 	//   - May estimate tokens if provider doesn't provide explicit counts
 	CountTokens(request []byte, response []byte, isStreaming bool) (int64, int64, error)
+
+	TestConnection(credentials string) error
 }

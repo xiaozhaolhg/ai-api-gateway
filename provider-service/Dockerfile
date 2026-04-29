@@ -42,12 +42,12 @@ COPY --from=builder /bin/provider-service .
 # Copy config
 COPY --from=builder /app/provider-service/configs ./configs
 
-# Create data directory
-RUN mkdir -p /root/data
-
 # Run as non-root user
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
+
+# Create data directory
+RUN mkdir -p /data && chown -R appuser:appuser /data
 USER appuser
 
 EXPOSE 50053

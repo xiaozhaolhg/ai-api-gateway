@@ -8,6 +8,7 @@ import (
 type ProviderRepository interface {
 	Create(provider *entity.Provider) error
 	GetByID(id string) (*entity.Provider, error)
+	GetByName(name string) (*entity.Provider, error)
 	GetByType(providerType string) (*entity.Provider, error)
 	Update(provider *entity.Provider) error
 	Delete(id string) error

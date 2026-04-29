@@ -3,6 +3,8 @@ package adapter
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
@@ -186,4 +188,21 @@ func (a *OllamaAdapter) convertDoneToFinishReason(done bool) string {
 		return "stop"
 	}
 	return "length"
+}
+
+func (a *OllamaAdapter) TestConnection(credentials string) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	baseURL := credentials
+	if baseURL == "" {
+		baseURL = "http://localhost:11434"
+	}
+	resp, err := client.Get(baseURL + "/api/tags")
+	if err != nil {
+		return fmt.Errorf("connection failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }

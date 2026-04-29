@@ -32,12 +32,43 @@ The provider-service SHALL define `StreamingResult` and `TokenCounts` entities i
 - **WHEN** a CreateProvider request is received via gRPC
 - **THEN** the service SHALL encrypt credentials with AES-256-GCM, persist the Provider to SQLite, and return the Provider (with credentials redacted)
 
+#### Scenario: Update provider with timestamp update
+- **WHEN** an UpdateProvider request is received via gRPC
+- **THEN** the service SHALL update the UpdatedAt field to current time
+- **AND** encrypt the credentials field if provided (skip if empty)
+- **AND** return the Provider with credentials masked as `***`
+
 #### Scenario: List providers
 - **WHEN** a ListProviders request is received
 - **THEN** the service SHALL return all providers with credentials redacted
 
+#### Scenario: Get provider by ID with masked credentials
+- **WHEN** a GetProvider request is received with a valid provider ID
+- **THEN** the service SHALL return the provider with credentials field set to `***`
+
+#### Scenario: Delete provider
+- **WHEN** a DeleteProvider request is received with a valid provider ID
+- **THEN** the service SHALL delete the provider from the database
+- **AND** return success
+
+#### Scenario: Duplicate name detection
+- **WHEN** a CreateProvider request is received with a name that already exists
+- **THEN** the service SHALL return an error (provider already exists)
+
+#### Scenario: UUID v4 auto-generation
+- **WHEN** a CreateProvider request is received with an empty ID
+- **THEN** the service SHALL generate a UUID v4 for the provider ID
+
+#### Scenario: Timestamp tracking on create
+- **WHEN** a CreateProvider request is received
+- **THEN** the service SHALL set CreatedAt and UpdatedAt to current time
+
+#### Scenario: Timestamp tracking on update
+- **WHEN** an UpdateProvider request is received
+- **THEN** the service SHALL update UpdatedAt to current time (preserve CreatedAt)
+
 ### Requirement: Provider adapter interface
-The provider-service SHALL define a ProviderAdapter interface in the domain layer with methods: TransformRequest, TransformResponse, CountTokens. The TransformResponse method SHALL support both streaming and non-streaming via a unified interface with `isStreaming` flag.
+The provider-service SHALL define a ProviderAdapter interface in the domain layer with methods: TransformRequest, TransformResponse, CountTokens, TestConnection. The TransformResponse method SHALL support both streaming and non-streaming via a unified interface with `isStreaming` flag.
 
 #### Scenario: Unified TransformResponse interface
 - **WHEN** TransformResponse is called with `isStreaming=false`
@@ -63,6 +94,22 @@ The provider-service SHALL define a ProviderAdapter interface in the domain laye
 #### Scenario: Ollama adapter
 - **WHEN** a request is forwarded to an Ollama-type provider
 - **THEN** the Ollama adapter SHALL transform the request to Ollama /api/chat format and parse the response back to OpenAI format
+- **AND** TestConnection SHALL call the `/api/tags` endpoint to verify Ollama is running
+
+#### Scenario: TestConnection method
+- **WHEN** TestConnection(credentials string) is called on an adapter
+- **THEN** the adapter SHALL make a lightweight request to verify connectivity to the external provider
+- **AND** return nil if successful, error if failed (authentication error, unreachable URL, etc.)
+
+#### Scenario: OpenAI adapter TestConnection
+- **WHEN** TestConnection is called on an OpenAI adapter with valid credentials
+- **THEN** the adapter SHALL make a lightweight request (e.g., list models) to verify connectivity
+- **AND** return nil if successful, error if failed
+
+#### Scenario: Anthropic adapter TestConnection
+- **WHEN** TestConnection is called on an Anthropic adapter with valid credentials
+- **THEN** the adapter SHALL make a test request to verify connectivity
+- **AND** return nil if successful, error if failed
 
 ### Requirement: Request forwarding (non-streaming)
 The provider-service SHALL implement ForwardRequest that sends a request to the configured provider and returns the response.

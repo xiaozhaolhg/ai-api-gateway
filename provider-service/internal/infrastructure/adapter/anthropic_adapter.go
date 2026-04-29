@@ -1,9 +1,12 @@
 package adapter
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
@@ -434,4 +437,24 @@ func (a *AnthropicAdapter) convertStopReason(stopReason *string) string {
 	}
 
 	return *stopReason
+}
+
+func (a *AnthropicAdapter) TestConnection(credentials string) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("x-api-key", credentials)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("connection failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("invalid credentials")
+	}
+	return nil
 }

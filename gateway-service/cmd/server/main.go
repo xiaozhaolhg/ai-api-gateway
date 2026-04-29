@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
+	"github.com/ai-api-gateway/gateway-service/internal/handler"
 	"github.com/ai-api-gateway/gateway-service/internal/util"
 )
 
@@ -60,9 +61,15 @@ func main() {
 		admin.POST("/users", handleCreateUser)
 		admin.PUT("/users/:id", handleUpdateUser)
 		admin.DELETE("/users/:id", handleDeleteUser)
-		admin.GET("/providers", handleListProviders)
 		admin.GET("/usage", handleGetUsage)
 	}
+
+	providerHandler := handler.NewAdminProvidersHandler()
+	r.POST("/admin/providers", providerHandler.CreateProvider)
+	r.GET("/admin/providers", providerHandler.ListProviders)
+	r.PUT("/admin/providers/:id", providerHandler.UpdateProvider)
+	r.DELETE("/admin/providers/:id", providerHandler.DeleteProvider)
+	r.GET("/admin/providers/:id/health", providerHandler.HealthCheck)
 
 	v1 := r.Group("/v1")
 	{

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
 	"github.com/ai-api-gateway/provider-service/internal/infrastructure/crypto"
@@ -28,9 +29,7 @@ type Service struct {
 func NewService(
 	providerRepo port.ProviderRepository,
 	adapterFactory *AdapterFactory,
-	cryptoKey      string // Encryption key for credential decryption
-	cryptoKey      string // Encryption key for credential decryption
-	cryptoKey string,
+	cryptoKey string, // Encryption key for credential decryption
 ) *Service {
 	return &Service{
 		providerRepo:   providerRepo,
@@ -333,11 +332,40 @@ func (s *Service) GetProvider(id string) (*entity.Provider, error) {
 
 // CreateProvider creates a new provider
 func (s *Service) CreateProvider(provider *entity.Provider) error {
+	existing, err := s.providerRepo.GetByName(provider.Name)
+	if err == nil && existing != nil {
+		return fmt.Errorf("provider with name %q already exists", provider.Name)
+	}
+	if provider.ID == "" {
+		provider.ID = uuid.New().String()
+	}
+	now := time.Now()
+	provider.CreatedAt = now
+	provider.UpdatedAt = now
+
+	if provider.Credentials != "" {
+		encrypted, err := crypto.Encrypt(provider.Credentials, s.cryptoKey)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt credentials: %w", err)
+		}
+		provider.Credentials = encrypted
+	}
+
 	return s.providerRepo.Create(provider)
 }
 
 // UpdateProvider updates an existing provider
 func (s *Service) UpdateProvider(provider *entity.Provider) error {
+	provider.UpdatedAt = time.Now()
+
+	if provider.Credentials != "" {
+		encrypted, err := crypto.Encrypt(provider.Credentials, s.cryptoKey)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt credentials: %w", err)
+		}
+		provider.Credentials = encrypted
+	}
+
 	return s.providerRepo.Update(provider)
 }
 
@@ -354,4 +382,27 @@ func (s *Service) ListProviders(page, pageSize int) ([]*entity.Provider, int, er
 // GetProviderByType retrieves a provider by type
 func (s *Service) GetProviderByType(providerType string) (*entity.Provider, error) {
 	return s.providerRepo.GetByType(providerType)
+}
+
+func (s *Service) HealthCheck(providerID string) (bool, error) {
+	provider, err := s.providerRepo.GetByID(providerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get provider: %w", err)
+	}
+
+	adapter, err := s.adapterFactory.GetAdapter(provider.Type)
+	if err != nil {
+		return false, fmt.Errorf("failed to get adapter: %w", err)
+	}
+
+	decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to decrypt credentials: %w", err)
+	}
+
+	if err := adapter.TestConnection(decryptedCreds); err != nil {
+		return false, nil
+	}
+
+	return true, nil
 }
