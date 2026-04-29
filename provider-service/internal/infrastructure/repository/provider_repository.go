@@ -41,6 +41,16 @@ func (r *ProviderRepository) GetByType(providerType string) (*entity.Provider, e
 	return &provider, nil
 }
 
+// GetByName retrieves a provider by name
+func (r *ProviderRepository) GetByName(name string) (*entity.Provider, error) {
+	var provider entity.Provider
+	err := r.db.Where("name = ?", name).First(&provider).Error
+	if err != nil {
+		return nil, err
+	}
+	return &provider, nil
+}
+
 // Update updates a provider
 func (r *ProviderRepository) Update(provider *entity.Provider) error {
 	return r.db.Save(provider).Error

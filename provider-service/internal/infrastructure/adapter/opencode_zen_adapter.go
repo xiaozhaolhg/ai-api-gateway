@@ -3,6 +3,8 @@ package adapter
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
@@ -126,4 +128,23 @@ func (a *OpenCodeZenAdapter) CountTokens(request []byte, response []byte, isStre
 
 	// Streaming: return 0, 0 (tokens accumulated via TransformResponse)
 	return 0, 0, nil
+}
+
+func (a *OpenCodeZenAdapter) TestConnection(credentials string) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	url := "https://opencode.ai/zen/v1/models"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+credentials)
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("connection failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
 	providerv1 "github.com/ai-api-gateway/api/gen/provider/v1"
 	"google.golang.org/grpc"
@@ -97,11 +96,13 @@ type ForwardRequestResponse struct {
 
 // Provider represents a provider configuration.
 type Provider struct {
-	ID     string   `json:"id"`
-	Name   string   `json:"name"`
-	Type   string   `json:"type"`
-	Status string   `json:"status"`
-	Models []string `json:"models"`
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Type       string   `json:"type"`
+	BaseURL    string   `json:"base_url"`
+	Status     string   `json:"status"`
+	Models     []string `json:"models"`
+	Credentials string   `json:"credentials"`
 }
 
 // ListProvidersResponse represents a list of providers.
@@ -152,17 +153,68 @@ func (c *ProviderClient) GetProvider(ctx context.Context, id string) (*Provider,
 	}, nil
 }
 
-// CreateProvider creates a new provider (stub for MVP).
 func (c *ProviderClient) CreateProvider(ctx context.Context, provider *Provider) (*Provider, error) {
-	return nil, fmt.Errorf("not implemented in MVP")
+	req := &providerv1.CreateProviderRequest{
+		Name:       provider.Name,
+		Type:       provider.Type,
+		BaseUrl:    provider.BaseURL,
+		Credentials: provider.Credentials,
+		Models:     provider.Models,
+	}
+	resp, err := c.client.CreateProvider(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider: %w", err)
+	}
+	return &Provider{
+		ID:         resp.Id,
+		Name:       resp.Name,
+		Type:       resp.Type,
+		BaseURL:    resp.BaseUrl,
+		Status:     resp.Status,
+		Models:     resp.Models,
+		Credentials: resp.Credentials,
+	}, nil
 }
 
-// UpdateProvider updates a provider (stub for MVP).
 func (c *ProviderClient) UpdateProvider(ctx context.Context, provider *Provider) (*Provider, error) {
-	return nil, fmt.Errorf("not implemented in MVP")
+	req := &providerv1.UpdateProviderRequest{
+		Id:         provider.ID,
+		Name:       provider.Name,
+		Type:       provider.Type,
+		BaseUrl:    provider.BaseURL,
+		Credentials: provider.Credentials,
+		Models:     provider.Models,
+		Status:     provider.Status,
+	}
+	resp, err := c.client.UpdateProvider(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update provider: %w", err)
+	}
+	return &Provider{
+		ID:         resp.Id,
+		Name:       resp.Name,
+		Type:       resp.Type,
+		BaseURL:    resp.BaseUrl,
+		Status:     resp.Status,
+		Models:     resp.Models,
+		Credentials: resp.Credentials,
+	}, nil
 }
 
-// DeleteProvider deletes a provider (stub for MVP).
 func (c *ProviderClient) DeleteProvider(ctx context.Context, id string) error {
-	return fmt.Errorf("not implemented in MVP")
+	req := &providerv1.DeleteProviderRequest{Id: id}
+	_, err := c.client.DeleteProvider(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to delete provider: %w", err)
+	}
+	return nil
+}
+
+func (c *ProviderClient) HealthCheck(ctx context.Context, id string) (bool, error) {
+	req := &providerv1.HealthCheckRequest{ProviderId: id}
+	resp, err := c.client.HealthCheck(ctx, req)
+	if err != nil {
+		return false, fmt.Errorf("failed to health check provider: %w", err)
+	}
+	return resp.Healthy, nil
 }

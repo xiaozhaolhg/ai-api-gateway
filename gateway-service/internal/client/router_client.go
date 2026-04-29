@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
 	routerv1 "github.com/ai-api-gateway/api/gen/router/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -68,4 +69,12 @@ func (c *RouterClient) ResolveRoute(ctx context.Context, model string, authorize
 		AdapterType:         resp.AdapterType,
 		FallbackProviderIDs: resp.FallbackProviderIds,
 	}, nil
+}
+
+func (c *RouterClient) RefreshRoutingTable(ctx context.Context) error {
+	_, err := c.client.RefreshRoutingTable(ctx, &commonv1.Empty{})
+	if err != nil {
+		return fmt.Errorf("failed to refresh routing table: %w", err)
+	}
+	return nil
 }

@@ -22,6 +22,9 @@ service ProviderService {
   // Provider Discovery
   rpc GetProviderByType(GetProviderByTypeRequest) returns (Provider);
 
+  // Health Check (commented out due to build issues)
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
   // Callback Subscription
   rpc RegisterSubscriber(RegisterSubscriberRequest) returns (common.v1.Empty);
   rpc UnregisterSubscriber(UnregisterSubscriberRequest) returns (common.v1.Empty);
@@ -111,6 +114,15 @@ message ListModelsResponse {
 
 message GetProviderByTypeRequest {
   string type = 1;
+}
+
+message HealthCheckRequest {
+  string provider_id = 1;
+}
+
+message HealthCheckResponse {
+  bool healthy = 1;
+  string error = 2;
 }
 
 // Callback Subscription

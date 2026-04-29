@@ -3,6 +3,8 @@ package adapter
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
@@ -211,11 +213,11 @@ func (a *GeminiAdapter) convertMessagesToContents(messages []map[string]interfac
 // convertFinishReason converts Gemini finish reason to OpenAI format
 func (a *GeminiAdapter) convertFinishReason(reason string) string {
 	reasonMap := map[string]string{
-		"STOP":    "stop",
+		"STOP":       "stop",
 		"MAX_TOKENS": "length",
-		"SAFETY":  "content_filter",
+		"SAFETY":     "content_filter",
 		"RECITATION": "content_filter",
-		"OTHER":   "stop",
+		"OTHER":      "stop",
 	}
 
 	if openAIReason, ok := reasonMap[reason]; ok {
@@ -223,4 +225,18 @@ func (a *GeminiAdapter) convertFinishReason(reason string) string {
 	}
 
 	return reason
+}
+
+func (a *GeminiAdapter) TestConnection(credentials string) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	url := "https://generativelanguage.googleapis.com/v1/models?key=" + credentials
+	resp, err := client.Get(url)
+	if err != nil {
+		return fmt.Errorf("connection failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }
