@@ -1,19 +1,19 @@
 ## MODIFIED Requirements
 
 ### Requirement: Modern component library integration
-The admin UI SHALL use shadcn/ui components with Lucide icons.
+The admin UI SHALL use antd 6 components with antd icons.
 
 #### Scenario: Component usage
 - **WHEN** building UI elements
-- **THEN** use shadcn/ui Button, Input, Table, Card, Dialog, Form components
+- **THEN** use antd Button, Input, Table, Card, Modal, Form components
 
 #### Scenario: Icon integration
 - **WHEN** displaying icons
-- **THEN** use Lucide React icons consistent with shadcn/ui
+- **THEN** use antd icons consistent with antd design system
 
 #### Scenario: Styling consistency
 - **WHEN** applying styles
-- **THEN** follow shadcn/ui design tokens and Tailwind CSS classes
+- **THEN** follow antd design tokens and Tailwind CSS classes
 
 ### Requirement: Collapsible sidebar navigation
 The admin UI SHALL have a collapsible sidebar with icon-only mode.
@@ -31,7 +31,7 @@ The admin UI SHALL have a collapsible sidebar with icon-only mode.
 - **THEN** sidebar automatically collapses to icon-only mode
 
 ### Requirement: Form handling and validation
-The admin UI SHALL use react-hook-form with shadcn/ui Form components.
+The admin UI SHALL use antd Form components with react-hook-form for validation.
 
 #### Scenario: Form submission
 - **WHEN** user submits create/edit forms
