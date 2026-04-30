@@ -7,6 +7,7 @@ import (
 	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	"github.com/ai-api-gateway/auth-service/internal/application"
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
+	"github.com/ai-api-gateway/auth-service/internal/domain/port"
 	"github.com/ai-api-gateway/auth-service/internal/infrastructure/repository"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -18,7 +19,7 @@ func setupLoginTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("failed to open test DB: %v", err)
 	}
 
-	err = db.AutoMigrate(&entity.User{})
+	err = db.AutoMigrate(&entity.User{}, &entity.Group{}, &entity.Permission{}, &entity.UserGroupMembership{})
 	if err != nil {
 		t.Fatalf("failed to migrate: %v", err)
 	}
@@ -26,11 +27,19 @@ func setupLoginTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+func makeTestHandler(db *gorm.DB) (*Handler, port.UserRepository) {
+	userRepo := repository.NewUserRepository(db)
+	userGroupRepo := repository.NewUserGroupRepository(db)
+	authService := application.NewAuthService(userRepo, nil, userGroupRepo)
+	groupService := application.NewGroupService(repository.NewGroupRepository(db))
+	permissionService := application.NewPermissionService(repository.NewPermissionRepository(db), userGroupRepo)
+	ugService := application.NewUserGroupService(userGroupRepo)
+	return NewHandler(authService, groupService, permissionService, ugService, userRepo, nil), userRepo
+}
+
 func TestLogin_E2E(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, userRepo := makeTestHandler(db)
 
 	password := "securepassword123"
 	hash, _ := application.HashPassword(password)
@@ -70,9 +79,7 @@ func TestLogin_E2E(t *testing.T) {
 
 func TestLogin_E2E_InvalidPassword(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, userRepo := makeTestHandler(db)
 
 	hash, _ := application.HashPassword("correctpassword")
 	user := &entity.User{
@@ -97,9 +104,7 @@ func TestLogin_E2E_InvalidPassword(t *testing.T) {
 
 func TestLogin_E2E_UserNotFound(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, _ := makeTestHandler(db)
 
 	ctx := context.Background()
 	_, err := handler.Login(ctx, &authv1.LoginRequest{
@@ -113,9 +118,7 @@ func TestLogin_E2E_UserNotFound(t *testing.T) {
 
 func TestLogin_E2E_DisabledUser(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, userRepo := makeTestHandler(db)
 
 	hash, _ := application.HashPassword("password123")
 	user := &entity.User{
@@ -140,9 +143,7 @@ func TestLogin_E2E_DisabledUser(t *testing.T) {
 
 func TestLogin_E2E_Roles(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, userRepo := makeTestHandler(db)
 
 	hash, _ := application.HashPassword("testpass")
 
@@ -176,9 +177,7 @@ func TestLogin_E2E_Roles(t *testing.T) {
 
 func TestRegister_E2E(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, _ := makeTestHandler(db)
 
 	ctx := context.Background()
 
@@ -203,9 +202,7 @@ func TestRegister_E2E(t *testing.T) {
 
 func TestRegister_E2E_WithUsername(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, _ := makeTestHandler(db)
 
 	ctx := context.Background()
 
@@ -227,9 +224,7 @@ func TestRegister_E2E_WithUsername(t *testing.T) {
 
 func TestRegister_E2E_WeakPassword(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, _ := makeTestHandler(db)
 
 	ctx := context.Background()
 
@@ -245,9 +240,7 @@ func TestRegister_E2E_WeakPassword(t *testing.T) {
 
 func TestRegister_E2E_Duplicate(t *testing.T) {
 	db := setupLoginTestDB(t)
-	userRepo := repository.NewUserRepository(db)
-	authService := application.NewAuthService(userRepo, nil)
-	handler := NewHandler(authService, userRepo, nil)
+	handler, userRepo := makeTestHandler(db)
 
 	ctx := context.Background()
 	hash, _ := application.HashPassword("existingpass")

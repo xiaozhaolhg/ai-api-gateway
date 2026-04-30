@@ -38,12 +38,11 @@ func (h *AdminUsageHandler) GetUsage(ctx context.Context, userID string, page, p
 		return nil, err
 	}
 
-	// Convert client.UsageRecord to handler.UsageRecord
 	records := make([]UsageRecord, len(resp.Records))
 	for i, r := range resp.Records {
 		records[i] = UsageRecord{
-			UserID:           r.UserID,
-			Provider:         r.Provider,
+			UserID:           r.UserId,
+			Provider:         r.ProviderId,
 			Model:            r.Model,
 			PromptTokens:     r.PromptTokens,
 			CompletionTokens: r.CompletionTokens,

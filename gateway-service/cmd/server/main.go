@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -100,13 +101,38 @@ func main() {
 	admin.Use(jwtAuthMiddleware())
 	{
 		admin.GET("/me", handleGetCurrentUser)
+
+		// User management
 		admin.GET("/users", handleListUsers)
 		admin.POST("/users", handleCreateUser)
 		admin.PUT("/users/:id", handleUpdateUser)
 		admin.DELETE("/users/:id", handleDeleteUser)
+
+		// API key management
+		admin.GET("/api-keys/:user_id", handleListAPIKeys)
+		admin.POST("/api-keys", handleCreateAPIKey)
+		admin.DELETE("/api-keys/:id", handleDeleteAPIKey)
+
+		// Group management
+		admin.GET("/groups", handleListGroups)
+		admin.POST("/groups", handleCreateGroup)
+		admin.PUT("/groups/:id", handleUpdateGroup)
+		admin.DELETE("/groups/:id", handleDeleteGroup)
+		admin.POST("/groups/:id/members", handleAddUserToGroup)
+		admin.DELETE("/groups/:id/members/:user_id", handleRemoveUserFromGroup)
+
+		// Permission management
+		admin.GET("/permissions", handleListPermissions)
+		admin.POST("/permissions", handleGrantPermission)
+		admin.DELETE("/permissions/:id", handleRevokePermission)
+
+		// Usage (billing) - using adminUsageHandler from main branch
 		admin.GET("/usage", func(c *gin.Context) {
-		handleGetUsage(c, adminUsageHandler)
-	})
+			handleGetUsage(c, adminUsageHandler)
+		})
+
+		// Providers (still mock for now)
+		admin.GET("/providers", handleListProviders)
 	}
 
 	providerHandler := handler.NewAdminProvidersHandler(cfg.ProviderService.Address, cfg.RouterService.Address)
@@ -224,6 +250,22 @@ func extractToken(c *gin.Context) string {
 	return authHeader
 }
 
+func setAuthCookie(c *gin.Context, token string) {
+	maxAge := 24 * 60 * 60
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/admin",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  time.Now().Add(time.Duration(maxAge) * time.Second),
+	})
+}
+
+// --- Auth handlers ---
+
 func handleLogin(c *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required"`
@@ -251,7 +293,7 @@ func handleLogin(c *gin.Context) {
 	setAuthCookie(c, resp.Token)
 	c.JSON(200, gin.H{
 		"token": resp.Token,
-		"user": resp.User,
+		"user":  resp.User,
 	})
 }
 
@@ -294,7 +336,7 @@ func handleRegister(c *gin.Context) {
 	setAuthCookie(c, resp.Token)
 	c.JSON(200, gin.H{
 		"token": resp.Token,
-		"user": resp.User,
+		"user":  resp.User,
 	})
 }
 
@@ -311,30 +353,36 @@ func handleLogout(c *gin.Context) {
 func handleGetCurrentUser(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"id":    c.GetString("userId"),
-		"name": c.GetString("userName"),
+		"name":  c.GetString("userName"),
 		"email": c.GetString("userEmail"),
-		"role": c.GetString("userRole"),
+		"role":  c.GetString("userRole"),
 	})
 }
 
-func setAuthCookie(c *gin.Context, token string) {
-	maxAge := 24 * 60 * 60
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "auth_token",
-		Value:    token,
-		Path:     "/admin",
-		MaxAge:   maxAge,
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
-		Expires:  time.Now().Add(time.Duration(maxAge) * time.Second),
-	})
-}
+// --- User management handlers (wired to auth-service gRPC) ---
 
 func handleListUsers(c *gin.Context) {
-	c.JSON(200, gin.H{"users": []gin.H{
-		{"id": "user-1", "name": "Admin", "email": "admin@example.com", "role": "admin"},
-	}})
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	resp, err := authClient.ListUsers(context.Background(), page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"users": resp.Users, "total": resp.Total})
 }
 
 func handleCreateUser(c *gin.Context) {
@@ -348,7 +396,19 @@ func handleCreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid request"})
 		return
 	}
-	c.JSON(201, gin.H{"id": "user-new", "name": req.Name, "email": req.Email, "role": req.Role})
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	user, err := authClient.CreateUser(context.Background(), req.Name, req.Email, req.Role, req.Password)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, user)
 }
 
 func handleUpdateUser(c *gin.Context) {
@@ -360,19 +420,304 @@ func handleUpdateUser(c *gin.Context) {
 		Status string `json:"status"`
 	}
 	c.ShouldBindJSON(&req)
-	c.JSON(200, gin.H{"id": id, "name": req.Name, "email": req.Email, "role": req.Role})
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	user, err := authClient.UpdateUser(context.Background(), id, req.Name, req.Email, req.Role, req.Status)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, user)
 }
 
 func handleDeleteUser(c *gin.Context) {
+	id := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.DeleteUser(context.Background(), id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(200, gin.H{"message": "user deleted"})
 }
 
-func handleListProviders(c *gin.Context) {
-	c.JSON(200, gin.H{"providers": []gin.H{
-		{"id": "ollama", "name": "Ollama", "enabled": true},
-		{"id": "opencode_zen", "name": "OpenCode Zen", "enabled": true},
-	}})
+// --- API Key management handlers ---
+
+func handleListAPIKeys(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	resp, err := authClient.ListAPIKeys(context.Background(), userID, page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"api_keys": resp.ApiKeys, "total": resp.Total})
 }
+
+func handleCreateAPIKey(c *gin.Context) {
+	var req struct {
+		UserID string `json:"user_id" binding:"required"`
+		Name   string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	resp, err := authClient.CreateAPIKey(context.Background(), req.UserID, req.Name)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{"api_key_id": resp.ApiKeyId, "api_key": resp.ApiKey})
+}
+
+func handleDeleteAPIKey(c *gin.Context) {
+	id := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.DeleteAPIKey(context.Background(), id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "api key deleted"})
+}
+
+// --- Group management handlers ---
+
+func handleListGroups(c *gin.Context) {
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	resp, err := authClient.ListGroups(context.Background(), page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"groups": resp.Groups, "total": resp.Total})
+}
+
+func handleCreateGroup(c *gin.Context) {
+	var req struct {
+		Name          string `json:"name" binding:"required"`
+		ParentGroupID string `json:"parent_group_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	group, err := authClient.CreateGroup(context.Background(), req.Name, req.ParentGroupID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, group)
+}
+
+func handleUpdateGroup(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Name          string `json:"name"`
+		ParentGroupID string `json:"parent_group_id"`
+	}
+	c.ShouldBindJSON(&req)
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	group, err := authClient.UpdateGroup(context.Background(), id, req.Name, req.ParentGroupID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, group)
+}
+
+func handleDeleteGroup(c *gin.Context) {
+	id := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.DeleteGroup(context.Background(), id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "group deleted"})
+}
+
+func handleAddUserToGroup(c *gin.Context) {
+	groupID := c.Param("id")
+	var req struct {
+		UserID string `json:"user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.AddUserToGroup(context.Background(), req.UserID, groupID); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "user added to group"})
+}
+
+func handleRemoveUserFromGroup(c *gin.Context) {
+	groupID := c.Param("id")
+	userID := c.Param("user_id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.RemoveUserFromGroup(context.Background(), userID, groupID); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "user removed from group"})
+}
+
+// --- Permission management handlers ---
+
+func handleListPermissions(c *gin.Context) {
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	groupID := c.Query("group_id")
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	resp, err := authClient.ListPermissions(context.Background(), groupID, page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"permissions": resp.Permissions, "total": resp.Total})
+}
+
+func handleGrantPermission(c *gin.Context) {
+	var req struct {
+		GroupID      string `json:"group_id" binding:"required"`
+		ResourceType string `json:"resource_type" binding:"required"`
+		ResourceID   string `json:"resource_id" binding:"required"`
+		Action       string `json:"action" binding:"required"`
+		Effect       string `json:"effect"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	permission, err := authClient.GrantPermission(context.Background(), req.GroupID, req.ResourceType, req.ResourceID, req.Action)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, permission)
+}
+
+func handleRevokePermission(c *gin.Context) {
+	id := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.RevokePermission(context.Background(), id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "permission revoked"})
+}
+
+// --- Usage handler (using adminUsageHandler from main branch) ---
 
 func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
 	userID := c.GetString("userId")
@@ -391,7 +736,6 @@ func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
 		return
 	}
 
-	// Convert to response format
 	usage := make([]gin.H, len(resp.Records))
 	for i, r := range resp.Records {
 		usage[i] = gin.H{
@@ -405,4 +749,13 @@ func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
 	}
 
 	c.JSON(200, gin.H{"usage": usage})
+}
+
+// --- Providers (still mock for now) ---
+
+func handleListProviders(c *gin.Context) {
+	c.JSON(200, gin.H{"providers": []gin.H{
+		{"id": "ollama", "name": "Ollama", "enabled": true},
+		{"id": "opencode_zen", "name": "OpenCode Zen", "enabled": true},
+	}})
 }

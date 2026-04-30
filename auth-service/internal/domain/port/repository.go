@@ -23,3 +23,30 @@ type APIKeyRepository interface {
 	GetByUserID(userID string, page, pageSize int) ([]*entity.APIKey, int, error)
 	Delete(id string) error
 }
+
+// GroupRepository defines the interface for group persistence operations
+type GroupRepository interface {
+	Create(group *entity.Group) error
+	GetByID(id string) (*entity.Group, error)
+	Update(group *entity.Group) error
+	Delete(id string) error
+	List(page, pageSize int) ([]*entity.Group, int, error)
+}
+
+// PermissionRepository defines the interface for permission persistence operations
+type PermissionRepository interface {
+	Create(permission *entity.Permission) error
+	GetByID(id string) (*entity.Permission, error)
+	Delete(id string) error
+	ListByGroupID(groupID string, page, pageSize int) ([]*entity.Permission, int, error)
+	FindByUserGroups(groupIDs []string, resourceType, resourceID, action string) ([]*entity.Permission, error)
+}
+
+// UserGroupRepository defines the interface for user-group membership persistence operations
+type UserGroupRepository interface {
+	Create(membership *entity.UserGroupMembership) error
+	Delete(userID, groupID string) error
+	GetByUserID(userID string) ([]*entity.UserGroupMembership, error)
+	GetByGroupID(groupID string, page, pageSize int) ([]*entity.UserGroupMembership, int, error)
+	Exists(userID, groupID string) (bool, error)
+}
