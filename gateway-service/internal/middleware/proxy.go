@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 )
@@ -77,7 +79,7 @@ func (m *ProxyMiddleware) handleNonStreamingRequest(w http.ResponseWriter, r *ht
 	w.Header().Set("X-Total-Tokens", fmt.Sprintf("%d", resp.TokenCounts.TotalTokens))
 }
 
-// handleStreamingRequest handles streaming requests
+// handleStreamingRequest handles streaming requests with heartbeat
 func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.Request, providerID string, requestBody []byte, headers map[string]string) {
 	// Forward streaming request to provider-service
 	stream, err := m.providerClient.StreamRequest(r.Context(), providerID, requestBody, headers)
@@ -102,6 +104,33 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 	}
 
 	var totalPromptTokens, totalCompletionTokens int64
+	
+	// Create heartbeat ticker (every 15 seconds)
+	heartbeatTicker := time.NewTicker(15 * time.Second)
+	defer heartbeatTicker.Stop()
+	
+	// Create a context that captures client disconnection
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	
+	// Channel to signal stream completion
+	done := make(chan struct{})
+	
+	// Start a goroutine to handle heartbeat
+	go func() {
+		for {
+			select {
+			case <-heartbeatTicker.C:
+				// Send heartbeat comment (SSE comment line)
+				fmt.Fprintf(w, ": ping\n\n")
+				flusher.Flush()
+			case <-ctx.Done():
+				return
+			case <-done:
+				return
+			}
+		}
+	}()
 
 	for {
 		chunk, err := stream.Recv()
@@ -133,6 +162,9 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 			break
 		}
 	}
+	
+	// Signal completion to stop heartbeat goroutine
+	close(done)
 
 	// Send final SSE message with token counts
 	finalChunk := map[string]interface{}{

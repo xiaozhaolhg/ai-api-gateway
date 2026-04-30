@@ -1,6 +1,8 @@
-# provider-service Architecture
+# provider-service
 
-> Provider domain — provider CRUD, adapters, response callback dispatch
+## Purpose
+
+Provider domain — provider CRUD, adapters, response callback dispatch.
 
 ## Service Responsibility
 

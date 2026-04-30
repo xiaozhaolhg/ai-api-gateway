@@ -1,6 +1,8 @@
-# router-service Architecture
+# router-service
 
-> Routing domain — resolves model name to provider, manages fallback chains
+## Purpose
+
+Routing domain — resolves model name to provider, manages fallback chains.
 
 > **Note**: See existing implementation in `openspec/specs/router-service-architecture/spec.md`
 
@@ -48,7 +50,7 @@
 
 ### Requirement: Redis Caching
 
-Router service shall cache resolved routes in Redis with TTL.
+Router service SHALL cache resolved routes in Redis with TTL.
 
 #### Scenario: Cache Hit
 - **WHEN** a `ResolveRoute` request is received and the route exists in Redis cache
@@ -64,7 +66,7 @@ Router service shall cache resolved routes in Redis with TTL.
 
 ### Requirement: Authorized Models Filtering
 
-Router service shall filter routes based on authorized models passed from gateway.
+Router service SHALL filter routes based on authorized models passed from gateway.
 
 #### Scenario: Authorized Route Resolution
 - **WHEN** `ResolveRoute` is called with a model and `authorized_models` list

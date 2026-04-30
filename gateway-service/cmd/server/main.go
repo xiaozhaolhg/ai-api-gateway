@@ -5,31 +5,66 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 	"github.com/ai-api-gateway/gateway-service/internal/handler"
+	"github.com/ai-api-gateway/gateway-service/internal/infrastructure/config"
+	"github.com/ai-api-gateway/gateway-service/internal/middleware"
 	"github.com/ai-api-gateway/gateway-service/internal/util"
 )
 
-var authClient *client.AuthClient
+var (
+	authClient     *client.AuthClient
+	routerClient   *client.RouterClient
+	providerClient *client.ProviderClient
+	billingClient  *client.BillingClient
+)
 
 func main() {
 	log.Println("Gateway service starting...")
 
-	var err error
-	authAddress := os.Getenv("AUTH_SERVICE_ADDRESS")
-	if authAddress == "" {
-		authAddress = "localhost:50051"
-	}
-	authClient, err = client.NewAuthClient(authAddress)
+	// Load configuration
+	cfg, err := config.Load("configs/config.yaml")
 	if err != nil {
-		log.Printf("Warning: failed to connect to auth service: %v", err)
+		log.Printf("Warning: failed to load config: %v", err)
+		cfg = &config.Config{
+			Server: config.ServerConfig{Port: "8080", Host: "0.0.0.0"},
+		}
+	}
+
+	// Initialize clients with lazy connection
+	var initErr error
+	authClient, initErr = client.NewAuthClient(cfg.AuthService.Address)
+	if initErr != nil {
+		log.Printf("Warning: auth client initialization failed: %v", initErr)
+	}
+
+	routerClient, initErr = client.NewRouterClient(cfg.RouterService.Address)
+	if initErr != nil {
+		log.Printf("Warning: router client initialization failed: %v", initErr)
+	}
+
+	providerClient, initErr = client.NewProviderClient(cfg.ProviderService.Address)
+	if initErr != nil {
+		log.Printf("Warning: provider client initialization failed: %v", initErr)
+	}
+
+	billingClient, initErr = client.NewBillingClient(cfg.BillingService.Address)
+	if initErr != nil {
+		log.Printf("Warning: billing client initialization failed: %v", initErr)
 	}
 
 	r := gin.Default()
 
+	// Add logging middleware
+	logMiddleware := middleware.NewLogMiddleware()
+	r.Use(logMiddleware.GinMiddleware())
+
+	// CORS middleware
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -41,13 +76,21 @@ func main() {
 		c.Next()
 	})
 
+	// Initialize handlers
+	healthHandler := handler.NewHealthHandler(authClient, routerClient, providerClient, billingClient)
+	modelsHandler := handler.NewModelsHandler(providerClient)
+	adminUsageHandler := handler.NewAdminUsageHandler(billingClient)
+
+	// Simple liveness check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	r.GET("/gateway/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "healthy"})
-	})
+	// Deep health check with dependencies
+	r.GET("/gateway/health", healthHandler.GatewayHealth)
+
+	// Models aggregation endpoint
+	r.GET("/gateway/models", modelsHandler.ListModels)
 
 	r.POST("/admin/auth/login", handleLogin)
 	r.POST("/admin/auth/register", handleRegister)
@@ -61,15 +104,20 @@ func main() {
 		admin.POST("/users", handleCreateUser)
 		admin.PUT("/users/:id", handleUpdateUser)
 		admin.DELETE("/users/:id", handleDeleteUser)
-		admin.GET("/usage", handleGetUsage)
+		admin.GET("/usage", func(c *gin.Context) {
+		handleGetUsage(c, adminUsageHandler)
+	})
 	}
 
-	providerHandler := handler.NewAdminProvidersHandler()
+	providerHandler := handler.NewAdminProvidersHandler(cfg.ProviderService.Address, cfg.RouterService.Address)
 	r.POST("/admin/providers", providerHandler.CreateProvider)
 	r.GET("/admin/providers", providerHandler.ListProviders)
 	r.PUT("/admin/providers/:id", providerHandler.UpdateProvider)
 	r.DELETE("/admin/providers/:id", providerHandler.DeleteProvider)
 	r.GET("/admin/providers/:id/health", providerHandler.HealthCheck)
+
+	// Add error handling middleware (must be after logging to capture status codes)
+	r.Use(middleware.NewErrorMiddleware().Middleware())
 
 	v1 := r.Group("/v1")
 	{
@@ -84,10 +132,53 @@ func main() {
 		})
 	}
 
-	log.Printf("Gateway service listening on :8080")
-	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+	// Setup HTTP server with timeouts
+	srv := &http.Server{
+		Addr:         ":" + cfg.Server.Port,
+		Handler:      r,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
+
+	// Start server in goroutine
+	go func() {
+		log.Printf("Gateway service listening on :%s", cfg.Server.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to serve: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Close gRPC connections
+	if authClient != nil {
+		authClient.Close()
+	}
+	if routerClient != nil {
+		routerClient.Close()
+	}
+	if providerClient != nil {
+		providerClient.Close()
+	}
+	if billingClient != nil {
+		billingClient.Close()
+	}
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited gracefully")
 }
 
 func getEnv(key, defaultValue string) string {
@@ -148,7 +239,10 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 
-	resp, err := authClient.Login(context.Background(), req.Email, req.Password)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	resp, err := authClient.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		c.JSON(401, gin.H{"error": "invalid credentials"})
 		return
@@ -188,7 +282,10 @@ func handleRegister(c *gin.Context) {
 		return
 	}
 
-	resp, err := authClient.Register(context.Background(), req.Username, req.Email, req.Name, req.Password, req.Role)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	resp, err := authClient.Register(ctx, req.Username, req.Email, req.Name, req.Password, req.Role)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -277,8 +374,35 @@ func handleListProviders(c *gin.Context) {
 	}})
 }
 
-func handleGetUsage(c *gin.Context) {
-	c.JSON(200, gin.H{"usage": []gin.H{
-		{"period": "24h", "tokens": 15000, "cost": 0.15},
-	}})
+func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "anonymous"
+	}
+
+	page := int32(1)
+	pageSize := int32(20)
+
+	resp, err := h.GetUsage(c.Request.Context(), userID, page, pageSize)
+	if err != nil {
+		log.Printf("Error getting usage: %v", err)
+		// Return empty response on error (graceful fallback)
+		c.JSON(200, gin.H{"usage": []gin.H{}, "error": err.Error()})
+		return
+	}
+
+	// Convert to response format
+	usage := make([]gin.H, len(resp.Records))
+	for i, r := range resp.Records {
+		usage[i] = gin.H{
+			"user_id":           r.UserID,
+			"provider":          r.Provider,
+			"model":             r.Model,
+			"prompt_tokens":     r.PromptTokens,
+			"completion_tokens": r.CompletionTokens,
+			"cost":              r.Cost,
+		}
+	}
+
+	c.JSON(200, gin.H{"usage": usage})
 }

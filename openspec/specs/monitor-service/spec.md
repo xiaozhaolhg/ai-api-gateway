@@ -1,6 +1,8 @@
-# monitor-service Architecture
+# monitor-service
 
-> Observability domain — metrics collection, alerting, provider health monitoring
+## Purpose
+
+Observability domain — metrics collection, alerting, provider health monitoring.
 
 ## Service Responsibility
 
@@ -59,3 +61,16 @@ Two paths:
 - **GetProviderHealth/ReportProviderHealth**: Health tracking
 - **CreateAlertRule/UpdateAlertRule/DeleteAlertRule**: Alert rule CRUD
 - **GetAlerts/AcknowledgeAlert**: Alert lifecycle
+
+## Requirements
+
+### Requirement: Metrics collection
+The monitor-service SHALL collect and store metrics from provider callbacks and direct service calls.
+
+#### Scenario: Provider callback metrics
+- **WHEN** provider-service dispatches OnProviderResponse callback
+- **THEN** the monitor-service SHALL store latency and error data as metrics
+
+#### Scenario: Direct metric recording
+- **WHEN** any service calls RecordMetric RPC
+- **THEN** the monitor-service SHALL store the custom metric with timestamp

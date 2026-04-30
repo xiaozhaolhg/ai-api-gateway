@@ -16,6 +16,10 @@ The provider-service SHALL implement four-layer Clean Architecture: Domain, Appl
 ### Requirement: Provider entity and repository
 The provider-service SHALL own the Provider entity with fields: id, name, type, base_url, credentials (encrypted), models, status, created_at, updated_at. It SHALL provide a ProviderRepository interface for CRUD operations.
 
+#### Scenario: Provider entity structure
+- **WHEN** the Provider entity is created
+- **THEN** it SHALL contain all required fields: id, name, type, base_url, credentials, models, status, created_at, updated_at
+
 ### Requirement: StreamingResult and TokenCounts entities
 The provider-service SHALL define `StreamingResult` and `TokenCounts` entities in the domain layer for streaming response handling and token accumulation.
 
