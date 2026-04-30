@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
@@ -11,10 +12,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// RouterClient is a gRPC client for the router service.
+// RouterClient is a gRPC client for the router service with lazy connection.
 type RouterClient struct {
-	client routerv1.RouterServiceClient
-	conn   *grpc.ClientConn
+	address string
+	client  routerv1.RouterServiceClient
+	conn    *grpc.ClientConn
+	mu      sync.RWMutex
 }
 
 // RouteResolution represents the result of route resolution.
@@ -24,28 +27,54 @@ type RouteResolution struct {
 	FallbackProviderIDs []string `json:"fallback_provider_ids"`
 }
 
-// NewRouterClient creates a new router service gRPC client.
+// NewRouterClient creates a new router service gRPC client with lazy connection.
 func NewRouterClient(address string) (*RouterClient, error) {
-	// Create gRPC connection with retry and timeout
+	if address == "" {
+		address = "localhost:50052"
+	}
+	return &RouterClient{
+		address: address,
+	}, nil
+}
+
+// getClient returns the gRPC client, initializing lazily if needed
+func (c *RouterClient) getClient() (routerv1.RouterServiceClient, error) {
+	c.mu.RLock()
+	if c.client != nil {
+		defer c.mu.RUnlock()
+		return c.client, nil
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if c.client != nil {
+		return c.client, nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, address,
+	conn, err := grpc.DialContext(ctx, c.address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
+		grpc.WithUnaryInterceptor(GRPCInterceptor(DefaultRetryConfig())),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to router service at %s: %w", address, err)
+		return nil, fmt.Errorf("failed to connect to router service: %w", err)
 	}
 
-	return &RouterClient{
-		client: routerv1.NewRouterServiceClient(conn),
-		conn:   conn,
-	}, nil
+	c.conn = conn
+	c.client = routerv1.NewRouterServiceClient(conn)
+	return c.client, nil
 }
 
 // Close closes the gRPC connection.
 func (c *RouterClient) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn != nil {
 		return c.conn.Close()
 	}
@@ -54,12 +83,17 @@ func (c *RouterClient) Close() error {
 
 // ResolveRoute resolves a model to a provider using the router service.
 func (c *RouterClient) ResolveRoute(ctx context.Context, model string, authorizedModels []string) (*RouteResolution, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+
 	req := &routerv1.ResolveRouteRequest{
 		Model:            model,
 		AuthorizedModels: authorizedModels,
 	}
 
-	resp, err := c.client.ResolveRoute(ctx, req)
+	resp, err := client.ResolveRoute(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve route for model %s: %w", model, err)
 	}
@@ -72,7 +106,12 @@ func (c *RouterClient) ResolveRoute(ctx context.Context, model string, authorize
 }
 
 func (c *RouterClient) RefreshRoutingTable(ctx context.Context) error {
-	_, err := c.client.RefreshRoutingTable(ctx, &commonv1.Empty{})
+	client, err := c.getClient()
+	if err != nil {
+		return err
+	}
+
+	_, err = client.RefreshRoutingTable(ctx, &commonv1.Empty{})
 	if err != nil {
 		return fmt.Errorf("failed to refresh routing table: %w", err)
 	}

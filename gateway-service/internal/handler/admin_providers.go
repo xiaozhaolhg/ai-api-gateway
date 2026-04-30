@@ -3,11 +3,12 @@ package handler
 import (
 	"context"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
+	"github.com/ai-api-gateway/gateway-service/internal/errors"
+	"github.com/ai-api-gateway/gateway-service/internal/middleware"
 )
 
 type ProviderService interface {
@@ -20,37 +21,27 @@ type ProviderService interface {
 
 type AdminProvidersHandler struct {
 	providerSvc *client.ProviderClient
-	routerSvc  *client.RouterClient
+	routerSvc   *client.RouterClient
 }
 
-func NewAdminProvidersHandler() *AdminProvidersHandler {
-	providerAddr := os.Getenv("PROVIDER_SERVICE_ADDRESS")
-	if providerAddr == "" {
-		providerAddr = "localhost:50053"
-	}
-	providerSvc, err := client.NewProviderClient(providerAddr)
-	if err != nil {
-		panic(err)
-	}
-	routerAddr := os.Getenv("ROUTER_SERVICE_ADDRESS")
-	if routerAddr == "" {
-		routerAddr = "localhost:50052"
-	}
-	routerSvc, err := client.NewRouterClient(routerAddr)
-	if err != nil {
-		panic(err)
-	}
+// NewAdminProvidersHandler creates a new AdminProvidersHandler with lazy connection clients
+func NewAdminProvidersHandler(providerAddr, routerAddr string) *AdminProvidersHandler {
+	// Lazy connection - clients are created without connecting
+	// Connection happens on first request
+	providerSvc, _ := client.NewProviderClient(providerAddr)
+	routerSvc, _ := client.NewRouterClient(routerAddr)
+
 	return &AdminProvidersHandler{
 		providerSvc: providerSvc,
-		routerSvc:  routerSvc,
+		routerSvc:   routerSvc,
 	}
 }
 
 func (h *AdminProvidersHandler) ListProviders(c *gin.Context) {
 	page, pageSize := parsePageParams(c)
-	resp, err := h.providerSvc.ListProviders(context.Background(), page, pageSize)
+	resp, err := h.providerSvc.ListProviders(c.Request.Context(), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		middleware.HandleGRPCError(c, err, "provider service")
 		return
 	}
 	for i := range resp.Providers {
@@ -62,15 +53,16 @@ func (h *AdminProvidersHandler) ListProviders(c *gin.Context) {
 func (h *AdminProvidersHandler) CreateProvider(c *gin.Context) {
 	var provider client.Provider
 	if err := c.ShouldBindJSON(&provider); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		middleware.AbortWithError(c, errors.New(errors.ErrBadRequest, "invalid request"))
 		return
 	}
-	created, err := h.providerSvc.CreateProvider(context.Background(), &provider)
+	created, err := h.providerSvc.CreateProvider(c.Request.Context(), &provider)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		middleware.HandleGRPCError(c, err, "provider service")
 		return
 	}
-	if err := h.routerSvc.RefreshRoutingTable(context.Background()); err != nil {
+	if err := h.routerSvc.RefreshRoutingTable(c.Request.Context()); err != nil {
+		// Log but don't fail - provider was created successfully
 		c.JSON(http.StatusOK, created)
 		return
 	}
@@ -81,16 +73,17 @@ func (h *AdminProvidersHandler) UpdateProvider(c *gin.Context) {
 	id := c.Param("id")
 	var provider client.Provider
 	if err := c.ShouldBindJSON(&provider); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		middleware.AbortWithError(c, errors.New(errors.ErrBadRequest, "invalid request"))
 		return
 	}
 	provider.ID = id
-	updated, err := h.providerSvc.UpdateProvider(context.Background(), &provider)
+	updated, err := h.providerSvc.UpdateProvider(c.Request.Context(), &provider)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		middleware.HandleGRPCError(c, err, "provider service")
 		return
 	}
-	if err := h.routerSvc.RefreshRoutingTable(context.Background()); err != nil {
+	if err := h.routerSvc.RefreshRoutingTable(c.Request.Context()); err != nil {
+		// Log but don't fail - provider was updated successfully
 		c.JSON(http.StatusOK, updated)
 		return
 	}
@@ -99,11 +92,12 @@ func (h *AdminProvidersHandler) UpdateProvider(c *gin.Context) {
 
 func (h *AdminProvidersHandler) DeleteProvider(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.providerSvc.DeleteProvider(context.Background(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.providerSvc.DeleteProvider(c.Request.Context(), id); err != nil {
+		middleware.HandleGRPCError(c, err, "provider service")
 		return
 	}
-	if err := h.routerSvc.RefreshRoutingTable(context.Background()); err != nil {
+	if err := h.routerSvc.RefreshRoutingTable(c.Request.Context()); err != nil {
+		// Log but don't fail - provider was deleted successfully
 		c.JSON(http.StatusOK, gin.H{"message": "provider deleted"})
 		return
 	}
@@ -112,9 +106,9 @@ func (h *AdminProvidersHandler) DeleteProvider(c *gin.Context) {
 
 func (h *AdminProvidersHandler) HealthCheck(c *gin.Context) {
 	id := c.Param("id")
-	healthy, err := h.providerSvc.HealthCheck(context.Background(), id)
+	healthy, err := h.providerSvc.HealthCheck(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		middleware.HandleGRPCError(c, err, "provider service")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"id": id, "healthy": healthy})

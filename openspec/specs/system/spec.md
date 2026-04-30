@@ -1,6 +1,8 @@
-# System Architecture
+# system
 
-> Cross-cutting design capturing service relationships, dependencies, and communication patterns
+## Purpose
+
+Cross-cutting design capturing service relationships, dependencies, and communication patterns.
 
 ## Service Relationships
 
@@ -80,3 +82,16 @@ flowchart TD
 
 - **Responsibility**: Metrics collection, alerting, health tracking
 - **Owned Entities**: Metric, AlertRule, ProviderHealthStatus
+
+## Requirements
+
+### Requirement: Service communication pattern
+The system SHALL use gRPC for inter-service communication with gateway-service as the sole HTTP entry point.
+
+#### Scenario: External consumer request
+- **WHEN** an external consumer makes an HTTP request
+- **THEN** the gateway-service SHALL receive the request and proxy to internal services via gRPC
+
+#### Scenario: Service-to-service communication
+- **WHEN** services need to communicate internally
+- **THEN** they SHALL use gRPC APIs defined in the api/proto definitions

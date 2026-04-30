@@ -1,6 +1,8 @@
-# billing-service Architecture
+# billing-service
 
-> Usage and billing domain — token counting, cost estimation, pricing, budgets, invoices
+## Purpose
+
+Usage and billing domain — token counting, cost estimation, pricing, budgets, invoices.
 
 ## Service Responsibility
 
@@ -58,3 +60,23 @@ Two paths:
 - **CreateBudget/UpdateBudget/DeleteBudget**: Budget CRUD
 - **CreatePricingRule/UpdatePricingRule/DeletePricingRule**: Pricing CRUD
 - **GenerateInvoice**: Invoice generation (Phase 3+)
+
+## Requirements
+
+### Requirement: Usage recording
+The billing-service SHALL record usage data from provider callbacks and direct calls.
+
+#### Scenario: Provider callback recording
+- **WHEN** provider-service dispatches OnProviderResponse callback with token counts
+- **THEN** the billing-service SHALL store the usage record with provider, model, and token counts
+
+#### Scenario: Direct usage recording
+- **WHEN** gateway-service calls RecordUsage RPC
+- **THEN** the billing-service SHALL store the usage record for the user and model
+
+### Requirement: Budget enforcement
+The billing-service SHALL enforce budget limits for users and groups.
+
+#### Scenario: Budget check
+- **WHEN** gateway-service calls CheckBudget RPC
+- **THEN** the billing-service SHALL return current spend, limit, and remaining budget

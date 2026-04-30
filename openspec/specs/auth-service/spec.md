@@ -1,6 +1,8 @@
-# auth-service Architecture
+# auth-service
 
-> Identity, access control, and model authorization domain
+## Purpose
+
+Identity, access control, and model authorization domain for the AI API Gateway.
 
 ## Service Responsibility
 

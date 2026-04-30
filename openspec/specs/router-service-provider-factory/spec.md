@@ -4,7 +4,7 @@
 
 Enable extensible provider registration system using factory pattern for the AI API Gateway router service.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Provider registration uses factory pattern
 The router-service SHALL use a factory pattern for provider registration where each provider type implements a ProviderFactory interface with methods for type identification, creation, validation, defaults, and description.

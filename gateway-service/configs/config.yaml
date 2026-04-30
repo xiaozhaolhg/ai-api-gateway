@@ -1,6 +1,7 @@
 server:
   port: "8080"
   host: "0.0.0.0"
+  max_body_size: "10MB"
 
 auth_service:
   address: "auth-service:50051"
@@ -10,3 +11,34 @@ router_service:
 
 provider_service:
   address: "provider-service:50053"
+
+billing_service:
+  address: "billing-service:50054"
+
+monitor_service:
+  address: "monitor-service:50055"
+
+log:
+  level: "info"  # debug, info, warn, error
+  format: "json"   # json, text
+  request_body: false
+  response_body: false
+  mask_sensitive: true
+
+timeout:
+  auth: "5s"
+  router: "5s"
+  provider: "30s"
+  billing: "10s"
+  health_check: "3s"
+
+cache:
+  models_ttl: "5m"  # 5 minute cache for models list
+
+grpc:
+  max_retries: 3
+  retry_backoff: "100ms"
+  connect_timeout: "5s"
+
+sse:
+  heartbeat_interval: "15s"  # SSE keepalive interval
