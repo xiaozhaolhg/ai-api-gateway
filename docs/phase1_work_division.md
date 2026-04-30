@@ -68,7 +68,20 @@
 - [ ] Usage aggregation: daily totals per user/model/provider
 - [ ] Integration test: send request → verify usage record written → query usage API
 
-### Week 4 — PostgreSQL & Polish
+### Week 4 — Proto Schema Improvements
+- [ ] **Add `model` field to provider proto messages** (separate proposal)
+  - Update `api/proto/provider/v1/provider.proto`:
+    - Add `model` field to `ForwardRequestRequest`
+    - Add `model` field to `StreamRequestRequest`
+    - Add `model` field to `ForwardRequestResponse`
+    - Add `model` field to `ProviderChunk`
+  - Regenerate proto with `buf generate`
+  - Update gateway-service to extract model and pass in proto (no JSON parsing)
+  - Update provider-service to return model in response
+  - Update billing call to use model from proto response
+  - **Rationale**: Type-safe model passing, no JSON parsing dependency, proto versioning handles changes gracefully
+
+### Future Work — PostgreSQL Migration
 - [ ] Implement PostgreSQL repository implementations for all repos
 - [ ] Database migration scripts (PostgreSQL)
 - [ ] Configuration flag to select SQLite vs PostgreSQL backend

@@ -29,7 +29,7 @@ const (
 	ProviderService_ListProviders_FullMethodName        = "/provider.v1.ProviderService/ListProviders"
 	ProviderService_ListModels_FullMethodName           = "/provider.v1.ProviderService/ListModels"
 	ProviderService_GetProviderByType_FullMethodName    = "/provider.v1.ProviderService/GetProviderByType"
-	ProviderService_HealthCheck_FullMethodName        = "/provider.v1.ProviderService/HealthCheck"
+	ProviderService_HealthCheck_FullMethodName          = "/provider.v1.ProviderService/HealthCheck"
 	ProviderService_RegisterSubscriber_FullMethodName   = "/provider.v1.ProviderService/RegisterSubscriber"
 	ProviderService_UnregisterSubscriber_FullMethodName = "/provider.v1.ProviderService/UnregisterSubscriber"
 )
@@ -50,7 +50,7 @@ type ProviderServiceClient interface {
 	ListModels(ctx context.Context, in *ListModelsRequest, opts ...grpc.CallOption) (*ListModelsResponse, error)
 	// Provider Discovery
 	GetProviderByType(ctx context.Context, in *GetProviderByTypeRequest, opts ...grpc.CallOption) (*Provider, error)
-	// Health Check
+	// Health Check (commented out due to build issues)
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	// Callback Subscription
 	RegisterSubscriber(ctx context.Context, in *RegisterSubscriberRequest, opts ...grpc.CallOption) (*v1.Empty, error)
@@ -210,7 +210,7 @@ type ProviderServiceServer interface {
 	ListModels(context.Context, *ListModelsRequest) (*ListModelsResponse, error)
 	// Provider Discovery
 	GetProviderByType(context.Context, *GetProviderByTypeRequest) (*Provider, error)
-	// Health Check
+	// Health Check (commented out due to build issues)
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 	// Callback Subscription
 	RegisterSubscriber(context.Context, *RegisterSubscriberRequest) (*v1.Empty, error)

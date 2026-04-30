@@ -48,3 +48,21 @@ func (c *BillingClient) GetUsage(ctx context.Context, userID string, page, pageS
 
 	return resp, nil
 }
+
+func (c *BillingClient) RecordUsage(ctx context.Context, userID, groupID, providerID, model string, promptTokens, completionTokens int64) error {
+	req := &billingv1.RecordUsageRequest{
+		UserId:           userID,
+		GroupId:          groupID,
+		ProviderId:       providerID,
+		Model:            model,
+		PromptTokens:     promptTokens,
+		CompletionTokens: completionTokens,
+	}
+
+	_, err := c.client.RecordUsage(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to record usage: %w", err)
+	}
+
+	return nil
+}

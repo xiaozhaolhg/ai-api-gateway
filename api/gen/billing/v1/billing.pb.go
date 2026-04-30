@@ -583,9 +583,10 @@ func (x *ListUsageAggregationResponse) GetAggregations() []*UsageAggregation {
 // Cost Estimation
 type EstimateCostRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	Model            string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
-	PromptTokens     int64                  `protobuf:"varint,2,opt,name=prompt_tokens,json=promptTokens,proto3" json:"prompt_tokens,omitempty"`
-	CompletionTokens int64                  `protobuf:"varint,3,opt,name=completion_tokens,json=completionTokens,proto3" json:"completion_tokens,omitempty"`
+	ProviderId       string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Model            string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	PromptTokens     int64                  `protobuf:"varint,3,opt,name=prompt_tokens,json=promptTokens,proto3" json:"prompt_tokens,omitempty"`
+	CompletionTokens int64                  `protobuf:"varint,4,opt,name=completion_tokens,json=completionTokens,proto3" json:"completion_tokens,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -618,6 +619,13 @@ func (x *EstimateCostRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use EstimateCostRequest.ProtoReflect.Descriptor instead.
 func (*EstimateCostRequest) Descriptor() ([]byte, []int) {
 	return file_billing_v1_billing_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EstimateCostRequest) GetProviderId() string {
+	if x != nil {
+		return x.ProviderId
+	}
+	return ""
 }
 
 func (x *EstimateCostRequest) GetModel() string {
@@ -805,7 +813,7 @@ func (x *BudgetStatus) GetHardCapExceeded() bool {
 type Budget struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Limit         float64                `protobuf:"fixed64,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	Period        string                 `protobuf:"bytes,4,opt,name=period,proto3" json:"period,omitempty"` // "daily" | "weekly" | "monthly"
 	SoftCapPct    float64                `protobuf:"fixed64,5,opt,name=soft_cap_pct,json=softCapPct,proto3" json:"soft_cap_pct,omitempty"`
@@ -852,9 +860,9 @@ func (x *Budget) GetId() string {
 	return ""
 }
 
-func (x *Budget) GetAccountId() string {
+func (x *Budget) GetUserId() string {
 	if x != nil {
-		return x.AccountId
+		return x.UserId
 	}
 	return ""
 }
@@ -896,7 +904,7 @@ func (x *Budget) GetStatus() string {
 
 type CheckBudgetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -931,20 +939,20 @@ func (*CheckBudgetRequest) Descriptor() ([]byte, []int) {
 	return file_billing_v1_billing_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *CheckBudgetRequest) GetAccountId() string {
+func (x *CheckBudgetRequest) GetUserId() string {
 	if x != nil {
-		return x.AccountId
+		return x.UserId
 	}
 	return ""
 }
 
 type CreateBudgetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	Limit         float64                `protobuf:"fixed64,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Period        string                 `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
-	SoftCapPct    float64                `protobuf:"fixed64,4,opt,name=soft_cap_pct,json=softCapPct,proto3" json:"soft_cap_pct,omitempty"`
-	HardCapPct    float64                `protobuf:"fixed64,5,opt,name=hard_cap_pct,json=hardCapPct,proto3" json:"hard_cap_pct,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Limit         float64                `protobuf:"fixed64,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Period        string                 `protobuf:"bytes,4,opt,name=period,proto3" json:"period,omitempty"`
+	SoftCapPct    float64                `protobuf:"fixed64,5,opt,name=soft_cap_pct,json=softCapPct,proto3" json:"soft_cap_pct,omitempty"`
+	HardCapPct    float64                `protobuf:"fixed64,6,opt,name=hard_cap_pct,json=hardCapPct,proto3" json:"hard_cap_pct,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -979,9 +987,9 @@ func (*CreateBudgetRequest) Descriptor() ([]byte, []int) {
 	return file_billing_v1_billing_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *CreateBudgetRequest) GetAccountId() string {
+func (x *CreateBudgetRequest) GetUserId() string {
 	if x != nil {
-		return x.AccountId
+		return x.UserId
 	}
 	return ""
 }
@@ -1017,11 +1025,12 @@ func (x *CreateBudgetRequest) GetHardCapPct() float64 {
 type UpdateBudgetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Limit         float64                `protobuf:"fixed64,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Period        string                 `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
-	SoftCapPct    float64                `protobuf:"fixed64,4,opt,name=soft_cap_pct,json=softCapPct,proto3" json:"soft_cap_pct,omitempty"`
-	HardCapPct    float64                `protobuf:"fixed64,5,opt,name=hard_cap_pct,json=hardCapPct,proto3" json:"hard_cap_pct,omitempty"`
-	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Limit         float64                `protobuf:"fixed64,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Period        string                 `protobuf:"bytes,4,opt,name=period,proto3" json:"period,omitempty"`
+	SoftCapPct    float64                `protobuf:"fixed64,5,opt,name=soft_cap_pct,json=softCapPct,proto3" json:"soft_cap_pct,omitempty"`
+	HardCapPct    float64                `protobuf:"fixed64,6,opt,name=hard_cap_pct,json=hardCapPct,proto3" json:"hard_cap_pct,omitempty"`
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1059,6 +1068,13 @@ func (*UpdateBudgetRequest) Descriptor() ([]byte, []int) {
 func (x *UpdateBudgetRequest) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateBudgetRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1144,7 +1160,7 @@ func (x *DeleteBudgetRequest) GetId() string {
 
 type ListBudgetsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Page          int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`
 	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1181,9 +1197,9 @@ func (*ListBudgetsRequest) Descriptor() ([]byte, []int) {
 	return file_billing_v1_billing_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *ListBudgetsRequest) GetAccountId() string {
+func (x *ListBudgetsRequest) GetUserId() string {
 	if x != nil {
-		return x.AccountId
+		return x.UserId
 	}
 	return ""
 }
@@ -2294,11 +2310,13 @@ const file_billing_v1_billing_proto_rawDesc = "" +
 	"total_cost\x18\x04 \x01(\x01R\ttotalCost\x12#\n" +
 	"\rrequest_count\x18\x05 \x01(\x03R\frequestCount\"`\n" +
 	"\x1cListUsageAggregationResponse\x12@\n" +
-	"\faggregations\x18\x01 \x03(\v2\x1c.billing.v1.UsageAggregationR\faggregations\"}\n" +
-	"\x13EstimateCostRequest\x12\x14\n" +
-	"\x05model\x18\x01 \x01(\tR\x05model\x12#\n" +
-	"\rprompt_tokens\x18\x02 \x01(\x03R\fpromptTokens\x12+\n" +
-	"\x11completion_tokens\x18\x03 \x01(\x03R\x10completionTokens\"\xc3\x01\n" +
+	"\faggregations\x18\x01 \x03(\v2\x1c.billing.v1.UsageAggregationR\faggregations\"\x9e\x01\n" +
+	"\x13EstimateCostRequest\x12\x1f\n" +
+	"\vprovider_id\x18\x01 \x01(\tR\n" +
+	"providerId\x12\x14\n" +
+	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +
+	"\rprompt_tokens\x18\x03 \x01(\x03R\fpromptTokens\x12+\n" +
+	"\x11completion_tokens\x18\x04 \x01(\x03R\x10completionTokens\"\xc3\x01\n" +
 	"\fCostEstimate\x12%\n" +
 	"\x0eestimated_cost\x18\x01 \x01(\x01R\restimatedCost\x12\x1a\n" +
 	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x123\n" +
@@ -2313,44 +2331,41 @@ const file_billing_v1_billing_proto_rawDesc = "" +
 	"\fhard_cap_pct\x18\x05 \x01(\x01R\n" +
 	"hardCapPct\x12*\n" +
 	"\x11soft_cap_exceeded\x18\x06 \x01(\bR\x0fsoftCapExceeded\x12*\n" +
-	"\x11hard_cap_exceeded\x18\a \x01(\bR\x0fhardCapExceeded\"\xc1\x01\n" +
+	"\x11hard_cap_exceeded\x18\a \x01(\bR\x0fhardCapExceeded\"\xbb\x01\n" +
 	"\x06Budget\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x02 \x01(\tR\taccountId\x12\x14\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x01R\x05limit\x12\x16\n" +
 	"\x06period\x18\x04 \x01(\tR\x06period\x12 \n" +
 	"\fsoft_cap_pct\x18\x05 \x01(\x01R\n" +
 	"softCapPct\x12 \n" +
 	"\fhard_cap_pct\x18\x06 \x01(\x01R\n" +
 	"hardCapPct\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\"3\n" +
-	"\x12CheckBudgetRequest\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\"\xa6\x01\n" +
-	"\x13CreateBudgetRequest\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x01R\x05limit\x12\x16\n" +
-	"\x06period\x18\x03 \x01(\tR\x06period\x12 \n" +
-	"\fsoft_cap_pct\x18\x04 \x01(\x01R\n" +
+	"\x06status\x18\a \x01(\tR\x06status\"-\n" +
+	"\x12CheckBudgetRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xa0\x01\n" +
+	"\x13CreateBudgetRequest\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x01R\x05limit\x12\x16\n" +
+	"\x06period\x18\x04 \x01(\tR\x06period\x12 \n" +
+	"\fsoft_cap_pct\x18\x05 \x01(\x01R\n" +
 	"softCapPct\x12 \n" +
-	"\fhard_cap_pct\x18\x05 \x01(\x01R\n" +
-	"hardCapPct\"\xaf\x01\n" +
+	"\fhard_cap_pct\x18\x06 \x01(\x01R\n" +
+	"hardCapPct\"\xc8\x01\n" +
 	"\x13UpdateBudgetRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x01R\x05limit\x12\x16\n" +
-	"\x06period\x18\x03 \x01(\tR\x06period\x12 \n" +
-	"\fsoft_cap_pct\x18\x04 \x01(\x01R\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x01R\x05limit\x12\x16\n" +
+	"\x06period\x18\x04 \x01(\tR\x06period\x12 \n" +
+	"\fsoft_cap_pct\x18\x05 \x01(\x01R\n" +
 	"softCapPct\x12 \n" +
-	"\fhard_cap_pct\x18\x05 \x01(\x01R\n" +
+	"\fhard_cap_pct\x18\x06 \x01(\x01R\n" +
 	"hardCapPct\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"%\n" +
+	"\x06status\x18\a \x01(\tR\x06status\"%\n" +
 	"\x13DeleteBudgetRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"d\n" +
-	"\x12ListBudgetsRequest\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12\x12\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"^\n" +
+	"\x12ListBudgetsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"Y\n" +
 	"\x13ListBudgetsResponse\x12,\n" +

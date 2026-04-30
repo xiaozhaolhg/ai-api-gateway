@@ -10,10 +10,10 @@ import (
 
 // Service handles billing logic
 type Service struct {
-	usageRepo       port.UsageRecordRepository
-	pricingRepo     port.PricingRuleRepository
-	accountRepo     port.BillingAccountRepository
-	budgetRepo      port.BudgetRepository
+	usageRepo   port.UsageRecordRepository
+	pricingRepo port.PricingRuleRepository
+	accountRepo port.BillingAccountRepository
+	budgetRepo  port.BudgetRepository
 }
 
 // NewService creates a new application service
@@ -140,8 +140,8 @@ func (s *Service) GetUsage(userID string, page, pageSize int) ([]*entity.UsageRe
 }
 
 // GetUsageAggregation retrieves aggregated usage statistics
-func (s *Service) GetUsageAggregation(userID, startDate, endDate string) (*entity.UsageAggregation, error) {
-	return s.usageRepo.GetAggregation(userID, startDate, endDate)
+func (s *Service) GetUsageAggregation(userID, startDate, endDate, groupBy string) ([]*entity.UsageAggregation, error) {
+	return s.usageRepo.GetAggregation(userID, startDate, endDate, groupBy)
 }
 
 // EstimateCost estimates the cost of a request
@@ -162,6 +162,16 @@ func (s *Service) UpdatePricingRule(rule *entity.PricingRule) error {
 // DeletePricingRule deletes a pricing rule
 func (s *Service) DeletePricingRule(id string) error {
 	return s.pricingRepo.Delete(id)
+}
+
+// ListPricingRules lists all pricing rules with pagination
+func (s *Service) ListPricingRules(page, pageSize int) ([]*entity.PricingRule, int, error) {
+	return s.pricingRepo.List(page, pageSize)
+}
+
+// GetPricingRuleByID retrieves a pricing rule by ID
+func (s *Service) GetPricingRuleByID(id string) (*entity.PricingRule, error) {
+	return s.pricingRepo.GetByID(id)
 }
 
 // GetBillingAccount retrieves a billing account
@@ -192,4 +202,24 @@ func (s *Service) UpdateBudget(budget *entity.Budget) error {
 // DeleteBudget deletes a budget
 func (s *Service) DeleteBudget(id string) error {
 	return s.budgetRepo.Delete(id)
+}
+
+// ListBudgets lists all budgets with pagination
+func (s *Service) ListBudgets(page, pageSize int) ([]*entity.Budget, int, error) {
+	return s.budgetRepo.List(page, pageSize)
+}
+
+// GetBudgetByID retrieves a budget by ID
+func (s *Service) GetBudgetByID(id string) (*entity.Budget, error) {
+	return s.budgetRepo.GetByID(id)
+}
+
+// GetBudgetByUserID retrieves a budget by user ID
+func (s *Service) GetBudgetByUserID(userID string) (*entity.Budget, error) {
+	return s.budgetRepo.GetByUserID(userID)
+}
+
+// GetBillingAccountByID retrieves a billing account by ID
+func (s *Service) GetBillingAccountByID(id string) (*entity.BillingAccount, error) {
+	return s.accountRepo.GetByID(id)
 }
