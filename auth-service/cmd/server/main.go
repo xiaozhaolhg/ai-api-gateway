@@ -43,8 +43,14 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 	apiKeyRepo := repository.NewAPIKeyRepository(db)
-	authService := application.NewAuthService(userRepo, apiKeyRepo)
-	h := handler.NewHandler(authService, userRepo, apiKeyRepo)
+	groupRepo := repository.NewGroupRepository(db)
+	permissionRepo := repository.NewPermissionRepository(db)
+	userGroupRepo := repository.NewUserGroupRepository(db)
+	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo)
+	groupService := application.NewGroupService(groupRepo)
+	permissionService := application.NewPermissionService(permissionRepo, userGroupRepo)
+	userGroupService := application.NewUserGroupService(userGroupRepo)
+	h := handler.NewHandler(authService, groupService, permissionService, userGroupService, userRepo, apiKeyRepo)
 
 	s := grpc.NewServer()
 	authv1.RegisterAuthServiceServer(s, h)

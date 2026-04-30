@@ -8,6 +8,7 @@ import (
 	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	"github.com/ai-api-gateway/auth-service/internal/application"
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
+	"github.com/ai-api-gateway/auth-service/internal/domain/port"
 	"gorm.io/gorm"
 )
 
@@ -120,10 +121,148 @@ func (m *mockAPIKeyRepository) Delete(id string) error {
 	return nil
 }
 
+// Mock GroupRepository for handler tests
+type mockGroupRepositoryForHandler struct {
+	groups map[string]*entity.Group
+}
+
+func newMockGroupRepositoryForHandler() port.GroupRepository {
+	return &mockGroupRepositoryForHandler{groups: make(map[string]*entity.Group)}
+}
+
+func (m *mockGroupRepositoryForHandler) Create(group *entity.Group) error {
+	m.groups[group.ID] = group
+	return nil
+}
+
+func (m *mockGroupRepositoryForHandler) GetByID(id string) (*entity.Group, error) {
+	g, ok := m.groups[id]
+	if !ok {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return g, nil
+}
+
+func (m *mockGroupRepositoryForHandler) Update(group *entity.Group) error {
+	m.groups[group.ID] = group
+	return nil
+}
+
+func (m *mockGroupRepositoryForHandler) Delete(id string) error {
+	delete(m.groups, id)
+	return nil
+}
+
+func (m *mockGroupRepositoryForHandler) List(page, pageSize int) ([]*entity.Group, int, error) {
+	var all []*entity.Group
+	for _, g := range m.groups {
+		all = append(all, g)
+	}
+	return all, len(all), nil
+}
+
+// Mock PermissionRepository for handler tests
+type mockPermissionRepositoryForHandler struct {
+	permissions map[string]*entity.Permission
+}
+
+func newMockPermissionRepositoryForHandler() port.PermissionRepository {
+	return &mockPermissionRepositoryForHandler{permissions: make(map[string]*entity.Permission)}
+}
+
+func (m *mockPermissionRepositoryForHandler) Create(permission *entity.Permission) error {
+	m.permissions[permission.ID] = permission
+	return nil
+}
+
+func (m *mockPermissionRepositoryForHandler) GetByID(id string) (*entity.Permission, error) {
+	p, ok := m.permissions[id]
+	if !ok {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return p, nil
+}
+
+func (m *mockPermissionRepositoryForHandler) Delete(id string) error {
+	delete(m.permissions, id)
+	return nil
+}
+
+func (m *mockPermissionRepositoryForHandler) ListByGroupID(groupID string, page, pageSize int) ([]*entity.Permission, int, error) {
+	var all []*entity.Permission
+	for _, p := range m.permissions {
+		if p.GroupID == groupID {
+			all = append(all, p)
+		}
+	}
+	return all, len(all), nil
+}
+
+func (m *mockPermissionRepositoryForHandler) FindByUserGroups(groupIDs []string, resourceType, resourceID, action string) ([]*entity.Permission, error) {
+	return nil, nil
+}
+
+// Mock UserGroupRepository for handler tests
+type mockUserGroupRepositoryForHandler struct {
+	memberships []*entity.UserGroupMembership
+}
+
+func newMockUserGroupRepositoryForHandler() port.UserGroupRepository {
+	return &mockUserGroupRepositoryForHandler{}
+}
+
+func (m *mockUserGroupRepositoryForHandler) Create(membership *entity.UserGroupMembership) error {
+	m.memberships = append(m.memberships, membership)
+	return nil
+}
+
+func (m *mockUserGroupRepositoryForHandler) Delete(userID, groupID string) error {
+	for i, mg := range m.memberships {
+		if mg.UserID == userID && mg.GroupID == groupID {
+			m.memberships = append(m.memberships[:i], m.memberships[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (m *mockUserGroupRepositoryForHandler) GetByUserID(userID string) ([]*entity.UserGroupMembership, error) {
+	var result []*entity.UserGroupMembership
+	for _, mg := range m.memberships {
+		if mg.UserID == userID {
+			result = append(result, mg)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockUserGroupRepositoryForHandler) GetByGroupID(groupID string, page, pageSize int) ([]*entity.UserGroupMembership, int, error) {
+	var result []*entity.UserGroupMembership
+	for _, mg := range m.memberships {
+		if mg.GroupID == groupID {
+			result = append(result, mg)
+		}
+	}
+	return result, len(result), nil
+}
+
+func (m *mockUserGroupRepositoryForHandler) Exists(userID, groupID string) (bool, error) {
+	for _, mg := range m.memberships {
+		if mg.UserID == userID && mg.GroupID == groupID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func setupTestHandler(t *testing.T) *Handler {
 	userRepo := newMockUserRepository()
 	apiKeyRepo := newMockAPIKeyRepository()
-	authService := application.NewAuthService(userRepo, apiKeyRepo)
+	userGroupRepo := newMockUserGroupRepositoryForHandler()
+	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo)
+	groupService := application.NewGroupService(newMockGroupRepositoryForHandler())
+	permissionService := application.NewPermissionService(newMockPermissionRepositoryForHandler(), userGroupRepo)
+	userGroupService := application.NewUserGroupService(userGroupRepo)
 
 	// Create a test user
 	user := &entity.User{
@@ -148,7 +287,7 @@ func setupTestHandler(t *testing.T) *Handler {
 	}
 	apiKeyRepo.Create(apiKeyRecord)
 
-	return NewHandler(authService, userRepo, apiKeyRepo)
+	return NewHandler(authService, groupService, permissionService, userGroupService, userRepo, apiKeyRepo)
 }
 
 func TestHandler_ValidateAPIKey(t *testing.T) {
@@ -393,39 +532,81 @@ func TestHandler_ListAPIKeys(t *testing.T) {
 	}
 }
 
-func TestHandler_Phase2Methods(t *testing.T) {
+func TestHandler_GroupManagement(t *testing.T) {
 	handler := setupTestHandler(t)
-
-	// Test that Phase 2+ methods return nil (not implemented)
 	ctx := context.Background()
 
-	_, err := handler.CreateGroup(ctx, &authv1.CreateGroupRequest{})
+	// CreateGroup
+	resp, err := handler.CreateGroup(ctx, &authv1.CreateGroupRequest{Name: "developers"})
 	if err != nil {
-		t.Errorf("CreateGroup should not error, got %v", err)
+		t.Errorf("CreateGroup() error = %v", err)
+	}
+	if resp.Name != "developers" {
+		t.Errorf("Expected name 'developers', got %s", resp.Name)
 	}
 
-	_, err = handler.UpdateGroup(ctx, &authv1.UpdateGroupRequest{})
+	// ListGroups
+	listResp, err := handler.ListGroups(ctx, &authv1.ListGroupsRequest{Page: 1, PageSize: 10})
 	if err != nil {
-		t.Errorf("UpdateGroup should not error, got %v", err)
+		t.Errorf("ListGroups() error = %v", err)
+	}
+	if listResp.Total < 1 {
+		t.Error("Expected at least 1 group")
 	}
 
-	_, err = handler.DeleteGroup(ctx, &authv1.DeleteGroupRequest{})
+	// UpdateGroup
+	updateResp, err := handler.UpdateGroup(ctx, &authv1.UpdateGroupRequest{Id: resp.Id, Name: "senior-devs"})
 	if err != nil {
-		t.Errorf("DeleteGroup should not error, got %v", err)
+		t.Errorf("UpdateGroup() error = %v", err)
+	}
+	if updateResp.Name != "senior-devs" {
+		t.Errorf("Expected name 'senior-devs', got %s", updateResp.Name)
 	}
 
-	_, err = handler.ListGroups(ctx, &authv1.ListGroupsRequest{})
+	// DeleteGroup
+	_, err = handler.DeleteGroup(ctx, &authv1.DeleteGroupRequest{Id: resp.Id})
 	if err != nil {
-		t.Errorf("ListGroups should not error, got %v", err)
+		t.Errorf("DeleteGroup() error = %v", err)
+	}
+}
+
+func TestHandler_PermissionManagement(t *testing.T) {
+	handler := setupTestHandler(t)
+	ctx := context.Background()
+
+	// Create a group first
+	group, _ := handler.CreateGroup(ctx, &authv1.CreateGroupRequest{Name: "test-group"})
+
+	// GrantPermission
+	perm, err := handler.GrantPermission(ctx, &authv1.GrantPermissionRequest{
+		GroupId:      group.Id,
+		ResourceType: "model",
+		ResourceId:   "gpt-4",
+		Action:       "access",
+	})
+	if err != nil {
+		t.Errorf("GrantPermission() error = %v", err)
+	}
+	if perm.GroupId != group.Id {
+		t.Errorf("Expected group_id %s, got %s", group.Id, perm.GroupId)
 	}
 
-	_, err = handler.GrantPermission(ctx, &authv1.GrantPermissionRequest{})
+	// ListPermissions
+	listResp, err := handler.ListPermissions(ctx, &authv1.ListPermissionsRequest{
+		GroupId:  group.Id,
+		Page:     1,
+		PageSize: 10,
+	})
 	if err != nil {
-		t.Errorf("GrantPermission should not error, got %v", err)
+		t.Errorf("ListPermissions() error = %v", err)
+	}
+	if listResp.Total < 1 {
+		t.Error("Expected at least 1 permission")
 	}
 
-	_, err = handler.CheckPermission(ctx, &authv1.CheckPermissionRequest{})
+	// RevokePermission
+	_, err = handler.RevokePermission(ctx, &authv1.RevokePermissionRequest{Id: perm.Id})
 	if err != nil {
-		t.Errorf("CheckPermission should not error, got %v", err)
+		t.Errorf("RevokePermission() error = %v", err)
 	}
 }

@@ -15,9 +15,12 @@ import (
 // Handler implements the gRPC AuthService interface
 type Handler struct {
 	authv1.UnimplementedAuthServiceServer
-	authService *application.AuthService
-	userRepo    UserRepository
-	apiKeyRepo  APIKeyRepository
+	authService       *application.AuthService
+	groupService      *application.GroupService
+	permissionService *application.PermissionService
+	userGroupService  *application.UserGroupService
+	userRepo          UserRepository
+	apiKeyRepo        APIKeyRepository
 }
 
 // UserRepository interface for handler
@@ -41,17 +44,20 @@ type APIKeyRepository interface {
 }
 
 // NewHandler creates a new Handler
-func NewHandler(authService *application.AuthService, userRepo UserRepository, apiKeyRepo APIKeyRepository) *Handler {
+func NewHandler(authService *application.AuthService, groupService *application.GroupService, permissionService *application.PermissionService, userGroupService *application.UserGroupService, userRepo UserRepository, apiKeyRepo APIKeyRepository) *Handler {
 	return &Handler{
-		authService: authService,
-		userRepo:    userRepo,
-		apiKeyRepo:  apiKeyRepo,
+		authService:       authService,
+		groupService:      groupService,
+		permissionService: permissionService,
+		userGroupService:  userGroupService,
+		userRepo:          userRepo,
+		apiKeyRepo:        apiKeyRepo,
 	}
 }
 
 // ValidateAPIKey validates an API key and returns the user identity
 func (h *Handler) ValidateAPIKey(ctx context.Context, req *authv1.ValidateAPIKeyRequest) (*authv1.UserIdentity, error) {
-	user, scopes, err := h.authService.ValidateAPIKey(req.ApiKey)
+	user, scopes, groupIDs, err := h.authService.ValidateAPIKey(req.ApiKey)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +65,7 @@ func (h *Handler) ValidateAPIKey(ctx context.Context, req *authv1.ValidateAPIKey
 	return &authv1.UserIdentity{
 		UserId:   user.ID,
 		Role:     user.Role,
-		GroupIds: []string{},
+		GroupIds: groupIDs,
 		Scopes:   scopes,
 	}, nil
 }
@@ -334,46 +340,153 @@ func (h *Handler) ListAPIKeys(ctx context.Context, req *authv1.ListAPIKeysReques
 	}, nil
 }
 
-// Phase 2+ Group Management - not implemented for MVP
+// Group Management
+
 func (h *Handler) CreateGroup(ctx context.Context, req *authv1.CreateGroupRequest) (*authv1.Group, error) {
-	return nil, nil // TODO: implement in Phase 2
+	group, err := h.groupService.CreateGroup(req.Name, "", req.ParentGroupId, nil, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.Group{
+		Id:            group.ID,
+		Name:          group.Name,
+		ParentGroupId: group.ParentGroupID,
+		CreatedAt:     group.CreatedAt.Unix(),
+	}, nil
 }
 
 func (h *Handler) UpdateGroup(ctx context.Context, req *authv1.UpdateGroupRequest) (*authv1.Group, error) {
-	return nil, nil // TODO: implement in Phase 2
+	group, err := h.groupService.UpdateGroup(req.Id, req.Name, req.ParentGroupId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.Group{
+		Id:            group.ID,
+		Name:          group.Name,
+		ParentGroupId: group.ParentGroupID,
+		CreatedAt:     group.CreatedAt.Unix(),
+	}, nil
 }
 
 func (h *Handler) DeleteGroup(ctx context.Context, req *authv1.DeleteGroupRequest) (*commonv1.Empty, error) {
-	return nil, nil // TODO: implement in Phase 2
+	if err := h.groupService.DeleteGroup(req.Id); err != nil {
+		return nil, err
+	}
+	return &commonv1.Empty{}, nil
 }
 
 func (h *Handler) ListGroups(ctx context.Context, req *authv1.ListGroupsRequest) (*authv1.ListGroupsResponse, error) {
-	return nil, nil // TODO: implement in Phase 2
+	page := int(req.Page)
+	pageSize := int(req.PageSize)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	groups, total, err := h.groupService.ListGroups(page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	groupProtos := make([]*authv1.Group, len(groups))
+	for i, group := range groups {
+		groupProtos[i] = &authv1.Group{
+			Id:            group.ID,
+			Name:          group.Name,
+			ParentGroupId: group.ParentGroupID,
+			CreatedAt:     group.CreatedAt.Unix(),
+		}
+	}
+
+	return &authv1.ListGroupsResponse{
+		Groups: groupProtos,
+		Total:  int32(total),
+	}, nil
 }
 
 func (h *Handler) AddUserToGroup(ctx context.Context, req *authv1.AddUserToGroupRequest) (*commonv1.Empty, error) {
-	return nil, nil // TODO: implement in Phase 2
+	if err := h.userGroupService.AddUserToGroup(req.UserId, req.GroupId); err != nil {
+		return nil, err
+	}
+	return &commonv1.Empty{}, nil
 }
 
 func (h *Handler) RemoveUserFromGroup(ctx context.Context, req *authv1.RemoveUserFromGroupRequest) (*commonv1.Empty, error) {
-	return nil, nil // TODO: implement in Phase 2
+	if err := h.userGroupService.RemoveUserFromGroup(req.UserId, req.GroupId); err != nil {
+		return nil, err
+	}
+	return &commonv1.Empty{}, nil
 }
 
-// Phase 2+ Permission Management - not implemented for MVP
+// Permission Management
+
 func (h *Handler) GrantPermission(ctx context.Context, req *authv1.GrantPermissionRequest) (*authv1.Permission, error) {
-	return nil, nil // TODO: implement in Phase 2
+	permission, err := h.permissionService.GrantPermission(req.GroupId, req.ResourceType, req.ResourceId, req.Action, "allow")
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.Permission{
+		Id:           permission.ID,
+		GroupId:      permission.GroupID,
+		ResourceType: permission.ResourceType,
+		ResourceId:   permission.ResourceID,
+		Action:       permission.Action,
+	}, nil
 }
 
 func (h *Handler) RevokePermission(ctx context.Context, req *authv1.RevokePermissionRequest) (*commonv1.Empty, error) {
-	return nil, nil // TODO: implement in Phase 2
+	if err := h.permissionService.RevokePermission(req.Id); err != nil {
+		return nil, err
+	}
+	return &commonv1.Empty{}, nil
 }
 
 func (h *Handler) ListPermissions(ctx context.Context, req *authv1.ListPermissionsRequest) (*authv1.ListPermissionsResponse, error) {
-	return nil, nil // TODO: implement in Phase 2
+	page := int(req.Page)
+	pageSize := int(req.PageSize)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	permissions, total, err := h.permissionService.ListPermissions(req.GroupId, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	permissionProtos := make([]*authv1.Permission, len(permissions))
+	for i, p := range permissions {
+		permissionProtos[i] = &authv1.Permission{
+			Id:           p.ID,
+			GroupId:      p.GroupID,
+			ResourceType: p.ResourceType,
+			ResourceId:   p.ResourceID,
+			Action:       p.Action,
+		}
+	}
+
+	return &authv1.ListPermissionsResponse{
+		Permissions: permissionProtos,
+		Total:       int32(total),
+	}, nil
 }
 
 func (h *Handler) CheckPermission(ctx context.Context, req *authv1.CheckPermissionRequest) (*authv1.CheckPermissionResponse, error) {
-	return nil, nil // TODO: implement in Phase 2
+	allowed, err := h.permissionService.CheckPermission(req.UserId, req.ResourceType, req.ResourceId, req.Action)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.CheckPermissionResponse{
+		Allowed: allowed,
+	}, nil
 }
 
 // Shutdown handles graceful shutdown

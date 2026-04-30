@@ -14,15 +14,17 @@ import (
 
 // AuthService provides authentication and authorization logic
 type AuthService struct {
-	userRepo    port.UserRepository
-	apiKeyRepo port.APIKeyRepository
+	userRepo      port.UserRepository
+	apiKeyRepo    port.APIKeyRepository
+	userGroupRepo port.UserGroupRepository
 }
 
 // NewAuthService creates a new AuthService
-func NewAuthService(userRepo port.UserRepository, apiKeyRepo port.APIKeyRepository) *AuthService {
+func NewAuthService(userRepo port.UserRepository, apiKeyRepo port.APIKeyRepository, userGroupRepo port.UserGroupRepository) *AuthService {
 	return &AuthService{
-		userRepo:    userRepo,
-		apiKeyRepo: apiKeyRepo,
+		userRepo:      userRepo,
+		apiKeyRepo:    apiKeyRepo,
+		userGroupRepo: userGroupRepo,
 	}
 }
 
@@ -42,31 +44,46 @@ func (s *AuthService) HashAPIKey(apiKey string) string {
 }
 
 // ValidateAPIKey validates an API key and returns the user identity
-func (s *AuthService) ValidateAPIKey(apiKey string) (*entity.User, []string, error) {
+func (s *AuthService) ValidateAPIKey(apiKey string) (*entity.User, []string, []string, error) {
 	keyHash := s.HashAPIKey(apiKey)
 	apiKeyRecord, err := s.apiKeyRepo.GetByKeyHash(keyHash)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if apiKeyRecord == nil {
-		return nil, nil, fmt.Errorf("API key not found")
+		return nil, nil, nil, fmt.Errorf("API key not found")
 	}
 
 	// Check if API key is expired
 	if apiKeyRecord.ExpiresAt != nil && apiKeyRecord.ExpiresAt.Before(time.Now()) {
-		return nil, nil, fmt.Errorf("API key expired")
+		return nil, nil, nil, fmt.Errorf("API key expired")
 	}
 
 	user, err := s.userRepo.GetByID(apiKeyRecord.UserID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if user.Status != "active" {
-		return nil, nil, fmt.Errorf("user is disabled")
+		return nil, nil, nil, fmt.Errorf("user is disabled")
 	}
 
-	return user, apiKeyRecord.Scopes, nil
+	// Populate group IDs from UserGroupMembership
+	var groupIDs []string
+	if s.userGroupRepo != nil {
+		memberships, err := s.userGroupRepo.GetByUserID(user.ID)
+		if err == nil && len(memberships) > 0 {
+			groupIDs = make([]string, len(memberships))
+			for i, m := range memberships {
+				groupIDs[i] = m.GroupID
+			}
+		}
+	}
+	if groupIDs == nil {
+		groupIDs = []string{}
+	}
+
+	return user, apiKeyRecord.Scopes, groupIDs, nil
 }
 
 // CheckModelAuthorization checks if a user is authorized to access a model

@@ -318,3 +318,125 @@ func (c *AuthClient) Register(ctx context.Context, username, email, name, passwo
 
 	return resp, nil
 }
+
+// Group management methods
+
+// CreateGroup creates a new group
+func (c *AuthClient) CreateGroup(ctx context.Context, name, parentGroupID string) (*authv1.Group, error) {
+	req := &authv1.CreateGroupRequest{
+		Name:          name,
+		ParentGroupId: parentGroupID,
+	}
+
+	resp, err := c.client.CreateGroup(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create group: %w", err)
+	}
+	return resp, nil
+}
+
+// UpdateGroup updates an existing group
+func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, parentGroupID string) (*authv1.Group, error) {
+	req := &authv1.UpdateGroupRequest{
+		Id:            id,
+		Name:          name,
+		ParentGroupId: parentGroupID,
+	}
+
+	resp, err := c.client.UpdateGroup(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update group: %w", err)
+	}
+	return resp, nil
+}
+
+// DeleteGroup deletes a group
+func (c *AuthClient) DeleteGroup(ctx context.Context, id string) error {
+	req := &authv1.DeleteGroupRequest{Id: id}
+	_, err := c.client.DeleteGroup(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to delete group: %w", err)
+	}
+	return nil
+}
+
+// ListGroups lists groups with pagination
+func (c *AuthClient) ListGroups(ctx context.Context, page, pageSize int32) (*authv1.ListGroupsResponse, error) {
+	req := &authv1.ListGroupsRequest{
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	resp, err := c.client.ListGroups(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list groups: %w", err)
+	}
+	return resp, nil
+}
+
+// AddUserToGroup adds a user to a group
+func (c *AuthClient) AddUserToGroup(ctx context.Context, userID, groupID string) error {
+	req := &authv1.AddUserToGroupRequest{
+		UserId:  userID,
+		GroupId: groupID,
+	}
+	_, err := c.client.AddUserToGroup(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to add user to group: %w", err)
+	}
+	return nil
+}
+
+// RemoveUserFromGroup removes a user from a group
+func (c *AuthClient) RemoveUserFromGroup(ctx context.Context, userID, groupID string) error {
+	req := &authv1.RemoveUserFromGroupRequest{
+		UserId:  userID,
+		GroupId: groupID,
+	}
+	_, err := c.client.RemoveUserFromGroup(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to remove user from group: %w", err)
+	}
+	return nil
+}
+
+// GrantPermission grants a permission to a group
+func (c *AuthClient) GrantPermission(ctx context.Context, groupID, resourceType, resourceID, action string) (*authv1.Permission, error) {
+	req := &authv1.GrantPermissionRequest{
+		GroupId:      groupID,
+		ResourceType: resourceType,
+		ResourceId:   resourceID,
+		Action:       action,
+	}
+
+	resp, err := c.client.GrantPermission(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to grant permission: %w", err)
+	}
+	return resp, nil
+}
+
+// RevokePermission revokes a permission
+func (c *AuthClient) RevokePermission(ctx context.Context, id string) error {
+	req := &authv1.RevokePermissionRequest{Id: id}
+	_, err := c.client.RevokePermission(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to revoke permission: %w", err)
+	}
+	return nil
+}
+
+// ListPermissions lists permissions for a group
+func (c *AuthClient) ListPermissions(ctx context.Context, groupID string, page, pageSize int32) (*authv1.ListPermissionsResponse, error) {
+	req := &authv1.ListPermissionsRequest{
+		GroupId:  groupID,
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	resp, err := c.client.ListPermissions(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list permissions: %w", err)
+	}
+	return resp, nil
+}

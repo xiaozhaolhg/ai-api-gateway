@@ -14,7 +14,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	err = db.AutoMigrate(&entity.User{}, &entity.APIKey{})
+	err = db.AutoMigrate(&entity.User{}, &entity.APIKey{}, &entity.Group{}, &entity.Permission{}, &entity.UserGroupMembership{})
 	if err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
