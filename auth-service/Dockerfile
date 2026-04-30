@@ -19,6 +19,9 @@ COPY ./go.mod ./
 # Copy api directory
 COPY ./api/ ./api/
 
+# Copy pkg directory
+COPY ./pkg/ ./pkg/
+
 # Copy source code
 COPY ./auth-service/ ./auth-service
 

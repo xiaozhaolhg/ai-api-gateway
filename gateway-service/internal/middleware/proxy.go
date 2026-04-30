@@ -11,15 +11,33 @@ import (
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 )
 
+// ChatCompletionRequest represents the standard OpenAI-style chat completion request
+type ChatCompletionRequest struct {
+	Model       string                 `json:"model"`
+	Messages    []Message              `json:"messages"`
+	Stream      bool                   `json:"stream,omitempty"`
+	Temperature float64                `json:"temperature,omitempty"`
+	MaxTokens   int                    `json:"max_tokens,omitempty"`
+	Other       map[string]interface{} `json:"-"`
+}
+
+// Message represents a chat message
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 // ProxyMiddleware forwards requests to provider-service
 type ProxyMiddleware struct {
 	providerClient *client.ProviderClient
+	billingClient  *client.BillingClient
 }
 
 // NewProxyMiddleware creates a new proxy middleware
-func NewProxyMiddleware(providerClient *client.ProviderClient) *ProxyMiddleware {
+func NewProxyMiddleware(providerClient *client.ProviderClient, billingClient *client.BillingClient) *ProxyMiddleware {
 	return &ProxyMiddleware{
 		providerClient: providerClient,
+		billingClient:  billingClient,
 	}
 }
 
@@ -77,6 +95,23 @@ func (m *ProxyMiddleware) handleNonStreamingRequest(w http.ResponseWriter, r *ht
 	w.Header().Set("X-Prompt-Tokens", fmt.Sprintf("%d", resp.TokenCounts.PromptTokens))
 	w.Header().Set("X-Completion-Tokens", fmt.Sprintf("%d", resp.TokenCounts.CompletionTokens))
 	w.Header().Set("X-Total-Tokens", fmt.Sprintf("%d", resp.TokenCounts.TotalTokens))
+
+	// Parse request and record usage to billing-service asynchronously
+	req, err := parseChatCompletionRequest(requestBody)
+	model := "unknown"
+	if err == nil && req.Model != "" {
+		model = req.Model
+	}
+	go m.recordUsage(r.Context(), providerID, model, resp.TokenCounts.PromptTokens, resp.TokenCounts.CompletionTokens)
+}
+
+// parseChatCompletionRequest parses the request body into a ChatCompletionRequest
+func parseChatCompletionRequest(requestBody []byte) (*ChatCompletionRequest, error) {
+	var req ChatCompletionRequest
+	if err := json.Unmarshal(requestBody, &req); err != nil {
+		return nil, err
+	}
+	return &req, nil
 }
 
 // handleStreamingRequest handles streaming requests with heartbeat
@@ -104,18 +139,18 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 	}
 
 	var totalPromptTokens, totalCompletionTokens int64
-	
+
 	// Create heartbeat ticker (every 15 seconds)
 	heartbeatTicker := time.NewTicker(15 * time.Second)
 	defer heartbeatTicker.Stop()
-	
+
 	// Create a context that captures client disconnection
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	
+
 	// Channel to signal stream completion
 	done := make(chan struct{})
-	
+
 	// Start a goroutine to handle heartbeat
 	go func() {
 		for {
@@ -162,7 +197,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 			break
 		}
 	}
-	
+
 	// Signal completion to stop heartbeat goroutine
 	close(done)
 
@@ -176,4 +211,31 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 	finalJSON, _ := json.Marshal(finalChunk)
 	fmt.Fprintf(w, "data: %s\n\n", string(finalJSON))
 	flusher.Flush()
+
+	// Parse request and record usage to billing-service asynchronously
+	req, err := parseChatCompletionRequest(requestBody)
+	model := "unknown"
+	if err == nil && req.Model != "" {
+		model = req.Model
+	}
+	go m.recordUsage(r.Context(), providerID, model, totalPromptTokens, totalCompletionTokens)
+}
+
+// recordUsage records usage to billing-service asynchronously
+func (m *ProxyMiddleware) recordUsage(ctx context.Context, providerID, model string, promptTokens, completionTokens int64) {
+	// Get user ID from context (set by AuthMiddleware)
+	userID, _ := ctx.Value("userId").(string)
+	if userID == "" {
+		return
+	}
+
+	// Get group ID from context (set by AuthMiddleware)
+	groupID, _ := ctx.Value("groupId").(string)
+
+	// Record usage
+	err := m.billingClient.RecordUsage(context.Background(), userID, groupID, providerID, model, promptTokens, completionTokens)
+	if err != nil {
+		// Log error but don't fail the request
+		// In production, you'd use proper logging
+	}
 }

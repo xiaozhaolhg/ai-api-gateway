@@ -9,7 +9,7 @@ type UsageRecordRepository interface {
 	Create(record *entity.UsageRecord) error
 	GetByID(id string) (*entity.UsageRecord, error)
 	GetByUserID(userID string, page, pageSize int) ([]*entity.UsageRecord, int, error)
-	GetAggregation(userID, startDate, endDate string) (*entity.UsageAggregation, error)
+	GetAggregation(userID, startDate, endDate, groupBy string) ([]*entity.UsageAggregation, error)
 }
 
 // PricingRuleRepository defines the interface for pricing rule persistence operations

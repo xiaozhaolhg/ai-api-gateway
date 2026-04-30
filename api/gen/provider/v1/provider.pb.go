@@ -896,6 +896,7 @@ func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
 func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
 	return file_provider_v1_provider_proto_rawDescGZIP(), []int{14}
 }
@@ -909,8 +910,8 @@ func (x *HealthCheckRequest) GetProviderId() string {
 
 type HealthCheckResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Healthy      bool                   `protobuf:"varint,1,opt,name=healthy,proto3" json:"healthy,omitempty"`
-	Error        string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	Healthy       bool                   `protobuf:"varint,1,opt,name=healthy,proto3" json:"healthy,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -940,6 +941,7 @@ func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use HealthCheckResponse.ProtoReflect.Descriptor instead.
 func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
 	return file_provider_v1_provider_proto_rawDescGZIP(), []int{15}
 }
@@ -969,7 +971,7 @@ type RegisterSubscriberRequest struct {
 
 func (x *RegisterSubscriberRequest) Reset() {
 	*x = RegisterSubscriberRequest{}
-	mi := &file_provider_v1_provider_proto_msgTypes[14]
+	mi := &file_provider_v1_provider_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -981,7 +983,7 @@ func (x *RegisterSubscriberRequest) String() string {
 func (*RegisterSubscriberRequest) ProtoMessage() {}
 
 func (x *RegisterSubscriberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_provider_v1_provider_proto_msgTypes[14]
+	mi := &file_provider_v1_provider_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -994,7 +996,7 @@ func (x *RegisterSubscriberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterSubscriberRequest.ProtoReflect.Descriptor instead.
 func (*RegisterSubscriberRequest) Descriptor() ([]byte, []int) {
-	return file_provider_v1_provider_proto_rawDescGZIP(), []int{14}
+	return file_provider_v1_provider_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RegisterSubscriberRequest) GetServiceName() string {
@@ -1020,7 +1022,7 @@ type UnregisterSubscriberRequest struct {
 
 func (x *UnregisterSubscriberRequest) Reset() {
 	*x = UnregisterSubscriberRequest{}
-	mi := &file_provider_v1_provider_proto_msgTypes[15]
+	mi := &file_provider_v1_provider_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1032,7 +1034,7 @@ func (x *UnregisterSubscriberRequest) String() string {
 func (*UnregisterSubscriberRequest) ProtoMessage() {}
 
 func (x *UnregisterSubscriberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_provider_v1_provider_proto_msgTypes[15]
+	mi := &file_provider_v1_provider_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1045,7 +1047,7 @@ func (x *UnregisterSubscriberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnregisterSubscriberRequest.ProtoReflect.Descriptor instead.
 func (*UnregisterSubscriberRequest) Descriptor() ([]byte, []int) {
-	return file_provider_v1_provider_proto_rawDescGZIP(), []int{15}
+	return file_provider_v1_provider_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UnregisterSubscriberRequest) GetServiceName() string {
@@ -1128,12 +1130,18 @@ const file_provider_v1_provider_proto_rawDesc = "" +
 	"\x12ListModelsResponse\x12\x16\n" +
 	"\x06models\x18\x01 \x03(\tR\x06models\".\n" +
 	"\x18GetProviderByTypeRequest\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\"k\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\"5\n" +
+	"\x12HealthCheckRequest\x12\x1f\n" +
+	"\vprovider_id\x18\x01 \x01(\tR\n" +
+	"providerId\"E\n" +
+	"\x13HealthCheckResponse\x12\x18\n" +
+	"\ahealthy\x18\x01 \x01(\bR\ahealthy\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"k\n" +
 	"\x19RegisterSubscriberRequest\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12+\n" +
 	"\x11callback_endpoint\x18\x02 \x01(\tR\x10callbackEndpoint\"@\n" +
 	"\x1bUnregisterSubscriberRequest\x12!\n" +
-	"\fservice_name\x18\x01 \x01(\tR\vserviceName2\x85\a\n" +
+	"\fservice_name\x18\x01 \x01(\tR\vserviceName2\xd7\a\n" +
 	"\x0fProviderService\x12Y\n" +
 	"\x0eForwardRequest\x12\".provider.v1.ForwardRequestRequest\x1a#.provider.v1.ForwardRequestResponse\x12P\n" +
 	"\rStreamRequest\x12!.provider.v1.StreamRequestRequest\x1a\x1a.provider.v1.ProviderChunk0\x01\x12E\n" +
@@ -1144,7 +1152,8 @@ const file_provider_v1_provider_proto_rawDesc = "" +
 	"\rListProviders\x12!.provider.v1.ListProvidersRequest\x1a\".provider.v1.ListProvidersResponse\x12M\n" +
 	"\n" +
 	"ListModels\x12\x1e.provider.v1.ListModelsRequest\x1a\x1f.provider.v1.ListModelsResponse\x12Q\n" +
-	"\x11GetProviderByType\x12%.provider.v1.GetProviderByTypeRequest\x1a\x15.provider.v1.Provider\x12N\n" +
+	"\x11GetProviderByType\x12%.provider.v1.GetProviderByTypeRequest\x1a\x15.provider.v1.Provider\x12P\n" +
+	"\vHealthCheck\x12\x1f.provider.v1.HealthCheckRequest\x1a .provider.v1.HealthCheckResponse\x12N\n" +
 	"\x12RegisterSubscriber\x12&.provider.v1.RegisterSubscriberRequest\x1a\x10.common.v1.Empty\x12R\n" +
 	"\x14UnregisterSubscriber\x12(.provider.v1.UnregisterSubscriberRequest\x1a\x10.common.v1.EmptyB:Z8github.com/ai-api-gateway/api/gen/provider/v1;providerv1b\x06proto3"
 
@@ -1160,7 +1169,7 @@ func file_provider_v1_provider_proto_rawDescGZIP() []byte {
 	return file_provider_v1_provider_proto_rawDescData
 }
 
-var file_provider_v1_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_provider_v1_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_provider_v1_provider_proto_goTypes = []any{
 	(*ForwardRequestRequest)(nil),       // 0: provider.v1.ForwardRequestRequest
 	(*ForwardRequestResponse)(nil),      // 1: provider.v1.ForwardRequestResponse
@@ -1176,18 +1185,20 @@ var file_provider_v1_provider_proto_goTypes = []any{
 	(*ListModelsRequest)(nil),           // 11: provider.v1.ListModelsRequest
 	(*ListModelsResponse)(nil),          // 12: provider.v1.ListModelsResponse
 	(*GetProviderByTypeRequest)(nil),    // 13: provider.v1.GetProviderByTypeRequest
-	(*RegisterSubscriberRequest)(nil),   // 14: provider.v1.RegisterSubscriberRequest
-	(*UnregisterSubscriberRequest)(nil), // 15: provider.v1.UnregisterSubscriberRequest
-	nil,                                 // 16: provider.v1.ForwardRequestRequest.HeadersEntry
-	nil,                                 // 17: provider.v1.StreamRequestRequest.HeadersEntry
-	(*v1.TokenCounts)(nil),              // 18: common.v1.TokenCounts
-	(*v1.Empty)(nil),                    // 19: common.v1.Empty
+	(*HealthCheckRequest)(nil),          // 14: provider.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil),         // 15: provider.v1.HealthCheckResponse
+	(*RegisterSubscriberRequest)(nil),   // 16: provider.v1.RegisterSubscriberRequest
+	(*UnregisterSubscriberRequest)(nil), // 17: provider.v1.UnregisterSubscriberRequest
+	nil,                                 // 18: provider.v1.ForwardRequestRequest.HeadersEntry
+	nil,                                 // 19: provider.v1.StreamRequestRequest.HeadersEntry
+	(*v1.TokenCounts)(nil),              // 20: common.v1.TokenCounts
+	(*v1.Empty)(nil),                    // 21: common.v1.Empty
 }
 var file_provider_v1_provider_proto_depIdxs = []int32{
-	16, // 0: provider.v1.ForwardRequestRequest.headers:type_name -> provider.v1.ForwardRequestRequest.HeadersEntry
-	18, // 1: provider.v1.ForwardRequestResponse.token_counts:type_name -> common.v1.TokenCounts
-	17, // 2: provider.v1.StreamRequestRequest.headers:type_name -> provider.v1.StreamRequestRequest.HeadersEntry
-	18, // 3: provider.v1.ProviderChunk.accumulated_tokens:type_name -> common.v1.TokenCounts
+	18, // 0: provider.v1.ForwardRequestRequest.headers:type_name -> provider.v1.ForwardRequestRequest.HeadersEntry
+	20, // 1: provider.v1.ForwardRequestResponse.token_counts:type_name -> common.v1.TokenCounts
+	19, // 2: provider.v1.StreamRequestRequest.headers:type_name -> provider.v1.StreamRequestRequest.HeadersEntry
+	20, // 3: provider.v1.ProviderChunk.accumulated_tokens:type_name -> common.v1.TokenCounts
 	4,  // 4: provider.v1.ListProvidersResponse.providers:type_name -> provider.v1.Provider
 	0,  // 5: provider.v1.ProviderService.ForwardRequest:input_type -> provider.v1.ForwardRequestRequest
 	2,  // 6: provider.v1.ProviderService.StreamRequest:input_type -> provider.v1.StreamRequestRequest
@@ -1198,21 +1209,23 @@ var file_provider_v1_provider_proto_depIdxs = []int32{
 	9,  // 11: provider.v1.ProviderService.ListProviders:input_type -> provider.v1.ListProvidersRequest
 	11, // 12: provider.v1.ProviderService.ListModels:input_type -> provider.v1.ListModelsRequest
 	13, // 13: provider.v1.ProviderService.GetProviderByType:input_type -> provider.v1.GetProviderByTypeRequest
-	14, // 14: provider.v1.ProviderService.RegisterSubscriber:input_type -> provider.v1.RegisterSubscriberRequest
-	15, // 15: provider.v1.ProviderService.UnregisterSubscriber:input_type -> provider.v1.UnregisterSubscriberRequest
-	1,  // 16: provider.v1.ProviderService.ForwardRequest:output_type -> provider.v1.ForwardRequestResponse
-	3,  // 17: provider.v1.ProviderService.StreamRequest:output_type -> provider.v1.ProviderChunk
-	4,  // 18: provider.v1.ProviderService.GetProvider:output_type -> provider.v1.Provider
-	4,  // 19: provider.v1.ProviderService.CreateProvider:output_type -> provider.v1.Provider
-	4,  // 20: provider.v1.ProviderService.UpdateProvider:output_type -> provider.v1.Provider
-	19, // 21: provider.v1.ProviderService.DeleteProvider:output_type -> common.v1.Empty
-	10, // 22: provider.v1.ProviderService.ListProviders:output_type -> provider.v1.ListProvidersResponse
-	12, // 23: provider.v1.ProviderService.ListModels:output_type -> provider.v1.ListModelsResponse
-	4,  // 24: provider.v1.ProviderService.GetProviderByType:output_type -> provider.v1.Provider
-	19, // 25: provider.v1.ProviderService.RegisterSubscriber:output_type -> common.v1.Empty
-	19, // 26: provider.v1.ProviderService.UnregisterSubscriber:output_type -> common.v1.Empty
-	16, // [16:27] is the sub-list for method output_type
-	5,  // [5:16] is the sub-list for method input_type
+	14, // 14: provider.v1.ProviderService.HealthCheck:input_type -> provider.v1.HealthCheckRequest
+	16, // 15: provider.v1.ProviderService.RegisterSubscriber:input_type -> provider.v1.RegisterSubscriberRequest
+	17, // 16: provider.v1.ProviderService.UnregisterSubscriber:input_type -> provider.v1.UnregisterSubscriberRequest
+	1,  // 17: provider.v1.ProviderService.ForwardRequest:output_type -> provider.v1.ForwardRequestResponse
+	3,  // 18: provider.v1.ProviderService.StreamRequest:output_type -> provider.v1.ProviderChunk
+	4,  // 19: provider.v1.ProviderService.GetProvider:output_type -> provider.v1.Provider
+	4,  // 20: provider.v1.ProviderService.CreateProvider:output_type -> provider.v1.Provider
+	4,  // 21: provider.v1.ProviderService.UpdateProvider:output_type -> provider.v1.Provider
+	21, // 22: provider.v1.ProviderService.DeleteProvider:output_type -> common.v1.Empty
+	10, // 23: provider.v1.ProviderService.ListProviders:output_type -> provider.v1.ListProvidersResponse
+	12, // 24: provider.v1.ProviderService.ListModels:output_type -> provider.v1.ListModelsResponse
+	4,  // 25: provider.v1.ProviderService.GetProviderByType:output_type -> provider.v1.Provider
+	15, // 26: provider.v1.ProviderService.HealthCheck:output_type -> provider.v1.HealthCheckResponse
+	21, // 27: provider.v1.ProviderService.RegisterSubscriber:output_type -> common.v1.Empty
+	21, // 28: provider.v1.ProviderService.UnregisterSubscriber:output_type -> common.v1.Empty
+	17, // [17:29] is the sub-list for method output_type
+	5,  // [5:17] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -1229,7 +1242,7 @@ func file_provider_v1_provider_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_provider_v1_provider_proto_rawDesc), len(file_provider_v1_provider_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

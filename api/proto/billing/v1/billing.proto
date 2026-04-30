@@ -106,9 +106,10 @@ message ListUsageAggregationResponse {
 
 // Cost Estimation
 message EstimateCostRequest {
-  string model = 1;
-  int64 prompt_tokens = 2;
-  int64 completion_tokens = 3;
+  string provider_id = 1;
+  string model = 2;
+  int64 prompt_tokens = 3;
+  int64 completion_tokens = 4;
 }
 
 message CostEstimate {
@@ -131,7 +132,7 @@ message BudgetStatus {
 
 message Budget {
   string id = 1;
-  string account_id = 2;
+  string user_id = 2;
   double limit = 3;
   string period = 4;           // "daily" | "weekly" | "monthly"
   double soft_cap_pct = 5;
@@ -140,24 +141,25 @@ message Budget {
 }
 
 message CheckBudgetRequest {
-  string account_id = 1;
+  string user_id = 1;
 }
 
 message CreateBudgetRequest {
-  string account_id = 1;
-  double limit = 2;
-  string period = 3;
-  double soft_cap_pct = 4;
-  double hard_cap_pct = 5;
+  string user_id = 2;
+  double limit = 3;
+  string period = 4;
+  double soft_cap_pct = 5;
+  double hard_cap_pct = 6;
 }
 
 message UpdateBudgetRequest {
   string id = 1;
-  double limit = 2;
-  string period = 3;
-  double soft_cap_pct = 4;
-  double hard_cap_pct = 5;
-  string status = 6;
+  string user_id = 2;
+  double limit = 3;
+  string period = 4;
+  double soft_cap_pct = 5;
+  double hard_cap_pct = 6;
+  string status = 7;
 }
 
 message DeleteBudgetRequest {
@@ -165,7 +167,7 @@ message DeleteBudgetRequest {
 }
 
 message ListBudgetsRequest {
-  string account_id = 1;
+  string user_id = 1;
   int32 page = 2;
   int32 page_size = 3;
 }

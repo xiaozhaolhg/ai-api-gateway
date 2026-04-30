@@ -20,7 +20,7 @@ go.work
 # IDE
 .idea/
 .vscode/
-.windsurf/
+.windsurf
 *.swp
 *.swo
 *~
@@ -46,3 +46,7 @@ Thumbs.db
 
 # CodeBuddy (shouldn't be in git)
 .codebuddy/
+
+# whitelist for self created skills and commands
+!.windsurf/skills/gateway*
+!.opencode/skills/gateway*

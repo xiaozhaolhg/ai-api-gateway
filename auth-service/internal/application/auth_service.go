@@ -10,6 +10,7 @@ import (
 
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
 	"github.com/ai-api-gateway/auth-service/internal/domain/port"
+	"github.com/ai-api-gateway/pkg/cache"
 )
 
 // AuthService provides authentication and authorization logic
@@ -17,14 +18,20 @@ type AuthService struct {
 	userRepo      port.UserRepository
 	apiKeyRepo    port.APIKeyRepository
 	userGroupRepo port.UserGroupRepository
+	apiKeyCache   *cache.Cache[string, *entity.APIKey]
 }
 
 // NewAuthService creates a new AuthService
 func NewAuthService(userRepo port.UserRepository, apiKeyRepo port.APIKeyRepository, userGroupRepo port.UserGroupRepository) *AuthService {
+	// Cache API keys for 5 minutes
+	apiKeyCache := cache.New[string, *entity.APIKey](5 * time.Minute)
+	apiKeyCache.StartCleanup(1 * time.Minute)
+
 	return &AuthService{
 		userRepo:      userRepo,
 		apiKeyRepo:    apiKeyRepo,
 		userGroupRepo: userGroupRepo,
+		apiKeyCache:   apiKeyCache,
 	}
 }
 
@@ -46,12 +53,21 @@ func (s *AuthService) HashAPIKey(apiKey string) string {
 // ValidateAPIKey validates an API key and returns the user identity
 func (s *AuthService) ValidateAPIKey(apiKey string) (*entity.User, []string, []string, error) {
 	keyHash := s.HashAPIKey(apiKey)
-	apiKeyRecord, err := s.apiKeyRepo.GetByKeyHash(keyHash)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if apiKeyRecord == nil {
-		return nil, nil, nil, fmt.Errorf("API key not found")
+
+	// Try cache first
+	apiKeyRecord, found := s.apiKeyCache.Get(keyHash)
+	if !found {
+		// Cache miss - fetch from repository
+		var err error
+		apiKeyRecord, err = s.apiKeyRepo.GetByKeyHash(keyHash)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if apiKeyRecord == nil {
+			return nil, nil, nil, fmt.Errorf("API key not found")
+		}
+		// Cache the result
+		s.apiKeyCache.Set(keyHash, apiKeyRecord)
 	}
 
 	// Check if API key is expired
@@ -163,10 +179,10 @@ func (s *AuthService) CreateUser(name, username, email, role, passwordHash strin
 		Name:         name,
 		Username:     username,
 		Email:        email,
-		Role:        role,
-		Status:      "active",
+		Role:         role,
+		Status:       "active",
 		PasswordHash: passwordHash,
-		CreatedAt:   time.Now(),
+		CreatedAt:    time.Now(),
 	}
 
 	if err := s.userRepo.Create(user); err != nil {

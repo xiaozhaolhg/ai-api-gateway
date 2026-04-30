@@ -102,7 +102,7 @@ func (r *UsageRecordRepository) GetByUserID(userID string, page, pageSize int) (
 }
 
 // GetAggregation retrieves aggregated usage statistics
-func (r *UsageRecordRepository) GetAggregation(userID, startDate, endDate string) (*entity.UsageAggregation, error) {
+func (r *UsageRecordRepository) GetAggregation(userID, startDate, endDate, groupBy string) ([]*entity.UsageAggregation, error) {
 	query := `
 		SELECT
 			user_id,
@@ -114,29 +114,55 @@ func (r *UsageRecordRepository) GetAggregation(userID, startDate, endDate string
 			SUM(cost) as total_cost
 		FROM usage_records
 		WHERE user_id = ? AND timestamp BETWEEN ? AND ?
-		GROUP BY provider_id, model
-		LIMIT 1
 	`
 
-	var agg entity.UsageAggregation
-	err := r.db.QueryRow(query, userID, startDate, endDate).Scan(
-		&agg.UserID, &agg.ProviderID, &agg.Model,
-		&agg.TotalRequests, &agg.TotalPromptTokens, &agg.TotalCompletionTokens, &agg.TotalCost,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Return empty aggregation if no records
-			return &entity.UsageAggregation{
-				UserID:    userID,
-				StartDate: startDate,
-				EndDate:   endDate,
-			}, nil
+	if groupBy != "" {
+		switch groupBy {
+		case "user_id":
+			query += " GROUP BY user_id"
+		case "provider_id":
+			query += " GROUP BY provider_id"
+		case "model":
+			query += " GROUP BY model"
+		default:
+			query += " GROUP BY provider_id, model"
 		}
-		return nil, fmt.Errorf("failed to get usage aggregation: %w", err)
+	} else {
+		query += " GROUP BY provider_id, model"
 	}
 
-	agg.StartDate = startDate
-	agg.EndDate = endDate
+	rows, err := r.db.Query(query, userID, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query usage aggregation: %w", err)
+	}
+	defer rows.Close()
 
-	return &agg, nil
+	var aggregations []*entity.UsageAggregation
+	for rows.Next() {
+		var agg entity.UsageAggregation
+		err := rows.Scan(
+			&agg.UserID, &agg.ProviderID, &agg.Model,
+			&agg.TotalRequests, &agg.TotalPromptTokens, &agg.TotalCompletionTokens, &agg.TotalCost,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan aggregation: %w", err)
+		}
+		agg.StartDate = startDate
+		agg.EndDate = endDate
+		aggregations = append(aggregations, &agg)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	if len(aggregations) == 0 {
+		return []*entity.UsageAggregation{{
+			UserID:    userID,
+			StartDate: startDate,
+			EndDate:   endDate,
+		}}, nil
+	}
+
+	return aggregations, nil
 }
