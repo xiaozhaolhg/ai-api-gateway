@@ -20,7 +20,6 @@ go.work
 # IDE
 .idea/
 .vscode/
-.windsurf
 *.swp
 *.swo
 *~
@@ -42,11 +41,16 @@ Thumbs.db
 *.log
 
 # OpenCode (shouldn't be in git)
-.opencode/
+.opencode/skills/*
+.opencode/commands/*
+!.opencode/skills/gateway*
+!.opencode/commands/gateway*
 
 # CodeBuddy (shouldn't be in git)
 .codebuddy/
 
-# whitelist for self created skills and commands
-!.windsurf/skills/gateway*
-!.opencode/skills/gateway*
+# windsurf
+.windsurf/skills/*
+.windsurf/workflows/*
+!.windsurf/skills/gateway-sync-upstream
+!.windsurf/workflows/gateway*

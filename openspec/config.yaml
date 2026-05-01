@@ -29,11 +29,13 @@ rules:
     - Always focus on the "why" not the "how"
     - All contents must be written in English
   tasks:
-    - Break tasks into manageable chunks
+    - Break tasks into manageable chunks, include acceptance criteria for each task
     - Use clear, actionable task descriptions
+    - For each code change, add unit tests for acceptance
+    - For each new feature, add integration tests for acceptance
     - All contents must be written in English
   specs:
-    - "Spec folder names MUST follow: {service-name}-{capability} or system-{capability}"
+    - "Spec folder names MUST follow: {service-name}, {service-name}-{type} or system-{type} where type is one of: architecture, deployment, testing"
     - "Every service and system MUST have three mandatory specs: architecture, deployment, testing"
     - When a change affects an existing capability, modify the existing spec - do NOT create a new spec for the same capability
     - A requirement belongs in a service spec if it describes WHAT the service does

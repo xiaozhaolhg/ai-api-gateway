@@ -48,28 +48,28 @@
 **Focus:** Authentication, data persistence abstraction, usage tracking
 
 ### Week 1 — Foundation
-- [ ] Define repository interfaces: `ProviderRepo`, `UserRepo`, `APIKeyRepo`, `UsageRepo`, `RoutingRuleRepo`
-- [ ] Define entity structs: Provider, User, APIKey, UsageRecord, RoutingRule
-- [ ] Implement SQLite repository implementations for all repos
-- [ ] Database migration scripts (SQLite)
-- [ ] Unit tests for all repositories
+- [x] Define repository interfaces: `UserRepo`, `APIKeyRepo`, `GroupRepo`, `PermissionRepo`, `UserGroupRepo` (completed: rbac-group-foundation)
+- [x] Define entity structs: User, APIKey, Group, Permission, UserGroupMembership (completed: rbac-group-foundation)
+- [x] Implement SQLite repository implementations for all repos (completed: rbac-group-foundation)
+- [x] Database migration scripts (SQLite) (completed: rbac-group-foundation)
+- [x] Unit tests for all repositories (completed: rbac-group-foundation)
 
 ### Week 2 — Auth & API Keys
-- [ ] Implement Auth middleware: API key validation, user resolution
-- [ ] Implement API key generation, hashing, and verification
-- [ ] Admin API endpoints: `POST/GET/DELETE /admin/users`, `POST/GET/DELETE /admin/api-keys`
-- [ ] Admin auth: session-based or basic auth for admin endpoints
+- [x] Implement Auth middleware: API key validation, user resolution (completed: rbac-group-foundation)
+- [x] Implement API key generation, hashing, and verification (completed: rbac-group-foundation)
+- [x] Admin API endpoints: `POST/GET/DELETE /admin/users`, `POST/GET/DELETE /admin/api-keys` (completed: rbac-group-foundation)
+- [x] Admin auth: session-based or basic auth for admin endpoints (completed: rbac-group-foundation)
 - [ ] Integration test: create user → issue API key → authenticate request
 
 ### Week 3 — Token Tracker
-- [ ] Implement Token Tracker: record prompt/completion tokens per request
-- [ ] Token extraction: parse from provider response (non-streaming) and accumulate from SSE chunks (streaming)
-- [ ] Admin API endpoints: `GET /admin/usage` (filterable by user, model, provider, date range)
-- [ ] Usage aggregation: daily totals per user/model/provider
+- [x] Implement Token Tracker: record prompt/completion tokens per request (completed: token-tracker-implementation)
+- [x] Token extraction: parse from provider response (non-streaming) and accumulate from SSE chunks (streaming) (completed: token-tracker-implementation)
+- [x] Admin API endpoints: `GET /admin/usage` (filterable by user, model, provider, date range) (completed: token-tracker-implementation)
+- [x] Usage aggregation: daily totals per user/model/provider (completed: token-tracker-implementation)
 - [ ] Integration test: send request → verify usage record written → query usage API
 
 ### Week 4 — Proto Schema Improvements
-- [ ] **Add `model` field to provider proto messages** (separate proposal)
+- [ ] **Add `model` field to provider proto messages**
   - Update `api/proto/provider/v1/provider.proto`:
     - Add `model` field to `ForwardRequestRequest`
     - Add `model` field to `StreamRequestRequest`
@@ -80,6 +80,13 @@
   - Update provider-service to return model in response
   - Update billing call to use model from proto response
   - **Rationale**: Type-safe model passing, no JSON parsing dependency, proto versioning handles changes gracefully
+
+- [ ] **Real-time billing / token usage tracking**
+  - Update billing-service to handle intermediate/partial usage records
+  - Update gateway-service to call RecordUsage at regular token intervals during streaming (e.g., every 1000 tokens)
+  - Configure token interval threshold as configurable parameter
+  - Ensure final RecordUsage call after stream completion for remaining tokens
+  - **Rationale**: Prevent excessive token usage during long streaming requests by tracking usage in real-time
 
 ### Future Work — PostgreSQL Migration
 - [ ] Implement PostgreSQL repository implementations for all repos
