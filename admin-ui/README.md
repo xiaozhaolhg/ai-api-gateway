@@ -98,7 +98,72 @@ Uses TanStack Query with:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| VITE_API_URL | API base URL | http://localhost:8080 |
+| VITE_API_BASE_URL | API base URL | http://localhost:8080 |
+| VITE_USE_MOCK | Enable Mock API mode | false |
+| VITE_MOCK_DELAY | Mock API network delay (ms) | 500 |
+
+## Mock API Development
+
+The admin UI includes a comprehensive Mock API system for frontend development without requiring a running backend.
+
+### Features
+
+- **Complete API Coverage**: Mock implementations for all admin API endpoints
+- **Data Persistence**: Mock data stored in localStorage, survives page refreshes
+- **Network Simulation**: Configurable network delay to simulate real API behavior
+- **Data Management**: Export/import mock data as JSON files
+- **Development Tools**: Built-in DevTools panel for runtime control
+
+### Enabling Mock Mode
+
+Set the environment variable in `.env.development`:
+
+```bash
+VITE_USE_MOCK=true
+VITE_MOCK_DELAY=500
+```
+
+Or use the DevTools panel to switch between Mock and Real API modes at runtime.
+
+### Mock Data
+
+Default mock data includes:
+- 3 sample users (admin, user, viewer)
+- 2 providers (Ollama, OpenCode Zen)
+- Sample API keys, usage records, routing rules
+- Groups, permissions, budgets, pricing rules
+- Alert rules and active alerts
+
+### DevTools Panel
+
+Click the gear icon (⚙️) in the bottom-right corner to access:
+
+- **API Mode**: Switch between Mock and Real API
+- **Mock Settings**: Adjust network delay simulation
+- **Data Management**: Reset, export, or import mock data
+- **Data Statistics**: View counts of all mock entities
+- **API Configuration**: View current API settings
+
+### Data Export/Import
+
+Export mock data for sharing or backup:
+```json
+{
+  "users": [...],
+  "providers": [...],
+  "routingRules": [...],
+  ...
+}
+```
+
+Import custom mock data to test specific scenarios.
+
+### Testing
+
+Mock API includes comprehensive unit tests:
+```bash
+npm run test
+```
 
 ## i18n
 

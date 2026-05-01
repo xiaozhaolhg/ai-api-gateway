@@ -167,6 +167,104 @@ service AuthService {
 
 ---
 
+## Internal API Client
+
+All admin-ui API calls use the APIClientInterface (src/api/types.ts), implemented by both RealAPIClient and MockAPIClient for consistent behavior.
+
+### Requirement: Unified Client Interface
+The admin-ui SHALL use a unified API client that implements the same interface for both mock and real modes.
+
+#### Scenario: Interface compliance
+- **WHEN** the APIClientInterface is inspected
+- **THEN** it SHALL define typed methods for all /admin/* endpoints
+- **AND** both RealAPIClient and MockAPIClient SHALL implement this interface
+
+#### Scenario: Mode switching
+- **WHEN** the mode is switched via DevTools or environment variable
+- **THEN** the UnifiedAPIClient SHALL delegate to the appropriate implementation
+- **AND** the API behavior SHALL remain consistent
+
+### RealAPIClient
+
+Implements HTTP calls to gateway-service at `VITE_API_BASE_URL`:
+
+```typescript
+class RealAPIClient implements APIClientInterface {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const resp = await fetch(`${this.baseURL}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return resp.json();
+  }
+
+  // ... other methods matching APIClientInterface
+}
+```
+
+### MockAPIClient
+
+Implements mock data operations using MockDataHandler:
+
+```typescript
+class MockAPIClient implements APIClientInterface {
+  private dataHandler: MockDataHandler;
+  private delay: number;
+
+  constructor(delay: number = 500) {
+    this.dataHandler = MockDataHandler.getInstance();
+    this.delay = delay;
+  }
+
+  private async simulateNetworkDelay<T>(data: T): Promise<T> {
+    if (this.delay === 0) return data;
+    return new Promise(resolve => setTimeout(() => resolve(data), this.delay));
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    // Mock implementation with mock data
+    const user = this.dataHandler.getUsers().find(u => u.email === email);
+    if (!user) throw new Error('User not found');
+    return this.simulateNetworkDelay({
+      token: `mock-jwt-token-${Date.now()}`,
+      user
+    });
+  }
+
+  // ... other methods matching APIClientInterface
+}
+```
+
+### APIClientInterface Definition
+
+```typescript
+export interface APIClientInterface {
+  // Authentication
+  login(email: string, password: string): Promise<LoginResponse>;
+  register(name: string, username: string, email: string, password: string): Promise<RegisterResponse>;
+  logout(): Promise<void>;
+  getCurrentUser(): Promise<User>;
+
+  // Providers
+  getProviders(): Promise<Provider[]>;
+  createProvider(provider: Omit<Provider, 'id' | 'created_at' | 'updated_at'>): Promise<Provider>;
+  updateProvider(id: string, provider: Partial<Provider>): Promise<Provider>;
+  deleteProvider(id: string): Promise<void>;
+
+  // Users, API Keys, Usage, Routing Rules, Groups, Permissions, Budgets, Pricing Rules, Alert Rules, Alerts, Health
+  // ... full CRUD interface for all entities
+}
+```
+
+---
+
 ### 5.6 User Entity (Updated)
 
 ```protobuf

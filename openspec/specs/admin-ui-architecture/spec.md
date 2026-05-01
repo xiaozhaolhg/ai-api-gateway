@@ -366,4 +366,46 @@ The admin-ui SHALL provide a dashboard page at `/` as the default landing route.
 - **THEN** it SHALL fetch summary data from `GET /admin/users` (count), `GET /admin/providers` (count), `GET /admin/usage` (aggregate), `GET /admin/alerts` (active count)
 - **AND** display loading spinners while data is being fetched.
 
+---
+
+## API Client Design
+
+The admin-ui uses a unified API client implementing APIClientInterface:
+
+### Requirement: Unified APIClient
+The admin-ui SHALL use a UnifiedAPIClient that switches between RealAPIClient and MockAPIClient based on configuration.
+
+#### Scenario: Mock mode enabled
+- **WHEN** `VITE_USE_MOCK=true` is set in environment
+- **THEN** the UnifiedAPIClient SHALL delegate all API calls to MockAPIClient
+
+#### Scenario: Real mode enabled
+- **WHEN** `VITE_USE_MOCK=false` is set in environment
+- **THEN** the UnifiedAPIClient SHALL delegate all API calls to RealAPIClient (HTTP to gateway-service)
+
+#### Scenario: Runtime mode switch
+- **WHEN** the user toggles the mode switch in DevTools panel
+- **THEN** the UnifiedAPIClient SHALL switch between MockAPIClient and RealAPIClient
+- **AND** reload the page to apply changes
+
+### Requirement: APIClientInterface
+The admin-ui SHALL define an APIClientInterface that both RealAPIClient and MockAPIClient implement.
+
+#### Scenario: Interface compliance
+- **WHEN** the RealAPIClient or MockAPIClient is inspected
+- **THEN** it SHALL implement all methods defined in APIClientInterface
+- **AND** provide consistent return types for the same method
+
+### Requirement: Mock Data Persistence
+The MockAPIClient SHALL persist data in localStorage across page refreshes.
+
+#### Scenario: Data survives refresh
+- **WHEN** the page is refreshed in mock mode
+- **THEN** all previous mock data changes SHALL be preserved
+
+#### Scenario: Data reset
+- **WHEN** the user clicks "Reset to Defaults" in DevTools
+- **THEN** all mock data SHALL be reset to the default dataset
+- **AND** the localStorage SHALL be updated
+
 

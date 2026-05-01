@@ -6,6 +6,7 @@ import zhCN from 'antd/locale/zh_CN';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppShell } from './components/AppShell';
+import DevTools from './components/DevTools';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
@@ -67,6 +68,7 @@ function App() {
   return (
     <I18nextProvider i18n={i18n}>
       <AppContent />
+      <DevTools />
     </I18nextProvider>
   );
 }

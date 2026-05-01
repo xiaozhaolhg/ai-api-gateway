@@ -1,0 +1,5 @@
+name: mock-api-system
+description: Implement Mock API system for admin-ui frontend development
+service: admin-ui
+status: completed
+date: 2026-05-01

@@ -1,7 +1,9 @@
 // API client for admin endpoints
 import { message } from 'antd';
+import type { APIClientInterface } from './types';
+import MockAPIClient from './mockClient';
+import { API_CONFIG } from './config';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const TOKEN_KEY = 'auth_token';
 
 export interface Provider {
@@ -132,7 +134,7 @@ export interface ProviderHealth {
   last_check: string;
 }
 
-class APIClient {
+class RealAPIClient implements APIClientInterface {
   private baseURL: string;
 
   constructor(baseURL: string) {
@@ -487,4 +489,223 @@ class APIClient {
   }
 }
 
-export const apiClient = new APIClient(API_BASE_URL);
+// Unified APIClient that switches between Real and Mock based on configuration
+class UnifiedAPIClient implements APIClientInterface {
+  private realClient: RealAPIClient;
+  private mockClient: MockAPIClient;
+  private useMock: boolean;
+
+  constructor() {
+    this.realClient = new RealAPIClient(API_CONFIG.baseURL);
+    this.mockClient = new MockAPIClient(API_CONFIG.mockDelay);
+    this.useMock = API_CONFIG.useMock;
+  }
+
+  private getActiveClient(): APIClientInterface {
+    return this.useMock ? this.mockClient : this.realClient;
+  }
+
+  // Authentication
+  async login(email: string, password: string) {
+    return this.getActiveClient().login(email, password);
+  }
+
+  async register(name: string, username: string, email: string, password: string) {
+    return this.getActiveClient().register(name, username, email, password);
+  }
+
+  async logout() {
+    return this.getActiveClient().logout();
+  }
+
+  async getCurrentUser() {
+    return this.getActiveClient().getCurrentUser();
+  }
+
+  // Providers
+  async getProviders() {
+    return this.getActiveClient().getProviders();
+  }
+
+  async createProvider(provider: Omit<Provider, 'id' | 'created_at' | 'updated_at'>) {
+    return this.getActiveClient().createProvider(provider);
+  }
+
+  async updateProvider(id: string, provider: Partial<Provider>) {
+    return this.getActiveClient().updateProvider(id, provider);
+  }
+
+  async deleteProvider(id: string) {
+    return this.getActiveClient().deleteProvider(id);
+  }
+
+  // Users
+  async getUsers() {
+    return this.getActiveClient().getUsers();
+  }
+
+  async createUser(user: Omit<User, 'id' | 'created_at'>) {
+    return this.getActiveClient().createUser(user);
+  }
+
+  async updateUser(id: string, user: Partial<User>) {
+    return this.getActiveClient().updateUser(id, user);
+  }
+
+  async deleteUser(id: string) {
+    return this.getActiveClient().deleteUser(id);
+  }
+
+  // API Keys
+  async getAPIKeys(userId: string) {
+    return this.getActiveClient().getAPIKeys(userId);
+  }
+
+  async createAPIKey(userId: string, name: string) {
+    return this.getActiveClient().createAPIKey(userId, name);
+  }
+
+  async deleteAPIKey(id: string) {
+    return this.getActiveClient().deleteAPIKey(id);
+  }
+
+  // Usage
+  async getUsage(userId?: string, startDate?: string, endDate?: string) {
+    return this.getActiveClient().getUsage(userId, startDate, endDate);
+  }
+
+  // Routing Rules
+  async getRoutingRules() {
+    return this.getActiveClient().getRoutingRules();
+  }
+
+  async createRoutingRule(rule: Omit<any, 'id' | 'created_at' | 'updated_at'>) {
+    return this.getActiveClient().createRoutingRule(rule);
+  }
+
+  async updateRoutingRule(id: string, rule: Partial<any>) {
+    return this.getActiveClient().updateRoutingRule(id, rule);
+  }
+
+  async deleteRoutingRule(id: string) {
+    return this.getActiveClient().deleteRoutingRule(id);
+  }
+
+  // Groups
+  async getGroups() {
+    return this.getActiveClient().getGroups();
+  }
+
+  async createGroup(group: Omit<any, 'id' | 'created_at' | 'updated_at' | 'member_count'>) {
+    return this.getActiveClient().createGroup(group);
+  }
+
+  async updateGroup(id: string, group: Partial<any>) {
+    return this.getActiveClient().updateGroup(id, group);
+  }
+
+  async deleteGroup(id: string) {
+    return this.getActiveClient().deleteGroup(id);
+  }
+
+  async addGroupMember(groupId: string, userId: string) {
+    return this.getActiveClient().addGroupMember(groupId, userId);
+  }
+
+  async removeGroupMember(groupId: string, userId: string) {
+    return this.getActiveClient().removeGroupMember(groupId, userId);
+  }
+
+  // Permissions
+  async getPermissions() {
+    return this.getActiveClient().getPermissions();
+  }
+
+  async createPermission(permission: Omit<any, 'id' | 'created_at' | 'updated_at'>) {
+    return this.getActiveClient().createPermission(permission);
+  }
+
+  async updatePermission(id: string, permission: Partial<any>) {
+    return this.getActiveClient().updatePermission(id, permission);
+  }
+
+  async deletePermission(id: string) {
+    return this.getActiveClient().deletePermission(id);
+  }
+
+  // Budgets
+  async getBudgets() {
+    return this.getActiveClient().getBudgets();
+  }
+
+  async createBudget(budget: Omit<any, 'id' | 'created_at' | 'updated_at' | 'current_spend'>) {
+    return this.getActiveClient().createBudget(budget);
+  }
+
+  async updateBudget(id: string, budget: Partial<any>) {
+    return this.getActiveClient().updateBudget(id, budget);
+  }
+
+  async deleteBudget(id: string) {
+    return this.getActiveClient().deleteBudget(id);
+  }
+
+  // Pricing Rules
+  async getPricingRules() {
+    return this.getActiveClient().getPricingRules();
+  }
+
+  async createPricingRule(rule: Omit<any, 'id' | 'created_at' | 'updated_at'>) {
+    return this.getActiveClient().createPricingRule(rule);
+  }
+
+  async updatePricingRule(id: string, rule: Partial<any>) {
+    return this.getActiveClient().updatePricingRule(id, rule);
+  }
+
+  async deletePricingRule(id: string) {
+    return this.getActiveClient().deletePricingRule(id);
+  }
+
+  // Alert Rules
+  async getAlertRules() {
+    return this.getActiveClient().getAlertRules();
+  }
+
+  async createAlertRule(rule: Omit<any, 'id' | 'created_at' | 'updated_at'>) {
+    return this.getActiveClient().createAlertRule(rule);
+  }
+
+  async updateAlertRule(id: string, rule: Partial<any>) {
+    return this.getActiveClient().updateAlertRule(id, rule);
+  }
+
+  async deleteAlertRule(id: string) {
+    return this.getActiveClient().deleteAlertRule(id);
+  }
+
+  // Alerts
+  async getAlerts() {
+    return this.getActiveClient().getAlerts();
+  }
+
+  async acknowledgeAlert(id: string) {
+    return this.getActiveClient().acknowledgeAlert(id);
+  }
+
+  // Health
+  async getProviderHealth() {
+    return this.getActiveClient().getProviderHealth();
+  }
+
+  // Method to switch between mock and real mode
+  setMockMode(enabled: boolean) {
+    this.useMock = enabled;
+  }
+
+  getMockMode(): boolean {
+    return this.useMock;
+  }
+}
+
+export const apiClient = new UnifiedAPIClient();
