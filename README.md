@@ -230,3 +230,78 @@ docker compose logs -f gateway-service
 ## License
 
 MIT
+## User Flow
+
+### Register & Login
+
+1. **Register** (if new user):
+   ```bash
+   curl -X POST http://localhost:8080/admin/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"username":"myuser","email":"user@example.com","name":"My User","password":"mypass"}'
+   ```
+
+2. **Login** to get JWT token:
+   ```bash
+   curl -X POST http://localhost:8080/admin/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"user@example.com","password":"mypass"}'
+   ```
+   Response includes `token` field.
+
+### Create API Key
+
+Use the JWT token to create an API key:
+
+```bash
+curl -X POST http://localhost:8080/v1/auth/api-keys \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-key"}'
+```
+
+Response:
+```json
+{
+  "api_key_id": "abc123...",
+  "api_key": "sk-xxx...",
+  "name": "my-key"
+}
+```
+
+**Important**: The `api_key` is shown only once! Save it securely.
+
+### Use `/v1/chat/completions`
+
+Use the API key to make requests:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-xxx..." \
+  -d '{
+    "model": "ollama:llama2",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### List Available Models
+
+```bash
+curl http://localhost:8080/v1/models \
+  -H "Authorization: Bearer sk-xxx..."
+```
+
+### Manage API Keys
+
+List your API keys:
+```bash
+curl http://localhost:8080/v1/auth/api-keys \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Delete an API key:
+```bash
+curl -X DELETE http://localhost:8080/v1/auth/api-keys/{key_id} \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```

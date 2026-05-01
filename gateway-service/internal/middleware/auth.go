@@ -1,10 +1,9 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
-	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 )
 
@@ -20,44 +19,42 @@ func NewAuthMiddleware(authClient *client.AuthClient) *AuthMiddleware {
 	}
 }
 
-// Middleware returns the middleware function
-func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (m *AuthMiddleware) Middleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		// Extract API key from Authorization header
-		apiKey := m.extractAPIKey(r)
+		apiKey := m.extractAPIKey(c)
 		if apiKey == "" {
-			http.Error(w, "Missing API key", http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing API key"})
+			c.Abort()
 			return
 		}
 
 		// Validate API key with auth-service
-		userIdentity, err := m.authClient.ValidateAPIKey(r.Context(), apiKey)
+		userIdentity, err := m.authClient.ValidateAPIKey(c.Request.Context(), apiKey)
 		if err != nil {
-			http.Error(w, "Invalid API key", http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+			c.Abort()
 			return
 		}
 
-		// Add user identity to context
-		ctx := context.WithValue(r.Context(), "userId", userIdentity.UserId)
-		ctx = context.WithValue(ctx, "role", userIdentity.Role)
-		ctx = context.WithValue(ctx, "groupIds", userIdentity.GroupIds)
-		ctx = context.WithValue(ctx, "scopes", userIdentity.Scopes)
+	c.Set("userId", userIdentity.UserId)
+	c.Set("role", userIdentity.Role)
+	c.Set("groupIds", userIdentity.GroupIds)
+	c.Set("scopes", userIdentity.Scopes)
 
-		// Call next handler with updated context
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	c.Next()
+	}
 }
 
-// extractAPIKey extracts the API key from the Authorization header
-func (m *AuthMiddleware) extractAPIKey(r *http.Request) string {
-	authHeader := r.Header.Get("Authorization")
+func (m *AuthMiddleware) extractAPIKey(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		return ""
 	}
 
 	// Support "Bearer <token>" format
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimPrefix(authHeader, "Bearer ")
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		return authHeader[7:]
 	}
 
 	// Support raw API key

@@ -27,7 +27,6 @@ services:
     networks:
       - ai-gateway
 
-
   router-service:
     build:
       context: .
@@ -108,6 +107,20 @@ services:
       timeout: 5s
       retries: 3
 
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    networks:
+      - ai-gateway
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   ai-gateway:
     driver: bridge
@@ -118,3 +131,4 @@ volumes:
   provider-service-data:
   billing-service-data:
   monitor-service-data:
+  ollama-data:
