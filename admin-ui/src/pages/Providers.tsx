@@ -85,7 +85,7 @@ export default function Providers() {
     setEditingProvider(provider);
     form.setFieldsValue({
       ...provider,
-      models: provider.models.join(', '),
+      models: provider.models?.join(', ') || '',
     });
     setModalVisible(true);
   };
@@ -130,7 +130,7 @@ export default function Providers() {
       title: 'Models',
       dataIndex: 'models',
       key: 'models',
-      render: (models: string[]) => models.join(', '),
+      render: (models: string[]) => (models || []).join(', '),
     },
     {
       title: t('providers:fields.status'),

@@ -47,7 +47,7 @@ func (h *AdminProvidersHandler) ListProviders(c *gin.Context) {
 	for i := range resp.Providers {
 		resp.Providers[i].Credentials = "***"
 	}
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, resp.Providers)
 }
 
 func (h *AdminProvidersHandler) CreateProvider(c *gin.Context) {
