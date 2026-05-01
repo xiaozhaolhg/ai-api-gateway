@@ -1,0 +1,5 @@
+name: admin-ui-remaining-tasks
+description: Complete remaining Developer C tasks - testing, error boundaries, RBAC verification, cleanup
+service: admin-ui
+status: in-progress
+date: 2026-05-02
