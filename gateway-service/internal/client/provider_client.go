@@ -171,11 +171,12 @@ func (c *ProviderClient) ListProviders(ctx context.Context, page, pageSize int32
 	providers := make([]*Provider, len(resp.Providers))
 	for i, p := range resp.Providers {
 		providers[i] = &Provider{
-			ID:     p.Id,
-			Name:   p.Name,
-			Type:   p.Type,
-			Status: p.Status,
-			Models: p.Models,
+			ID:      p.Id,
+			Name:    p.Name,
+			Type:    p.Type,
+			BaseURL: p.BaseUrl,
+			Status:  p.Status,
+			Models:  p.Models,
 		}
 	}
 

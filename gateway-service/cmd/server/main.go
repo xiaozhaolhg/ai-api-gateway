@@ -131,8 +131,6 @@ func main() {
 			handleGetUsage(c, adminUsageHandler)
 		})
 
-		// Providers (still mock for now)
-		admin.GET("/providers", handleListProviders)
 	}
 
 	providerHandler := handler.NewAdminProvidersHandler(cfg.ProviderService.Address, cfg.RouterService.Address)
@@ -286,6 +284,7 @@ func handleLogin(c *gin.Context) {
 
 	resp, err := authClient.Login(ctx, req.Email, req.Password)
 	if err != nil {
+		log.Printf("[DEBUG] Login error for %s: %v", req.Email, err)
 		c.JSON(401, gin.H{"error": "invalid credentials"})
 		return
 	}

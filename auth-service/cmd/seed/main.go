@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/ai-api-gateway/auth-service/internal/application"
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
 	"github.com/ai-api-gateway/auth-service/internal/infrastructure/migration"
 	"github.com/ai-api-gateway/auth-service/internal/infrastructure/repository"
@@ -59,13 +60,18 @@ func main() {
 
 	// Create default admin user
 	log.Println("Creating default admin user...")
+	passwordHash, err := application.HashPassword("admin123")
+	if err != nil {
+		log.Fatalf("Failed to hash admin password: %v", err)
+	}
 	adminUser := &entity.User{
-		ID:        generateID(),
-		Name:      "Admin",
-		Email:     "admin@example.com",
-		Role:      "admin",
-		Status:    "active",
-		CreatedAt: time.Now(),
+		ID:           generateID(),
+		Name:         "Admin",
+		Email:        "admin@example.com",
+		Role:         "admin",
+		Status:       "active",
+		PasswordHash: passwordHash,
+		CreatedAt:    time.Now(),
 	}
 
 	if err := userRepo.Create(adminUser); err != nil {

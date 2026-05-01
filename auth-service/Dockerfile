@@ -28,8 +28,9 @@ COPY ./auth-service/ ./auth-service
 # Generate go.sum and download dependencies
 RUN go mod tidy
 
-# Build the application
+# Build the applications
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /bin/auth-service ./auth-service/cmd/server
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /bin/auth-seed ./auth-service/cmd/seed
 
 # Runtime stage
 FROM alpine:latest
@@ -41,15 +42,16 @@ RUN apk --no-cache add ca-certificates sqlite-libs
 
 WORKDIR /root/
 
-# Copy the binary from builder
+# Copy the binaries from builder
 COPY --from=builder /bin/auth-service .
+COPY --from=builder /bin/auth-seed .
 
 # Copy config
 COPY --from=builder /app/auth-service/configs ./configs
 
 # Create data directory and startup script before switching user
 RUN mkdir -p /data
-RUN printf '#!/bin/sh\necho "Starting auth service..."\n./auth-service\n' > /root/start.sh
+RUN printf '#!/bin/sh\necho "Running database seed..."\n./auth-seed\necho "Starting auth service..."\n./auth-service\n' > /root/start.sh
 RUN chmod +x /root/start.sh
 
 # Run as non-root user
