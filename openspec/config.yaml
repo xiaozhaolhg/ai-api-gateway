@@ -12,8 +12,11 @@ context: |
   Project type: Multi-service monorepo (Go + Python + React)
   Each service is a top-level directory in the repository.
   Spec naming convention:
-  - Service-specific: {service-name}-{capability}
-  - Cross-cutting: system-{capability}
+  - Service specs: `{service-name}`
+  - Architecture specs: `{service-name}-architecture`
+  - Deployment specs: `{service-name}-deployment`
+  - Testing specs: `{service-name}-testing`
+  - Cross-cutting: `system` or `system-deployment`
   Mandatory specs - every service and system MUST have:
   - {service-name}-architecture: internal structure, patterns, dependencies
   - {service-name}-deployment: build, containerization, configuration, env vars
