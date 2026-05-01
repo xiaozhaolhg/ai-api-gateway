@@ -44,7 +44,11 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 	// Get provider configuration
 	provider, err := s.providerRepo.GetByID(providerID)
 	if err != nil {
-		return nil, 0, 0, 0, fmt.Errorf("failed to get provider: %w", err)
+		// Try lookup by type
+		provider, err = s.providerRepo.GetByType(providerID)
+		if err != nil {
+			return nil, 0, 0, 0, fmt.Errorf("failed to get provider: %w", err)
+		}
 	}
 
 	if provider.Status != "active" {
@@ -131,8 +135,12 @@ func (s *Service) StreamRequest(ctx context.Context, providerID string, requestB
 		// Get provider configuration
 		provider, err := s.providerRepo.GetByID(providerID)
 		if err != nil {
-			errChan <- fmt.Errorf("failed to get provider: %w", err)
-			return
+			// Try lookup by type
+			provider, err = s.providerRepo.GetByType(providerID)
+			if err != nil {
+				errChan <- fmt.Errorf("failed to get provider: %w", err)
+				return
+			}
 		}
 
 		if provider.Status != "active" {

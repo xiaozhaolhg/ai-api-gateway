@@ -209,43 +209,43 @@ class RealAPIClient implements APIClientInterface {
 
   // User endpoints
   async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/admin/users');
+    return this.request<User[]>('/admin/auth/users');
   }
 
   async createUser(user: Omit<User, 'id' | 'created_at'>): Promise<User> {
-    return this.request<User>('/admin/users', {
+    return this.request<User>('/admin/auth/users', {
       method: 'POST',
       body: JSON.stringify(user),
     });
   }
 
   async updateUser(id: string, user: Partial<User>): Promise<User> {
-    return this.request<User>(`/admin/users/${id}`, {
+    return this.request<User>(`/admin/auth/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(user),
     });
   }
 
   async deleteUser(id: string): Promise<void> {
-    await this.request<void>(`/admin/users/${id}`, {
+    await this.request<void>(`/admin/auth/users/${id}`, {
       method: 'DELETE',
     });
   }
 
   // API Key endpoints
   async getAPIKeys(userId: string): Promise<APIKey[]> {
-    return this.request<APIKey[]>(`/admin/api-keys/${userId}`);
+    return this.request<APIKey[]>(`/admin/auth/api-keys/${userId}`);
   }
 
   async createAPIKey(userId: string, name: string): Promise<{ api_key_id: string; api_key: string }> {
-    return this.request<{ api_key_id: string; api_key: string }>('/admin/api-keys', {
+    return this.request<{ api_key_id: string; api_key: string }>('/admin/auth/api-keys', {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, name }),
     });
   }
 
   async deleteAPIKey(id: string): Promise<void> {
-    await this.request<void>(`/admin/api-keys/${id}`, {
+    await this.request<void>(`/admin/auth/api-keys/${id}`, {
       method: 'DELETE',
     });
   }
@@ -258,7 +258,7 @@ class RealAPIClient implements APIClientInterface {
     if (endDate) params.append('end_date', endDate);
 
     const query = params.toString();
-    return this.request<UsageRecord[]>(`/admin/usage${query ? `?${query}` : ''}`);
+    return this.request<UsageRecord[]>(`/admin/auth/usage${query ? `?${query}` : ''}`);
   }
 
   // Authentication endpoints
@@ -337,63 +337,63 @@ class RealAPIClient implements APIClientInterface {
 
   // Group endpoints
   async getGroups(): Promise<Group[]> {
-    return this.request<Group[]>('/admin/groups');
+    return this.request<Group[]>('/admin/auth/groups');
   }
 
   async createGroup(group: Omit<Group, 'id' | 'created_at' | 'updated_at' | 'member_count'>): Promise<Group> {
-    return this.request<Group>('/admin/groups', {
+    return this.request<Group>('/admin/auth/groups', {
       method: 'POST',
       body: JSON.stringify(group),
     });
   }
 
   async updateGroup(id: string, group: Partial<Group>): Promise<Group> {
-    return this.request<Group>(`/admin/groups/${id}`, {
+    return this.request<Group>(`/admin/auth/groups/${id}`, {
       method: 'PUT',
       body: JSON.stringify(group),
     });
   }
 
   async deleteGroup(id: string): Promise<void> {
-    await this.request<void>(`/admin/groups/${id}`, {
+    await this.request<void>(`/admin/auth/groups/${id}`, {
       method: 'DELETE',
     });
   }
 
   async addGroupMember(groupId: string, userId: string): Promise<void> {
-    await this.request<void>(`/admin/groups/${groupId}/members`, {
+    await this.request<void>(`/admin/auth/groups/${groupId}/members`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
     });
   }
 
   async removeGroupMember(groupId: string, userId: string): Promise<void> {
-    await this.request<void>(`/admin/groups/${groupId}/members/${userId}`, {
+    await this.request<void>(`/admin/auth/groups/${groupId}/members/${userId}`, {
       method: 'DELETE',
     });
   }
 
   // Permission endpoints
   async getPermissions(): Promise<Permission[]> {
-    return this.request<Permission[]>('/admin/permissions');
+    return this.request<Permission[]>('/admin/auth/permissions');
   }
 
   async createPermission(permission: Omit<Permission, 'id' | 'created_at' | 'updated_at'>): Promise<Permission> {
-    return this.request<Permission>('/admin/permissions', {
+    return this.request<Permission>('/admin/auth/permissions', {
       method: 'POST',
       body: JSON.stringify(permission),
     });
   }
 
   async updatePermission(id: string, permission: Partial<Permission>): Promise<Permission> {
-    return this.request<Permission>(`/admin/permissions/${id}`, {
+    return this.request<Permission>(`/admin/auth/permissions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(permission),
     });
   }
 
   async deletePermission(id: string): Promise<void> {
-    await this.request<void>(`/admin/permissions/${id}`, {
+    await this.request<void>(`/admin/auth/permissions/${id}`, {
       method: 'DELETE',
     });
   }
@@ -483,9 +483,31 @@ class RealAPIClient implements APIClientInterface {
     });
   }
 
-  // Health endpoint
   async getProviderHealth(): Promise<ProviderHealth[]> {
-    return this.request<ProviderHealth[]>('/admin/health');
+    const providers = await this.request<Provider[]>('/admin/providers');
+    const healthPromises = providers.map(async (p) => {
+      try {
+        const result = await this.request<{ status: string; latency_ms: number; error_rate: number }>(`/admin/providers/${p.id}/health`);
+        return {
+          id: p.id,
+          name: p.name,
+          status: result.status,
+          latency_ms: result.latency_ms,
+          error_rate: result.error_rate,
+          last_check: new Date().toISOString(),
+        } as ProviderHealth;
+      } catch {
+        return {
+          id: p.id,
+          name: p.name,
+          status: 'unhealthy',
+          latency_ms: 0,
+          error_rate: 1,
+          last_check: new Date().toISOString(),
+        } as ProviderHealth;
+      }
+    });
+    return Promise.all(healthPromises);
   }
 }
 

@@ -1,61 +1,79 @@
 package middleware
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 )
 
-// AuthzMiddleware checks model authorization using auth-service
 type AuthzMiddleware struct {
 	authClient *client.AuthClient
 }
 
-// NewAuthzMiddleware creates a new authz middleware
 func NewAuthzMiddleware(authClient *client.AuthClient) *AuthzMiddleware {
 	return &AuthzMiddleware{
 		authClient: authClient,
 	}
 }
 
-// Middleware returns the middleware function
-func (m *AuthzMiddleware) Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get user info from context (set by AuthMiddleware)
-		userID, ok := r.Context().Value("userId").(string)
-		if !ok {
-			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+func (m *AuthzMiddleware) Middleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, _ := c.Get("userId")
+		if userID == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			c.Abort()
 			return
 		}
 
-		groupIDs, _ := r.Context().Value("groupIds").([]string)
+		groupIDs, _ := c.Get("groupIds")
+		groups := []string{}
+		if groupIDs != nil {
+			groups, _ = groupIDs.([]string)
+		}
 
-		// Get model from request (should be set by previous middleware or extracted from request body)
-		model := r.URL.Query().Get("model")
+		model := c.Query("model")
+		if model == "" && c.Request.Method == "POST" {
+			body, err := io.ReadAll(c.Request.Body)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+				c.Abort()
+				return
+			}
+			c.Request.Body = io.NopCloser(bytes.NewReader(body))
+
+			var req struct {
+				Model string `json:"model"`
+			}
+			if err := json.Unmarshal(body, &req); err == nil && req.Model != "" {
+				model = req.Model
+			}
+		}
+
 		if model == "" {
-			// Try to extract from request body for POST requests
-			// For MVP, we'll skip body parsing and assume model is in query param or context
-			http.Error(w, "Model not specified", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Model not specified"})
+			c.Abort()
 			return
 		}
 
-		// Check model authorization with auth-service
-		authResult, err := m.authClient.CheckModelAuthorization(r.Context(), userID, groupIDs, model)
+		authResult, err := m.authClient.CheckModelAuthorization(c.Request.Context(), userID.(string), groups, model)
 		if err != nil {
-			http.Error(w, "Failed to check authorization", http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check authorization"})
+			c.Abort()
 			return
 		}
 
 		if !authResult.Allowed {
-			http.Error(w, "Model not authorized: "+authResult.Reason, http.StatusForbidden)
+			c.JSON(http.StatusForbidden, gin.H{"error": "Model not authorized: " + authResult.Reason})
+			c.Abort()
 			return
 		}
 
-		// Add authorized models to context
-		ctx := context.WithValue(r.Context(), "authorizedModels", authResult.AuthorizedModels)
+		c.Set("authorizedModels", authResult.AuthorizedModels)
 
-		// Call next handler with updated context
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		c.Next()
+	}
 }

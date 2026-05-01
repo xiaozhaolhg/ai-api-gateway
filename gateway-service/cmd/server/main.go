@@ -59,6 +59,11 @@ func main() {
 		log.Printf("Warning: billing client initialization failed: %v", initErr)
 	}
 
+	authMiddleware := middleware.NewAuthMiddleware(authClient)
+	authzMiddleware := middleware.NewAuthzMiddleware(authClient)
+	routeMiddleware := middleware.NewRouteMiddleware(routerClient)
+	proxyMiddleware := middleware.NewProxyMiddleware(providerClient, billingClient)
+
 	r := gin.Default()
 
 	// Add logging middleware
@@ -145,15 +150,30 @@ func main() {
 
 	v1 := r.Group("/v1")
 	{
-		v1.POST("/chat/completions", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "Chat completions"})
-		})
-		v1.GET("/models", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"models": []string{"ollama:llama2", "opencode_zen:gpt-4"}})
-		})
+		chat := v1.Group("/chat/completions")
+		chat.Use(
+			authMiddleware.Middleware(),
+			authzMiddleware.Middleware(),
+			routeMiddleware.Middleware(),
+			wrapHTTPMiddleware(proxyMiddleware.Middleware),
+		)
+		chat.POST("", func(c *gin.Context) {})
+
+		models := v1.Group("/models")
+		models.Use(authMiddleware.Middleware())
+		models.GET("", modelsHandler.ListModels)
+
 		v1.GET("/providers", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"providers": []string{"ollama", "opencode_zen"}})
 		})
+	}
+
+	v1Auth := v1.Group("/auth")
+	v1Auth.Use(jwtAuthMiddleware())
+	{
+		v1Auth.POST("/api-keys", handleCreateUserAPIKey)
+		v1Auth.GET("/api-keys", handleListUserAPIKeys)
+		v1Auth.DELETE("/api-keys/:id", handleDeleteUserAPIKey)
 	}
 
 	// Setup HTTP server with timeouts
@@ -233,6 +253,20 @@ func jwtAuthMiddleware() gin.HandlerFunc {
 		c.Set("userEmail", claims.Email)
 		c.Set("userRole", claims.Role)
 		c.Next()
+	}
+}
+
+func wrapHTTPMiddleware(m func(http.Handler) http.Handler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		restOfChain := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Next()
+		})
+		wrapped := m(restOfChain)
+		wrapped.ServeHTTP(c.Writer, c.Request)
+
+		if c.Writer.Written() {
+			c.Abort()
+		}
 	}
 }
 
@@ -714,6 +748,106 @@ func handleRevokePermission(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"message": "permission revoked"})
+}
+
+func handleCreateUserAPIKey(c *gin.Context) {
+	userID := c.GetString("userId")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "authorization required"})
+		return
+	}
+
+	var req struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	resp, err := authClient.CreateAPIKey(context.Background(), userID, req.Name)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{
+		"api_key_id": resp.ApiKeyId,
+		"api_key":     resp.ApiKey,
+		"name":         req.Name,
+	})
+}
+
+func handleListUserAPIKeys(c *gin.Context) {
+	userID := c.GetString("userId")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "authorization required"})
+		return
+	}
+
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	resp, err := authClient.ListAPIKeys(context.Background(), userID, page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	type apiKey struct {
+		ID        string `json:"api_key_id"`
+		Name      string `json:"name"`
+		CreatedAt string `json:"created_at"`
+	}
+	keys := make([]apiKey, len(resp.ApiKeys))
+	for i, k := range resp.ApiKeys {
+		keys[i] = apiKey{
+			ID:        k.Id,
+			Name:      k.Name,
+			CreatedAt: time.Unix(k.CreatedAt, 0).Format(time.RFC3339),
+		}
+	}
+
+	c.JSON(200, gin.H{"api_keys": keys, "total": resp.Total})
+}
+
+func handleDeleteUserAPIKey(c *gin.Context) {
+	userID := c.GetString("userId")
+	keyID := c.Param("id")
+
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "authorization required"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	err := authClient.DeleteAPIKey(context.Background(), keyID)
+	if err != nil {
+		c.JSON(403, gin.H{"error": "forbidden"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "api key deleted"})
 }
 
 // --- Usage handler (using adminUsageHandler from main branch) ---
