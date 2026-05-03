@@ -253,6 +253,10 @@ export const Alerts: React.FC = () => {
     },
   ];
 
+  // Ensure arrays are valid
+  const safeAlertRules = Array.isArray(alertRules) ? alertRules : [];
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+
   const tabItems = [
     {
       key: 'rules',
@@ -260,7 +264,7 @@ export const Alerts: React.FC = () => {
       children: (
         <Table
           columns={ruleColumns}
-          dataSource={alertRules}
+          dataSource={safeAlertRules}
           rowKey="id"
           loading={rulesLoading}
           pagination={{ pageSize: 10 }}
@@ -273,7 +277,7 @@ export const Alerts: React.FC = () => {
       children: (
         <Table
           columns={alertColumns}
-          dataSource={alerts}
+          dataSource={safeAlerts}
           rowKey="id"
           loading={alertsLoading}
           pagination={{ pageSize: 10 }}

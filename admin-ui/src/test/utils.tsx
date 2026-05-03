@@ -1,6 +1,7 @@
-import React, { ReactNode } from 'react';
-import { AuthProvider } from '../contexts/AuthContext';
+import type { ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render } from '@testing-library/react';
 
 export const createMockUser = (overrides: Partial<User> = {}): User => ({
   id: 'usr_test123',
@@ -21,21 +22,24 @@ export interface User {
   created_at: string;
 }
 
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: () => Promise<{ token: string; user: User }>;
+  logout: () => Promise<void>;
+  getCurrentUser: () => Promise<User>;
+}
+
+const MockAuthContext = createContext<AuthContextType | undefined>(undefined);
+
 export const MockAuthProvider: React.FC<{
   children: ReactNode;
   role?: 'admin' | 'user' | 'viewer';
   isAuthenticated?: boolean;
 }> = ({ children, role = 'admin', isAuthenticated = true }) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-
   const mockUser = createMockUser({ role });
 
-  const mockAuthValue = {
+  const mockAuthValue: AuthContextType = {
     user: isAuthenticated ? mockUser : null,
     isAuthenticated,
     login: async () => ({ token: 'mock-token', user: mockUser }),
@@ -44,25 +48,40 @@ export const MockAuthProvider: React.FC<{
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider value={mockAuthValue}>
-        {children}
-      </AuthProvider>
-    </QueryClientProvider>
+    <MockAuthContext.Provider value={mockAuthValue}>
+      {children}
+    </MockAuthContext.Provider>
   );
+};
+
+export const useMockAuth = () => {
+  const context = useContext(MockAuthContext);
+  if (!context) {
+    throw new Error('useMockAuth must be used within MockAuthProvider');
+  }
+  return context;
 };
 
 export const renderWithAuth = (
   ui: React.ReactElement,
-  { role = 'admin', isAuthenticated = true } = {}
+  { role = 'admin', isAuthenticated = true }: { role?: 'admin' | 'user' | 'viewer'; isAuthenticated?: boolean } = {}
 ) => {
-  return render(ui, {
-    wrapper: ({ children }) => (
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  const Wrapper: React.FC<{ children: ReactNode }> = ({ children }) => (
+    <QueryClientProvider client={queryClient}>
       <MockAuthProvider role={role} isAuthenticated={isAuthenticated}>
         {children}
       </MockAuthProvider>
-    ),
-  });
+    </QueryClientProvider>
+  );
+
+  return render(ui, { wrapper: Wrapper });
 };
 
 export const createMockToken = (role: 'admin' | 'user' | 'viewer' = 'admin') => {
