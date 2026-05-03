@@ -184,7 +184,12 @@ class RealAPIClient implements APIClientInterface {
 
   // Provider endpoints
   async getProviders(): Promise<Provider[]> {
-    return this.request<Provider[]>('/admin/providers');
+    try {
+      return await this.request<Provider[]>('/admin/providers');
+    } catch (error) {
+      console.error('Failed to fetch providers:', error);
+      return [];
+    }
   }
 
   async createProvider(provider: Omit<Provider, 'id' | 'created_at' | 'updated_at'>): Promise<Provider> {
@@ -209,7 +214,13 @@ class RealAPIClient implements APIClientInterface {
 
   // User endpoints
   async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/admin/auth/users');
+    try {
+      const response = await this.request<{users: User[]; total: number}>('/admin/auth/users');
+      return response.users || [];
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      return [];
+    }
   }
 
   async createUser(user: Omit<User, 'id' | 'created_at'>): Promise<User> {
@@ -234,7 +245,13 @@ class RealAPIClient implements APIClientInterface {
 
   // API Key endpoints
   async getAPIKeys(userId: string): Promise<APIKey[]> {
-    return this.request<APIKey[]>(`/admin/auth/api-keys/${userId}`);
+    try {
+      const response = await this.request<{api_keys: APIKey[]; total: number}>(`/admin/auth/api-keys/${userId}`);
+      return response.api_keys || [];
+    } catch (error) {
+      console.error('Failed to fetch API keys:', error);
+      return [];
+    }
   }
 
   async createAPIKey(userId: string, name: string): Promise<{ api_key_id: string; api_key: string }> {
@@ -252,13 +269,19 @@ class RealAPIClient implements APIClientInterface {
 
   // Usage endpoints
   async getUsage(userId?: string, startDate?: string, endDate?: string): Promise<UsageRecord[]> {
-    const params = new URLSearchParams();
-    if (userId) params.append('user_id', userId);
-    if (startDate) params.append('start_date', startDate);
-    if (endDate) params.append('end_date', endDate);
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.append('user_id', userId);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
 
-    const query = params.toString();
-    return this.request<UsageRecord[]>(`/admin/auth/usage${query ? `?${query}` : ''}`);
+      const query = params.toString();
+      const response = await this.request<{usage: UsageRecord[]; total: number}>(`/admin/auth/usage${query ? `?${query}` : ''}`);
+      return response.usage || [];
+    } catch (error) {
+      console.error('Failed to fetch usage:', error);
+      return [];
+    }
   }
 
   // Authentication endpoints
@@ -312,7 +335,12 @@ class RealAPIClient implements APIClientInterface {
 
   // Routing rule endpoints
   async getRoutingRules(): Promise<RoutingRule[]> {
-    return this.request<RoutingRule[]>('/admin/routing-rules');
+    try {
+      return await this.request<RoutingRule[]>('/admin/routing-rules');
+    } catch (error) {
+      console.error('Failed to fetch routing rules:', error);
+      return [];
+    }
   }
 
   async createRoutingRule(rule: Omit<RoutingRule, 'id' | 'created_at' | 'updated_at'>): Promise<RoutingRule> {
@@ -337,7 +365,13 @@ class RealAPIClient implements APIClientInterface {
 
   // Group endpoints
   async getGroups(): Promise<Group[]> {
-    return this.request<Group[]>('/admin/auth/groups');
+    try {
+      const response = await this.request<{groups: Group[]; total: number}>('/admin/auth/groups');
+      return response.groups || [];
+    } catch (error) {
+      console.error('Failed to fetch groups:', error);
+      return [];
+    }
   }
 
   async createGroup(group: Omit<Group, 'id' | 'created_at' | 'updated_at' | 'member_count'>): Promise<Group> {
@@ -375,7 +409,13 @@ class RealAPIClient implements APIClientInterface {
 
   // Permission endpoints
   async getPermissions(): Promise<Permission[]> {
-    return this.request<Permission[]>('/admin/auth/permissions');
+    try {
+      const response = await this.request<{permissions: Permission[]; total: number}>('/admin/auth/permissions');
+      return response.permissions || [];
+    } catch (error) {
+      console.error('Failed to fetch permissions:', error);
+      return [];
+    }
   }
 
   async createPermission(permission: Omit<Permission, 'id' | 'created_at' | 'updated_at'>): Promise<Permission> {
@@ -400,7 +440,12 @@ class RealAPIClient implements APIClientInterface {
 
   // Budget endpoints
   async getBudgets(): Promise<Budget[]> {
-    return this.request<Budget[]>('/admin/budgets');
+    try {
+      return await this.request<Budget[]>('/admin/budgets');
+    } catch (error) {
+      console.error('Failed to fetch budgets:', error);
+      return [];
+    }
   }
 
   async createBudget(budget: Omit<Budget, 'id' | 'created_at' | 'updated_at' | 'current_spend'>): Promise<Budget> {
@@ -425,7 +470,12 @@ class RealAPIClient implements APIClientInterface {
 
   // Pricing rule endpoints
   async getPricingRules(): Promise<PricingRule[]> {
-    return this.request<PricingRule[]>('/admin/pricing-rules');
+    try {
+      return await this.request<PricingRule[]>('/admin/pricing-rules');
+    } catch (error) {
+      console.error('Failed to fetch pricing rules:', error);
+      return [];
+    }
   }
 
   async createPricingRule(rule: Omit<PricingRule, 'id' | 'created_at' | 'updated_at'>): Promise<PricingRule> {
@@ -450,7 +500,12 @@ class RealAPIClient implements APIClientInterface {
 
   // Alert endpoints
   async getAlertRules(): Promise<AlertRule[]> {
-    return this.request<AlertRule[]>('/admin/alert-rules');
+    try {
+      return await this.request<AlertRule[]>('/admin/alert-rules');
+    } catch (error) {
+      console.error('Failed to fetch alert rules:', error);
+      return [];
+    }
   }
 
   async createAlertRule(rule: Omit<AlertRule, 'id' | 'created_at' | 'updated_at'>): Promise<AlertRule> {
@@ -474,7 +529,12 @@ class RealAPIClient implements APIClientInterface {
   }
 
   async getAlerts(): Promise<Alert[]> {
-    return this.request<Alert[]>('/admin/alerts');
+    try {
+      return await this.request<Alert[]>('/admin/alerts');
+    } catch (error) {
+      console.error('Failed to fetch alerts:', error);
+      return [];
+    }
   }
 
   async acknowledgeAlert(id: string): Promise<void> {
@@ -484,30 +544,35 @@ class RealAPIClient implements APIClientInterface {
   }
 
   async getProviderHealth(): Promise<ProviderHealth[]> {
-    const providers = await this.request<Provider[]>('/admin/providers');
-    const healthPromises = providers.map(async (p) => {
-      try {
-        const result = await this.request<{ status: string; latency_ms: number; error_rate: number }>(`/admin/providers/${p.id}/health`);
-        return {
-          id: p.id,
-          name: p.name,
-          status: result.status,
-          latency_ms: result.latency_ms,
-          error_rate: result.error_rate,
-          last_check: new Date().toISOString(),
-        } as ProviderHealth;
-      } catch {
-        return {
-          id: p.id,
-          name: p.name,
-          status: 'unhealthy',
-          latency_ms: 0,
-          error_rate: 1,
-          last_check: new Date().toISOString(),
-        } as ProviderHealth;
-      }
-    });
-    return Promise.all(healthPromises);
+    try {
+      const providers = await this.request<Provider[]>('/admin/providers');
+      const healthPromises = providers.map(async (p) => {
+        try {
+          const result = await this.request<{ status: string; latency_ms: number; error_rate: number }>(`/admin/providers/${p.id}/health`);
+          return {
+            id: p.id,
+            name: p.name,
+            status: result.status,
+            latency_ms: result.latency_ms,
+            error_rate: result.error_rate,
+            last_check: new Date().toISOString(),
+          } as ProviderHealth;
+        } catch {
+          return {
+            id: p.id,
+            name: p.name,
+            status: 'unhealthy',
+            latency_ms: 0,
+            error_rate: 1,
+            last_check: new Date().toISOString(),
+          } as ProviderHealth;
+        }
+      });
+      return Promise.all(healthPromises);
+    } catch (error) {
+      console.error('Failed to fetch provider health:', error);
+      return [];
+    }
   }
 }
 

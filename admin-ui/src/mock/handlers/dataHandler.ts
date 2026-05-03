@@ -40,7 +40,17 @@ class MockDataHandler {
     const stored = localStorage.getItem(MOCK_DATA_STORAGE_KEY);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Validate and fix data structure to ensure arrays
+        if (!Array.isArray(parsed.alerts)) {
+          console.warn('Stored alerts is not an array, resetting to default');
+          parsed.alerts = [...defaultMockData.alerts];
+        }
+        if (!Array.isArray(parsed.alertRules)) {
+          console.warn('Stored alertRules is not an array, resetting to default');
+          parsed.alertRules = [...defaultMockData.alertRules];
+        }
+        return parsed;
       } catch (error) {
         console.error('Failed to parse stored mock data:', error);
         return JSON.parse(JSON.stringify(defaultMockData));

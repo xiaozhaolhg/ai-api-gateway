@@ -145,6 +145,15 @@ func main() {
 	r.DELETE("/admin/providers/:id", providerHandler.DeleteProvider)
 	r.GET("/admin/providers/:id/health", providerHandler.HealthCheck)
 
+	// Alert management endpoints
+	alertsHandler := handler.NewAdminAlertsHandler()
+	r.GET("/admin/alert-rules", alertsHandler.ListAlertRules)
+	r.POST("/admin/alert-rules", alertsHandler.CreateAlertRule)
+	r.PUT("/admin/alert-rules/:id", alertsHandler.UpdateAlertRule)
+	r.DELETE("/admin/alert-rules/:id", alertsHandler.DeleteAlertRule)
+	r.GET("/admin/alerts", alertsHandler.ListAlerts)
+	r.PUT("/admin/alerts/:id/acknowledge", alertsHandler.AcknowledgeAlert)
+
 	// Add error handling middleware (must be after logging to capture status codes)
 	r.Use(middleware.NewErrorMiddleware().Middleware())
 

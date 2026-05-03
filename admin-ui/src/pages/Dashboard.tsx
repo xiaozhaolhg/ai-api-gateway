@@ -35,11 +35,13 @@ export const Dashboard: React.FC = () => {
 
   const isLoading = usersLoading || providersLoading || alertsLoading;
 
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+
   const stats = {
     totalUsers: users.length,
     totalProviders: providers.length,
     monthlySpend: 0,
-    activeAlerts: alerts.filter((a) => a.status === 'firing').length,
+    activeAlerts: safeAlerts.filter((a) => a.status === 'firing').length,
   };
 
   const userRole = user?.role || 'viewer';
