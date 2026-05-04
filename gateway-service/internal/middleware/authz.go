@@ -43,6 +43,7 @@ func (m *AuthzMiddleware) Middleware() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
+			// Reset body so downstream middlewares can read it
 			c.Request.Body = io.NopCloser(bytes.NewReader(body))
 
 			var req struct {

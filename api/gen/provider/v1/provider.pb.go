@@ -423,6 +423,7 @@ type CreateProviderRequest struct {
 	BaseUrl       string                 `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
 	Credentials   string                 `protobuf:"bytes,4,opt,name=credentials,proto3" json:"credentials,omitempty"`
 	Models        []string               `protobuf:"bytes,5,rep,name=models,proto3" json:"models,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -490,6 +491,13 @@ func (x *CreateProviderRequest) GetModels() []string {
 		return x.Models
 	}
 	return nil
+}
+
+func (x *CreateProviderRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 type UpdateProviderRequest struct {

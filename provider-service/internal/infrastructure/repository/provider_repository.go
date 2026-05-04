@@ -26,7 +26,11 @@ func (r *ProviderRepository) GetByID(id string) (*entity.Provider, error) {
 	var provider entity.Provider
 	err := r.db.Where("id = ?", id).First(&provider).Error
 	if err != nil {
-		return nil, err
+		// Try by name as fallback
+		err2 := r.db.Where("name = ?", id).First(&provider).Error
+		if err2 != nil {
+			return nil, err
+		}
 	}
 	return &provider, nil
 }

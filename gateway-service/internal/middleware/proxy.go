@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -77,26 +78,93 @@ func (m *ProxyMiddleware) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// handleNonStreamingRequest handles non-streaming requests
+// handleNonStreamingRequest handles non-streaming requests with fallback support
 func (m *ProxyMiddleware) handleNonStreamingRequest(w http.ResponseWriter, r *http.Request, providerID string, requestBody []byte, headers map[string]string) {
-	// Forward request to provider-service
-	resp, err := m.providerClient.ForwardRequest(r.Context(), providerID, requestBody, headers)
-	if err != nil {
-		http.Error(w, "Failed to forward request: "+err.Error(), http.StatusInternalServerError)
+	// Get fallback info from context
+	fallbackProviderIDs, _ := r.Context().Value("fallbackProviderIds").([]string)
+	fallbackModels, _ := r.Context().Value("fallbackModels").([]string)
+	log.Printf("[Fallback] Fallback info: primary=%s, fallbacks=%v, models=%v", providerID, fallbackProviderIDs, fallbackModels)
+
+	// Try primary provider first
+	resp, statusCode, err := m.tryNonStreamingProvider(r.Context(), providerID, requestBody, headers)
+	if err == nil {
+		m.writeNonStreamingResponse(w, r, providerID, resp, requestBody)
 		return
 	}
 
-	// Write response
+	// Check if error is non-retryable (4xx client errors)
+	if statusCode >= 400 && statusCode < 500 {
+		log.Printf("[Fallback] Primary provider %s returned non-retryable error %d: %v, not attempting fallback", providerID, statusCode, err)
+		http.Error(w, fmt.Sprintf("Provider error: %v", err), http.StatusBadGateway)
+		return
+	}
+
+	// Log fallback
+	log.Printf("[Fallback] Primary provider %s failed: %v, attempting fallback", providerID, err)
+
+	// Try fallback providers in order
+	for i, fallbackID := range fallbackProviderIDs {
+		fallbackModel := ""
+		if i < len(fallbackModels) {
+			fallbackModel = fallbackModels[i]
+		}
+
+		var bodyToSend []byte
+		if fallbackModel != "" {
+			// Rewrite model in request body
+			modifiedBody, err := rewriteModelInRequest(requestBody, fallbackModel)
+			if err != nil {
+				log.Printf("[Fallback] Failed to rewrite model for %s: %v", fallbackID, err)
+				continue
+			}
+			bodyToSend = modifiedBody
+		} else {
+			bodyToSend = requestBody
+		}
+
+		resp, _, err := m.tryNonStreamingProvider(r.Context(), fallbackID, bodyToSend, headers)
+		if err != nil {
+			log.Printf("[Fallback] Fallback provider %s failed: %v", fallbackID, err)
+			continue
+		}
+
+		log.Printf("[Fallback] Successfully fell back to provider %s", fallbackID)
+		m.writeNonStreamingResponse(w, r, fallbackID, resp, bodyToSend)
+		return
+	}
+
+	// All providers failed - return structured error
+	m.writeFallbackError(w, "all_providers_failed", "All providers failed")
+}
+
+// tryNonStreamingProvider attempts a single non-streaming request to a provider
+// Returns response, HTTP status code from provider, and error
+func (m *ProxyMiddleware) tryNonStreamingProvider(ctx context.Context, providerID string, requestBody []byte, headers map[string]string) (*client.ForwardRequestResponse, int32, error) {
+	resp, err := m.providerClient.ForwardRequest(ctx, providerID, requestBody, headers)
+	if err != nil {
+		return nil, 0, err
+	}
+	return resp, resp.StatusCode, nil
+}
+
+// writeFallbackError writes a structured error response for fallback failures (W1 fix)
+func (m *ProxyMiddleware) writeFallbackError(w http.ResponseWriter, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadGateway)
+	errorJSON := fmt.Sprintf(`{"error": {"code": "%s", "message": "%s"}}`, code, message)
+	w.Write([]byte(errorJSON))
+}
+
+// writeNonStreamingResponse writes the response and records usage
+func (m *ProxyMiddleware) writeNonStreamingResponse(w http.ResponseWriter, r *http.Request, providerID string, resp *client.ForwardRequestResponse, requestBody []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp.ResponseBody)
 
-	// Record token counts in response header for client tracking
 	w.Header().Set("X-Prompt-Tokens", fmt.Sprintf("%d", resp.TokenCounts.PromptTokens))
 	w.Header().Set("X-Completion-Tokens", fmt.Sprintf("%d", resp.TokenCounts.CompletionTokens))
 	w.Header().Set("X-Total-Tokens", fmt.Sprintf("%d", resp.TokenCounts.TotalTokens))
 
-	// Parse request and record usage to billing-service asynchronously
 	req, err := parseChatCompletionRequest(requestBody)
 	model := "unknown"
 	if err == nil && req.Model != "" {
@@ -114,49 +182,89 @@ func parseChatCompletionRequest(requestBody []byte) (*ChatCompletionRequest, err
 	return &req, nil
 }
 
-// handleStreamingRequest handles streaming requests with heartbeat
+// handleStreamingRequest handles streaming requests with fallback support
 func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.Request, providerID string, requestBody []byte, headers map[string]string) {
-	// Forward streaming request to provider-service
+	// Get fallback info from context
+	fallbackProviderIDs, _ := r.Context().Value("fallbackProviderIds").([]string)
+	fallbackModels, _ := r.Context().Value("fallbackModels").([]string)
+
+	// Try primary provider first
+	err := m.tryStreamingProvider(w, r, providerID, requestBody, headers, true)
+	if err == nil {
+		return
+	}
+
+	// Log fallback
+	log.Printf("[Fallback] Primary streaming provider %s failed: %v, attempting fallback", providerID, err)
+
+	// Try fallback providers in order
+	for i, fallbackID := range fallbackProviderIDs {
+		fallbackModel := ""
+		if i < len(fallbackModels) {
+			fallbackModel = fallbackModels[i]
+		}
+
+		var bodyToSend []byte
+		if fallbackModel != "" {
+			modifiedBody, err := rewriteModelInRequest(requestBody, fallbackModel)
+			if err != nil {
+				log.Printf("[Fallback] Failed to rewrite model for streaming %s: %v", fallbackID, err)
+				continue
+			}
+			bodyToSend = modifiedBody
+		} else {
+			bodyToSend = requestBody
+		}
+
+		err := m.tryStreamingProvider(w, r, fallbackID, bodyToSend, headers, false)
+		if err != nil {
+			log.Printf("[Fallback] Fallback streaming provider %s failed: %v", fallbackID, err)
+			continue
+		}
+
+		log.Printf("[Fallback] Successfully fell back to streaming provider %s", fallbackID)
+		return
+	}
+
+	// All providers failed - return structured error (W1 fix)
+	m.writeFallbackError(w, "all_providers_failed", "All streaming providers failed")
+}
+
+// tryStreamingProvider attempts a single streaming request to a provider
+// isPrimary indicates if this is the first attempt (sets SSE headers)
+func (m *ProxyMiddleware) tryStreamingProvider(w http.ResponseWriter, r *http.Request, providerID string, requestBody []byte, headers map[string]string, isPrimary bool) error {
 	stream, err := m.providerClient.StreamRequest(r.Context(), providerID, requestBody, headers)
 	if err != nil {
-		http.Error(w, "Failed to stream request: "+err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	defer stream.CloseSend()
 
-	// Set SSE headers
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
-	w.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering
+	// Set SSE headers only for primary attempt
+	if isPrimary {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Transfer-Encoding", "chunked")
+		w.Header().Set("X-Accel-Buffering", "no")
+	}
 
-	// Stream chunks
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("streaming not supported")
 	}
 
 	var totalPromptTokens, totalCompletionTokens int64
-
-	// Create heartbeat ticker (every 15 seconds)
 	heartbeatTicker := time.NewTicker(15 * time.Second)
 	defer heartbeatTicker.Stop()
 
-	// Create a context that captures client disconnection
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	// Channel to signal stream completion
 	done := make(chan struct{})
-
-	// Start a goroutine to handle heartbeat
 	go func() {
 		for {
 			select {
 			case <-heartbeatTicker.C:
-				// Send heartbeat comment (SSE comment line)
 				fmt.Fprintf(w, ": ping\n\n")
 				flusher.Flush()
 			case <-ctx.Done():
@@ -171,37 +279,29 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 		chunk, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				// Stream completed normally
 				break
 			}
-			// Stream error
-			fmt.Fprintf(w, "data: {\"error\": \"%s\"}\n\n", err.Error())
-			flusher.Flush()
-			break
+			close(done)
+			return err
 		}
 
-		// Write SSE chunk
 		if len(chunk.ChunkData) > 0 {
 			fmt.Fprintf(w, "data: %s\n\n", string(chunk.ChunkData))
 			flusher.Flush()
 		}
 
-		// Accumulate token counts
 		if chunk.AccumulatedTokens != nil {
 			totalPromptTokens += chunk.AccumulatedTokens.PromptTokens
 			totalCompletionTokens += chunk.AccumulatedTokens.CompletionTokens
 		}
 
-		// Check if this is the final chunk
 		if chunk.Done {
 			break
 		}
 	}
 
-	// Signal completion to stop heartbeat goroutine
 	close(done)
 
-	// Send final SSE message with token counts
 	finalChunk := map[string]interface{}{
 		"prompt_tokens":     totalPromptTokens,
 		"completion_tokens": totalCompletionTokens,
@@ -212,13 +312,27 @@ func (m *ProxyMiddleware) handleStreamingRequest(w http.ResponseWriter, r *http.
 	fmt.Fprintf(w, "data: %s\n\n", string(finalJSON))
 	flusher.Flush()
 
-	// Parse request and record usage to billing-service asynchronously
-	req, err := parseChatCompletionRequest(requestBody)
+	req, _ := parseChatCompletionRequest(requestBody)
 	model := "unknown"
-	if err == nil && req.Model != "" {
+	if req != nil && req.Model != "" {
 		model = req.Model
 	}
 	go m.recordUsage(r.Context(), providerID, model, totalPromptTokens, totalCompletionTokens)
+	return nil
+}
+
+// rewriteModelInRequest rewrites the model field in a chat completion request body
+func rewriteModelInRequest(requestBody []byte, newModel string) ([]byte, error) {
+	var req ChatCompletionRequest
+	if err := json.Unmarshal(requestBody, &req); err != nil {
+		return nil, fmt.Errorf("failed to parse request: %w", err)
+	}
+	req.Model = newModel
+	modified, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	return modified, nil
 }
 
 // recordUsage records usage to billing-service asynchronously

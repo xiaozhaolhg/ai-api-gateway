@@ -98,6 +98,7 @@ func (c *ProviderClient) ForwardRequest(ctx context.Context, providerID string, 
 			CompletionTokens: resp.TokenCounts.CompletionTokens,
 			TotalTokens:      resp.TokenCounts.PromptTokens + resp.TokenCounts.CompletionTokens,
 		},
+		StatusCode: resp.StatusCode,
 	}, nil
 }
 
@@ -133,6 +134,7 @@ type TokenCounts struct {
 type ForwardRequestResponse struct {
 	ResponseBody []byte      `json:"response_body"`
 	TokenCounts  TokenCounts `json:"token_counts"`
+	StatusCode   int32       `json:"status_code"`
 }
 
 // Provider represents a provider configuration.
@@ -217,6 +219,7 @@ func (c *ProviderClient) CreateProvider(ctx context.Context, provider *Provider)
 		BaseUrl:     provider.BaseURL,
 		Credentials: provider.Credentials,
 		Models:      provider.Models,
+		Status:      provider.Status,
 	}
 	resp, err := client.CreateProvider(ctx, req)
 	if err != nil {

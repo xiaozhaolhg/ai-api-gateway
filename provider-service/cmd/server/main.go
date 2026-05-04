@@ -42,7 +42,7 @@ func main() {
 
 	providerRepo := repository.NewProviderRepository(db)
 	adapterFactory := adapter.NewAdapterFactory()
-	svc := application.NewService(providerRepo, adapterFactory, "default-crypto-key")
+	svc := application.NewService(providerRepo, adapterFactory, "abcdefghijklmnopqrstuvwxyz012345")
 
 	h := handler.NewHandler(svc)
 

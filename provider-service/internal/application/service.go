@@ -7,10 +7,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
 	"github.com/ai-api-gateway/provider-service/internal/infrastructure/crypto"
@@ -47,7 +47,11 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 		// Try lookup by type
 		provider, err = s.providerRepo.GetByType(providerID)
 		if err != nil {
-			return nil, 0, 0, 0, fmt.Errorf("failed to get provider: %w", err)
+			// Try lookup by name (MVP: provider ID might be the name)
+			provider, err = s.providerRepo.GetByName(providerID)
+			if err != nil {
+				return nil, 0, 0, 0, fmt.Errorf("failed to get provider: %w", err)
+			}
 		}
 	}
 
@@ -55,10 +59,15 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 		return nil, 0, 0, 0, fmt.Errorf("provider is not active")
 	}
 
-	// Decrypt credentials
-	decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
-	if err != nil {
-		return nil, 0, 0, 0, fmt.Errorf("failed to decrypt credentials: %w", err)
+	var decryptedCreds string
+	if provider.Credentials == "dummy" {
+		decryptedCreds = "dummy"
+	} else {
+		var err error
+		decryptedCreds, err = crypto.Decrypt(provider.Credentials, s.cryptoKey)
+		if err != nil {
+			return nil, 0, 0, 0, fmt.Errorf("failed to decrypt credentials: %w", err)
+		}
 	}
 
 	// Get adapter for provider type
@@ -333,6 +342,43 @@ func (s *Service) makeStreamingHTTPRequest(ctx context.Context, url string, body
 	return client.Do(req)
 }
 
+// inferAdapterType infers the adapter type from the provider's base URL, name, or existing type
+func (s *Service) inferAdapterType(baseURL, name, existingType string) string {
+	log.Printf("[inferAdapterType] baseURL=%s, name=%s, existingType=%s", baseURL, name, existingType)
+
+	// If type is explicitly set and not empty, use it
+	if existingType != "" {
+		log.Printf("[inferAdapterType] Using existing type: %s", existingType)
+		return existingType
+	}
+
+	// Infer from base URL
+	if strings.Contains(baseURL, "opencode.ai/zen") {
+		log.Printf("[inferAdapterType] Matched baseURL for opencode-zen")
+		return "opencode-zen"
+	}
+	if strings.Contains(baseURL, "openai") {
+		return "openai"
+	}
+	if strings.Contains(baseURL, "anthropic") {
+		return "anthropic"
+	}
+	if strings.Contains(baseURL, "ollama") {
+		return "ollama"
+	}
+
+	// Infer from provider name
+	if strings.Contains(strings.ToLower(name), "ollama") {
+		return "ollama"
+	}
+	if strings.Contains(strings.ToLower(name), "opencode") {
+		return "opencode-zen"
+	}
+
+	log.Printf("[inferAdapterType] No match, returning unknown")
+	return "unknown"
+}
+
 // GetProvider retrieves a provider by ID
 func (s *Service) GetProvider(id string) (*entity.Provider, error) {
 	return s.providerRepo.GetByID(id)
@@ -344,9 +390,16 @@ func (s *Service) CreateProvider(provider *entity.Provider) error {
 	if err == nil && existing != nil {
 		return fmt.Errorf("provider with name %q already exists", provider.Name)
 	}
+	// Use Name as ID for MVP (e.g., "Ollama", "OpenCode Zen")
 	if provider.ID == "" {
-		provider.ID = uuid.New().String()
+		provider.ID = provider.Name
 	}
+
+	// Infer adapter type from endpoint/name if not explicitly set (C2 fix: OpenCode Zen adapter inference)
+	if provider.Type == "" || strings.Contains(provider.BaseURL, "opencode.ai/zen") {
+		provider.Type = s.inferAdapterType(provider.BaseURL, provider.Name, provider.Type)
+	}
+
 	now := time.Now()
 	provider.CreatedAt = now
 	provider.UpdatedAt = now
@@ -362,19 +415,42 @@ func (s *Service) CreateProvider(provider *entity.Provider) error {
 	return s.providerRepo.Create(provider)
 }
 
-// UpdateProvider updates an existing provider
-func (s *Service) UpdateProvider(provider *entity.Provider) error {
-	provider.UpdatedAt = time.Now()
+func (s *Service) UpdateProvider(provider *entity.Provider) (*entity.Provider, error) {
+	existing, err := s.providerRepo.GetByID(provider.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing provider: %w", err)
+	}
 
+	if provider.Name != "" {
+		existing.Name = provider.Name
+	}
+	if provider.Type != "" {
+		existing.Type = provider.Type
+	}
+	if provider.BaseURL != "" {
+		existing.BaseURL = provider.BaseURL
+	}
 	if provider.Credentials != "" {
 		encrypted, err := crypto.Encrypt(provider.Credentials, s.cryptoKey)
 		if err != nil {
-			return fmt.Errorf("failed to encrypt credentials: %w", err)
+			return nil, fmt.Errorf("failed to encrypt credentials: %w", err)
 		}
-		provider.Credentials = encrypted
+		existing.Credentials = encrypted
+	}
+	if provider.Status != "" {
+		existing.Status = provider.Status
+	}
+	if len(provider.Models) > 0 {
+		existing.Models = provider.Models
 	}
 
-	return s.providerRepo.Update(provider)
+	existing.UpdatedAt = time.Now()
+
+	if err := s.providerRepo.Update(existing); err != nil {
+		return nil, err
+	}
+
+	return existing, nil
 }
 
 // DeleteProvider deletes a provider
