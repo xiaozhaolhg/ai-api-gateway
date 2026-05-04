@@ -83,10 +83,12 @@ func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedMode
 
 	adapterType := s.inferAdapterType(rule.ProviderID)
 
+	fallbackProviderIDs, fallbackModels := s.getFallbackProviders(rule, authorizedRules)
 	result := &entity.RouteResult{
 		ProviderID:          rule.ProviderID,
 		AdapterType:         adapterType,
-		FallbackProviderIDs: s.getFallbackProviders(rule, authorizedRules),
+		FallbackProviderIDs: fallbackProviderIDs,
+		FallbackModels:      fallbackModels,
 	}
 
 	if s.cache != nil {
@@ -150,11 +152,23 @@ func (s *Service) inferAdapterType(providerID string) string {
 	if strings.Contains(providerID, "ollama") {
 		return "ollama"
 	}
+	if strings.Contains(providerID, "opencode-zen") {
+		return "opencode-zen"
+	}
 	return "unknown"
 }
 
-func (s *Service) getFallbackProviders(rule *entity.RoutingRule, rules []*entity.RoutingRule) []string {
-	return []string{}
+func (s *Service) getFallbackProviders(rule *entity.RoutingRule, rules []*entity.RoutingRule) ([]string, []string) {
+	var providerIDs []string
+	var models []string
+
+	if rule.FallbackProviderID != "" {
+		providerIDs = append(providerIDs, rule.FallbackProviderID)
+		models = append(models, rule.FallbackModel)
+	}
+
+	// MVP: only one fallback provider supported
+	return providerIDs, models
 }
 
 // ListRoutingRules returns a paginated list of routing rules.

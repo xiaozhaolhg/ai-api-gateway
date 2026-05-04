@@ -145,6 +145,13 @@ func main() {
 	r.DELETE("/admin/providers/:id", providerHandler.DeleteProvider)
 	r.GET("/admin/providers/:id/health", providerHandler.HealthCheck)
 
+	// Routing rules management endpoints
+	routingRulesHandler := handler.NewAdminRoutingRulesHandler(cfg.RouterService.Address)
+	r.POST("/admin/routing-rules", routingRulesHandler.CreateRoutingRule)
+	r.GET("/admin/routing-rules", routingRulesHandler.ListRoutingRules)
+	r.PUT("/admin/routing-rules/:id", routingRulesHandler.UpdateRoutingRule)
+	r.DELETE("/admin/routing-rules/:id", routingRulesHandler.DeleteRoutingRule)
+
 	// Alert management endpoints
 	alertsHandler := handler.NewAdminAlertsHandler()
 	r.GET("/admin/alert-rules", alertsHandler.ListAlertRules)

@@ -78,6 +78,7 @@ message CreateProviderRequest {
   string base_url = 3;
   string credentials = 4;
   repeated string models = 5;
+  string status = 6;             // "active" | "inactive"
 }
 
 message UpdateProviderRequest {

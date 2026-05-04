@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log"
 
 	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
 	providerv1 "github.com/ai-api-gateway/api/gen/provider/v1"
@@ -69,12 +70,15 @@ func (h *Handler) GetProvider(ctx context.Context, req *providerv1.GetProviderRe
 }
 
 func (h *Handler) CreateProvider(ctx context.Context, req *providerv1.CreateProviderRequest) (*providerv1.Provider, error) {
+	log.Printf("[CreateProvider] Received: Name=%s, Type=%s, BaseUrl=%s, Status=%s", req.Name, req.Type, req.BaseUrl, req.Status)
 	provider := toEntity(&providerv1.Provider{
+		Id:         req.Name, // Use Name as ID for MVP (e.g., "Ollama", "OpenCode Zen")
 		Name:       req.Name,
 		Type:       req.Type,
 		BaseUrl:    req.BaseUrl,
 		Credentials: req.Credentials,
 		Models:     req.Models,
+		Status:     req.Status,
 	})
 	if err := h.service.CreateProvider(provider); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create provider: %v", err)
@@ -94,10 +98,11 @@ func (h *Handler) UpdateProvider(ctx context.Context, req *providerv1.UpdateProv
 		Models:      req.Models,
 		Status:      req.Status,
 	})
-	if err := h.service.UpdateProvider(provider); err != nil {
+	updated, err := h.service.UpdateProvider(provider)
+	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update provider: %v", err)
 	}
-	proto := toProto(provider)
+	proto := toProto(updated)
 	maskCredentials(proto)
 	return proto, nil
 }

@@ -33,6 +33,7 @@ message RouteResult {
   string provider_id = 1;
   string adapter_type = 2;               // "openai" | "anthropic" | "gemini"
   repeated string fallback_provider_ids = 3;
+  repeated string fallback_models = 4;     // NEW: parallel array mapping fallback provider → model
 }
 
 // Routing Rule
@@ -42,6 +43,7 @@ message RoutingRule {
   string provider_id = 3;
   int32 priority = 4;
   string fallback_provider_id = 5;
+  string fallback_model = 6;      // NEW: model to use when falling back to fallback_provider_id
 }
 
 message GetRoutingRulesRequest {
@@ -59,6 +61,7 @@ message CreateRoutingRuleRequest {
   string provider_id = 2;
   int32 priority = 3;
   string fallback_provider_id = 4;
+  string fallback_model = 5;
 }
 
 message UpdateRoutingRuleRequest {
@@ -67,6 +70,7 @@ message UpdateRoutingRuleRequest {
   string provider_id = 3;
   int32 priority = 4;
   string fallback_provider_id = 5;
+  string fallback_model = 6;
 }
 
 message DeleteRoutingRuleRequest {

@@ -9,6 +9,8 @@ import (
 	"github.com/ai-api-gateway/router-service/internal/domain/entity"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/google/uuid"
 )
 
 // Handler implements the RouterService gRPC interface.
@@ -37,6 +39,7 @@ func (h *Handler) ResolveRoute(ctx context.Context, req *routerv1.ResolveRouteRe
 		ProviderId:          routeResult.ProviderID,
 		AdapterType:         routeResult.AdapterType,
 		FallbackProviderIds: routeResult.FallbackProviderIDs,
+		FallbackModels:      routeResult.FallbackModels,
 	}, nil
 }
 
@@ -56,6 +59,7 @@ func (h *Handler) GetRoutingRules(ctx context.Context, req *routerv1.GetRoutingR
 			ProviderId:         rule.ProviderID,
 			Priority:           rule.Priority,
 			FallbackProviderId: rule.FallbackProviderID,
+			FallbackModel:      rule.FallbackModel,
 		}
 	}
 
@@ -68,10 +72,12 @@ func (h *Handler) GetRoutingRules(ctx context.Context, req *routerv1.GetRoutingR
 // CreateRoutingRule creates a new routing rule.
 func (h *Handler) CreateRoutingRule(ctx context.Context, req *routerv1.CreateRoutingRuleRequest) (*routerv1.RoutingRule, error) {
 	rule := &entity.RoutingRule{
+		ID:                 uuid.New().String(), // Always generate UUID for new rules
 		ModelPattern:       req.ModelPattern,
 		ProviderID:         req.ProviderId,
 		Priority:           req.Priority,
 		FallbackProviderID: req.FallbackProviderId,
+		FallbackModel:      req.FallbackModel,
 	}
 
 	if err := h.service.CreateRoutingRule(rule); err != nil {
@@ -84,6 +90,7 @@ func (h *Handler) CreateRoutingRule(ctx context.Context, req *routerv1.CreateRou
 		ProviderId:         rule.ProviderID,
 		Priority:           rule.Priority,
 		FallbackProviderId: rule.FallbackProviderID,
+		FallbackModel:      rule.FallbackModel,
 	}, nil
 }
 
@@ -95,6 +102,7 @@ func (h *Handler) UpdateRoutingRule(ctx context.Context, req *routerv1.UpdateRou
 		ProviderID:         req.ProviderId,
 		Priority:           req.Priority,
 		FallbackProviderID: req.FallbackProviderId,
+		FallbackModel:      req.FallbackModel,
 	}
 
 	if err := h.service.UpdateRoutingRule(rule); err != nil {
@@ -107,6 +115,7 @@ func (h *Handler) UpdateRoutingRule(ctx context.Context, req *routerv1.UpdateRou
 		ProviderId:         rule.ProviderID,
 		Priority:           rule.Priority,
 		FallbackProviderId: rule.FallbackProviderID,
+		FallbackModel:      rule.FallbackModel,
 	}, nil
 }
 
