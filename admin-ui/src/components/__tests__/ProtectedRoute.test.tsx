@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from '../ProtectedRoute';
-import { setMockAuthToken, clearMockAuth } from '../../test/utils';
+import { AuthProvider } from '../../contexts/AuthContext';
+import { createMockToken, clearMockAuth } from '../../test/utils';
 
 const renderWithRouter = (component: React.ReactElement) => {
   const queryClient = new QueryClient({
@@ -11,7 +13,9 @@ const renderWithRouter = (component: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        {component}
+        <AuthProvider>
+          {component}
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );
@@ -26,28 +30,50 @@ describe('ProtectedRoute', () => {
     clearMockAuth();
   });
 
-  it('should redirect to login when not authenticated', () => {
+  it('should not render children when not authenticated', () => {
     renderWithRouter(<ProtectedRoute><div data-testid="protected">Protected</div></ProtectedRoute>);
-    expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
+    const protectedElement = screen.queryByTestId('protected');
+    expect(protectedElement).not.toBeInTheDocument();
   });
 
   it('should render children when authenticated', async () => {
-    setMockAuthToken('mock-jwt-token-admin-123');
+    localStorage.setItem('auth_token', createMockToken({ role: 'admin' }));
+    localStorage.setItem('auth_user', JSON.stringify({
+      id: '1',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'admin',
+    }));
+
     renderWithRouter(
       <ProtectedRoute>
-        <div data-testid="protected">Protected</div>
+        <div data-testid="protected">Protected Content</div>
       </ProtectedRoute>
     );
-    expect(screen.getByTestId('protected')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('protected')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 
-  it('should respect requiredRole for admin', () => {
-    setMockAuthToken('mock-jwt-token-admin-123');
+  it('should respect requiredRole for admin', async () => {
+    localStorage.setItem('auth_token', createMockToken({ role: 'admin' }));
+    localStorage.setItem('auth_user', JSON.stringify({
+      id: '1',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'admin',
+    }));
+
     renderWithRouter(
       <ProtectedRoute requiredRole="admin">
         <div data-testid="protected">Admin Only</div>
       </ProtectedRoute>
     );
-    expect(screen.getByTestId('protected')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('protected')).toBeInTheDocument();
+    });
   });
 });
