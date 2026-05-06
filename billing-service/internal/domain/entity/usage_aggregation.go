@@ -3,6 +3,7 @@ package entity
 // UsageAggregation represents aggregated usage statistics
 type UsageAggregation struct {
 	UserID           string  `json:"user_id"`
+	GroupID          string  `json:"group_id"`
 	ProviderID       string  `json:"provider_id"`
 	Model            string  `json:"model"`
 	TotalRequests    int64   `json:"total_requests"`

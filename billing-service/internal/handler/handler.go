@@ -24,7 +24,7 @@ func (h *Handler) OnProviderResponse(ctx context.Context, req *commonv1.Provider
 	if req == nil {
 		return &commonv1.Empty{}, nil
 	}
-	if err := h.service.RecordUsage(req.GetUserId(), req.GetProviderId(), req.GetModel(),
+	if err := h.service.RecordUsage(req.GetUserId(), req.GetGroupId(), req.GetProviderId(), req.GetModel(),
 		req.GetPromptTokens(), req.GetCompletionTokens()); err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (h *Handler) OnProviderResponse(ctx context.Context, req *commonv1.Provider
 }
 
 func (h *Handler) RecordUsage(ctx context.Context, req *billingv1.RecordUsageRequest) (*commonv1.Empty, error) {
-	if err := h.service.RecordUsage(req.GetUserId(), req.GetProviderId(), req.GetModel(),
+	if err := h.service.RecordUsage(req.GetUserId(), req.GetGroupId(), req.GetProviderId(), req.GetModel(),
 		req.GetPromptTokens(), req.GetCompletionTokens()); err != nil {
 		return nil, err
 	}

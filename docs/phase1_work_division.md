@@ -81,7 +81,7 @@
   - Update billing call to use model from proto response
   - **Rationale**: Type-safe model passing, no JSON parsing dependency, proto versioning handles changes gracefully
 
-- [ ] **Real-time billing / token usage tracking**
+- [x] **Real-time billing / token usage tracking** (completed: streaming-token-tracking)
   - Update billing-service to handle intermediate/partial usage records
   - Update gateway-service to call RecordUsage at regular token intervals during streaming (e.g., every 1000 tokens)
   - Configure token interval threshold as configurable parameter

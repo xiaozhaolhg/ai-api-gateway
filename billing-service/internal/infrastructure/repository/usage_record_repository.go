@@ -23,11 +23,11 @@ func (r *UsageRecordRepository) Create(record *entity.UsageRecord) error {
 	record.ID = uuid.New().String()
 
 	query := `
-		INSERT INTO usage_records (id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO usage_records (id, user_id, group_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := r.db.Exec(query, record.ID, record.UserID, record.ProviderID, record.Model,
+	_, err := r.db.Exec(query, record.ID, record.UserID, record.GroupID, record.ProviderID, record.Model,
 		record.PromptTokens, record.CompletionTokens, record.Cost, record.Timestamp)
 	if err != nil {
 		return fmt.Errorf("failed to create usage record: %w", err)
@@ -39,14 +39,14 @@ func (r *UsageRecordRepository) Create(record *entity.UsageRecord) error {
 // GetByID retrieves a usage record by ID
 func (r *UsageRecordRepository) GetByID(id string) (*entity.UsageRecord, error) {
 	query := `
-		SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
+		SELECT id, user_id, group_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
 		FROM usage_records
 		WHERE id = ?
 	`
 
 	var record entity.UsageRecord
 	err := r.db.QueryRow(query, id).Scan(
-		&record.ID, &record.UserID, &record.ProviderID, &record.Model,
+		&record.ID, &record.UserID, &record.GroupID, &record.ProviderID, &record.Model,
 		&record.PromptTokens, &record.CompletionTokens, &record.Cost, &record.Timestamp,
 	)
 	if err != nil {
@@ -106,6 +106,7 @@ func (r *UsageRecordRepository) GetAggregation(userID, startDate, endDate, group
 	query := `
 		SELECT
 			user_id,
+			group_id,
 			provider_id,
 			model,
 			COUNT(*) as total_requests,
@@ -120,6 +121,8 @@ func (r *UsageRecordRepository) GetAggregation(userID, startDate, endDate, group
 		switch groupBy {
 		case "user_id":
 			query += " GROUP BY user_id"
+		case "group_id":
+			query += " GROUP BY group_id"
 		case "provider_id":
 			query += " GROUP BY provider_id"
 		case "model":
@@ -141,7 +144,7 @@ func (r *UsageRecordRepository) GetAggregation(userID, startDate, endDate, group
 	for rows.Next() {
 		var agg entity.UsageAggregation
 		err := rows.Scan(
-			&agg.UserID, &agg.ProviderID, &agg.Model,
+			&agg.UserID, &agg.GroupID, &agg.ProviderID, &agg.Model,
 			&agg.TotalRequests, &agg.TotalPromptTokens, &agg.TotalCompletionTokens, &agg.TotalCost,
 		)
 		if err != nil {

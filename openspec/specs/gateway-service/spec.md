@@ -56,9 +56,7 @@ Edge service — HTTP entry point, middleware orchestration, SSE streaming.
 - **Middleware Orchestration**: Ordered pipeline execution
 
 ---
-
 ## Requirements
-
 ### Requirement: Streaming Proxy
 
 Gateway service SHALL proxy SSE streaming responses from providers to consumers.
@@ -85,17 +83,28 @@ The gateway-service SHALL call billing-service `RecordUsage` RPC after completin
 - **AND** each call includes the correct provider_id and model for that specific call
 
 ### Requirement: Token recording after streaming requests
-The gateway-service SHALL accumulate token counts across all SSE chunks and call billing-service `RecordUsage` after the stream completes.
+The gateway-service SHALL accumulate token counts across all SSE chunks and call billing-service `RecordUsage` **at configurable intervals during streaming** AND after the stream completes.
 
-#### Scenario: Streaming request completes
-- **WHEN** a streaming LLM request completes (all SSE chunks received)
-- **THEN** the gateway sums totalPromptTokens and totalCompletionTokens across all chunks
-- **AND** calls `billingClient.RecordUsage()` with the accumulated totals
+#### Scenario: Streaming request with interval recording
+- **WHEN** a streaming LLM request is in progress
+- **AND** the accumulated completion tokens exceed the configured `streaming_token_interval` threshold since the last recording
+- **THEN** the gateway calls `billingClient.RecordUsage()` with the delta tokens since the last recording
+- **AND** updates the last-recorded position to avoid double-counting
+
+#### Scenario: Streaming request final recording
+- **WHEN** a streaming LLM request completes (all SSE chunks received or stream errors)
+- **THEN** the gateway calls `billingClient.RecordUsage()` with any remaining delta tokens not yet recorded
+- **AND** the final call ensures all tokens are accounted for
+
+#### Scenario: Streaming request below threshold
+- **WHEN** a streaming LLM request completes without reaching the token interval threshold
+- **THEN** the gateway calls `billingClient.RecordUsage()` once with the full accumulated totals
+- **AND** behavior is identical to the previous single-call approach
 
 #### Scenario: Multiple streaming providers
 - **WHEN** a streaming request calls multiple providers
-- **THEN** the gateway SHALL call `RecordUsage` separately for each provider after their stream completes
-- **AND** each call uses the correct provider_id and accumulated tokens for that provider
+- **THEN** the gateway SHALL track recording state independently per provider stream
+- **AND** call `RecordUsage` separately for each provider based on their accumulated tokens
 
 ### Requirement: Token extraction from provider responses
 The gateway-service SHALL extract token counts from provider responses for both non-streaming (JSON response) and streaming (SSE chunks) flows.
@@ -303,10 +312,10 @@ Gateway service SHALL log requests and responses in structured JSON format with 
 
 Gateway service SHALL provide an endpoint to aggregate models from all configured providers.
 
-#### Scenario: List all models
-- **WHEN** GET /gateway/models is called
-- **THEN** query all providers concurrently for their models
-- **AND** return aggregated list in OpenAI-compatible format
+#### Scenario: List models via /v1/models
+- **WHEN** a GET request is made to `/v1/models`
+- **THEN** the gateway SHALL validate API key and return models from all configured providers in OpenAI-compatible format
+- **AND** use the `ModelsHandler` to aggregate models via provider-service
 
 #### Scenario: Models caching
 - **WHEN** models are listed successfully
@@ -516,3 +525,20 @@ The gateway-service SHALL require valid API key authentication for all `/v1/*` O
 #### Scenario: Missing API key on /v1/models
 - **WHEN** a GET request is made to `/v1/models` without an API key
 - **THEN** the gateway SHALL return HTTP 401 with error code `invalid_api_key`
+
+### Requirement: Configurable streaming token interval
+The gateway-service SHALL support a `streaming_token_interval` configuration parameter that controls how frequently intermediate usage is recorded during streaming.
+
+#### Scenario: Default interval
+- **WHEN** no `streaming_token_interval` is configured
+- **THEN** the default value SHALL be 1000 completion tokens
+
+#### Scenario: Custom interval via config
+- **WHEN** `streaming_token_interval` is set in the gateway-service configuration
+- **THEN** intermediate `RecordUsage` calls are triggered every N completion tokens
+
+#### Scenario: Interval set to zero
+- **WHEN** `streaming_token_interval` is set to 0
+- **THEN** intermediate recording is disabled
+- **AND** usage is recorded only at stream completion (legacy behavior)
+

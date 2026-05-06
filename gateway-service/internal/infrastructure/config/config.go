@@ -23,6 +23,7 @@ type Config struct {
 	Cache           CacheConfig   `yaml:"cache"`
 	GRPC            GRPCConfig    `yaml:"grpc"`
 	SSE             SSEConfig     `yaml:"sse"`
+	StreamingTokenInterval *int64  `yaml:"streaming_token_interval"`
 }
 
 // ServerConfig holds server configuration
@@ -106,6 +107,12 @@ func Load(path string) (*Config, error) {
 	if addr := os.Getenv("MONITOR_SERVICE_ADDRESS"); addr != "" {
 		cfg.MonitorService.Address = addr
 	}
+	if envInterval := os.Getenv("STREAMING_TOKEN_INTERVAL"); envInterval != "" {
+		val, err := strconv.ParseInt(envInterval, 10, 64)
+		if err == nil {
+			cfg.StreamingTokenInterval = &val
+		}
+	}
 
 	// Set defaults
 	if cfg.Server.Port == "" {
@@ -167,6 +174,10 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.SSE.HeartbeatInterval == "" {
 		cfg.SSE.HeartbeatInterval = "15s"
+	}
+	if cfg.StreamingTokenInterval == nil {
+		defaultInterval := int64(1000)
+		cfg.StreamingTokenInterval = &defaultInterval
 	}
 
 	// Validate configuration

@@ -10,12 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 	"github.com/ai-api-gateway/gateway-service/internal/handler"
 	"github.com/ai-api-gateway/gateway-service/internal/infrastructure/config"
 	"github.com/ai-api-gateway/gateway-service/internal/middleware"
 	"github.com/ai-api-gateway/gateway-service/internal/util"
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -67,10 +67,17 @@ func main() {
 		log.Printf("Warning: monitor client initialization failed: %v", initErr)
 	}
 
+	// Initialize streaming interval configuration
+	streamingInterval := int64(1000)
+	if cfg.StreamingTokenInterval != nil {
+		streamingInterval = *cfg.StreamingTokenInterval
+	}
+
+	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authClient)
 	authzMiddleware := middleware.NewAuthzMiddleware(authClient)
 	routeMiddleware := middleware.NewRouteMiddleware(routerClient)
-	proxyMiddleware := middleware.NewProxyMiddleware(providerClient, billingClient)
+	proxyMiddleware := middleware.NewProxyMiddleware(providerClient, billingClient, streamingInterval)
 
 	r := gin.Default()
 
@@ -94,7 +101,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler(authClient, routerClient, providerClient, billingClient)
 	modelsHandler := handler.NewModelsHandler(providerClient)
 	adminUsageHandler := handler.NewAdminUsageHandler(billingClient)
-	
+
 	// New handlers for budgets, pricing rules, and alerts
 	adminBudgetsHandler := handler.NewAdminBudgetsHandler(billingClient)
 	adminPricingRulesHandler := handler.NewAdminPricingRulesHandler(billingClient)
@@ -198,16 +205,15 @@ func main() {
 			authMiddleware.Middleware(),
 			authzMiddleware.Middleware(),
 			routeMiddleware.Middleware(),
-			wrapHTTPMiddleware(proxyMiddleware.Middleware),
+			proxyMiddleware.Middleware(),
 		)
 		chat.POST("", func(c *gin.Context) {})
 
 		models := v1.Group("/models")
 		models.Use(authMiddleware.Middleware())
 		models.GET("", modelsHandler.ListModels)
-
 		v1.GET("/providers", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"providers": []string{"ollama", "opencode_zen"}})
+			c.JSON(http.StatusOK, gin.H{"providers": []string{"ollama", "opencode_zen", "new_provider"}})
 		})
 	}
 
@@ -830,8 +836,8 @@ func handleCreateUserAPIKey(c *gin.Context) {
 
 	c.JSON(201, gin.H{
 		"api_key_id": resp.ApiKeyId,
-		"api_key":     resp.ApiKey,
-		"name":         req.Name,
+		"api_key":    resp.ApiKey,
+		"name":       req.Name,
 	})
 }
 

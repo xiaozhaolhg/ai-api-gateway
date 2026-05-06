@@ -6,6 +6,7 @@ import "time"
 type UsageRecord struct {
 	ID               string    `json:"id"`
 	UserID           string    `json:"user_id"`
+	GroupID          string    `json:"group_id"`
 	ProviderID       string    `json:"provider_id"`
 	Model            string    `json:"model"`
 	PromptTokens     int64     `json:"prompt_tokens"`

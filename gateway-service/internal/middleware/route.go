@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
+	"github.com/gin-gonic/gin"
 )
 
 type RouteMiddleware struct {
