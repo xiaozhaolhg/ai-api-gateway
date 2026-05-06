@@ -32,7 +32,7 @@ func NewService(
 }
 
 // RecordUsage records usage for a request
-func (s *Service) RecordUsage(userID, providerID, model string, promptTokens, completionTokens int64) error {
+func (s *Service) RecordUsage(userID, groupID, providerID, model string, promptTokens, completionTokens int64) error {
 	// Calculate cost
 	cost, err := s.calculateCost(providerID, model, promptTokens, completionTokens)
 	if err != nil {
@@ -42,6 +42,7 @@ func (s *Service) RecordUsage(userID, providerID, model string, promptTokens, co
 	// Create usage record
 	record := &entity.UsageRecord{
 		UserID:           userID,
+		GroupID:          groupID,
 		ProviderID:       providerID,
 		Model:            model,
 		PromptTokens:     promptTokens,

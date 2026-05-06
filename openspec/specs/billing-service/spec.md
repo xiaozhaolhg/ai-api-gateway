@@ -60,19 +60,19 @@ Two paths:
 - **CreateBudget/UpdateBudget/DeleteBudget**: Budget CRUD
 - **CreatePricingRule/UpdatePricingRule/DeletePricingRule**: Pricing CRUD
 - **GenerateInvoice**: Invoice generation (Phase 3+)
-
 ## Requirements
-
 ### Requirement: Usage recording
-The billing-service SHALL record usage data from provider callbacks and direct calls.
+The billing-service SHALL record usage data from provider callbacks and direct calls, correctly aggregating multiple records from the same request.
 
-#### Scenario: Provider callback recording
-- **WHEN** provider-service dispatches OnProviderResponse callback with token counts
-- **THEN** the billing-service SHALL store the usage record with provider, model, and token counts
+#### Scenario: Multiple records for same request
+- **WHEN** gateway-service sends multiple `RecordUsage` calls for the same streaming request (intermediate + final)
+- **THEN** the billing-service SHALL store each record independently
+- **AND** `GetUsageAggregation` SHALL correctly sum all records for the same user/model/provider/date
 
-#### Scenario: Direct usage recording
-- **WHEN** gateway-service calls RecordUsage RPC
-- **THEN** the billing-service SHALL store the usage record for the user and model
+#### Scenario: Aggregation of intermediate records
+- **WHEN** `GetUsageAggregation` is queried for a time period that includes intermediate streaming records
+- **THEN** the result SHALL include the sum of all intermediate and final records
+- **AND** the total SHALL equal the actual token usage for that period
 
 ### Requirement: GetUsageAggregation returns multiple rows
 The billing-service `GetUsageAggregation` SHALL return **one row per unique `group_by` value** (user_id, group_id, provider_id, model), NOT just a single row.
@@ -131,3 +131,4 @@ The billing-service SHALL enforce budget limits for users and groups.
 #### Scenario: Budget check
 - **WHEN** gateway-service calls CheckBudget RPC
 - **THEN** the billing-service SHALL return current spend, limit, and remaining budget
+

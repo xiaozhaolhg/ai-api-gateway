@@ -10,6 +10,7 @@ A high-performance gateway service that routes AI model requests to multiple LLM
 - **Authentication**: JWT-based auth with API key support
 - **Rate Limiting**: Per-user and per-model rate limits
 - **Billing**: Usage tracking and cost estimation
+- **Real-Time Streaming Usage**: Record usage at configurable intervals during streaming to prevent cost overruns
 - **Health Monitoring**: Deep health checks with dependency status
 - **Graceful Shutdown**: Zero-downtime deployments
 
@@ -58,7 +59,38 @@ server:
 auth_service:
   address: "auth-service:50051"
 
-# ... see configs/config.yaml for full example
+streaming_token_interval: 1000  # Record usage every 1000 completion tokens (0 = disable)
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `STREAMING_TOKEN_INTERVAL` | `1000` | Override streaming token interval (0 = disable) |
+| `PORT` | `8080` | HTTP server port |
+| `HOST` | `0.0.0.0` | HTTP server host |
+| `AUTH_SERVICE_ADDRESS` | `localhost:50051` | Auth service gRPC address |
+| `ROUTER_SERVICE_ADDRESS` | `localhost:50052` | Router service gRPC address |
+| `PROVIDER_SERVICE_ADDRESS` | `localhost:50053` | Provider service gRPC address |
+| `BILLING_SERVICE_ADDRESS` | `localhost:50054` | Billing service gRPC address |
+| `MONITOR_SERVICE_ADDRESS` | `localhost:50055` | Monitor service gRPC address |
+
+```yaml
+# Full example config.yaml:
+server:
+  port: "8080"
+  host: "0.0.0.0"
+
+auth_service:
+  address: "auth-service:50051"
+router_service:
+  address: "router-service:50052"
+provider_service:
+  address: "provider-service:50053"
+billing_service:
+  address: "billing-service:50054"
+monitor_service:
+  address: "monitor-service:50055"
+
+streaming_token_interval: 1000  # Record usage every 1000 completion tokens (0 disables intermediate recording)
 ```
 
 ## API Endpoints
@@ -194,6 +226,21 @@ data: {"choices":[{"delta":{"content":" a time"}}]}
 
 data: {"prompt_tokens":10,"completion_tokens":150,"total_tokens":160,"done":true}
 ```
+
+### Streaming Usage Tracking
+
+For streaming requests, the gateway records usage at configurable intervals (default every 1000 completion tokens) to prevent cost overruns. This ensures real-time visibility into ongoing usage costs.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `streaming_token_interval` (YAML) | `1000` | Tokens between intermediate usage recordings (0 = disable) |
+| `STREAMING_TOKEN_INTERVAL` (env) | `1000` | Override interval via environment variable |
+
+**Behavior:**
+- Intermediate usage is recorded as tokens accumulate to the configured interval
+- A final usage record is always sent after stream completion
+- If the stream errors mid-way, all accumulated tokens are still recorded
+- All records are aggregated by the billing service for accurate cost tracking
 
 ### Admin Endpoints
 
