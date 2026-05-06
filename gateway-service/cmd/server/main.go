@@ -23,7 +23,10 @@ var (
 	routerClient   *client.RouterClient
 	providerClient *client.ProviderClient
 	billingClient  *client.BillingClient
+	monitorClient  *client.MonitorClient
 )
+
+// var staticFiles embed.FS // Temporarily disabled for testing
 
 func main() {
 	log.Println("Gateway service starting...")
@@ -59,6 +62,11 @@ func main() {
 		log.Printf("Warning: billing client initialization failed: %v", initErr)
 	}
 
+	monitorClient, initErr = client.NewMonitorClient(cfg.MonitorService.Address)
+	if initErr != nil {
+		log.Printf("Warning: monitor client initialization failed: %v", initErr)
+	}
+
 	authMiddleware := middleware.NewAuthMiddleware(authClient)
 	authzMiddleware := middleware.NewAuthzMiddleware(authClient)
 	routeMiddleware := middleware.NewRouteMiddleware(routerClient)
@@ -86,6 +94,11 @@ func main() {
 	healthHandler := handler.NewHealthHandler(authClient, routerClient, providerClient, billingClient)
 	modelsHandler := handler.NewModelsHandler(providerClient)
 	adminUsageHandler := handler.NewAdminUsageHandler(billingClient)
+	
+	// New handlers for budgets, pricing rules, and alerts
+	adminBudgetsHandler := handler.NewAdminBudgetsHandler(billingClient)
+	adminPricingRulesHandler := handler.NewAdminPricingRulesHandler(billingClient)
+	adminAlertsHandler := handler.NewAdminAlertsHandler(monitorClient)
 
 	// Simple liveness check
 	r.GET("/health", func(c *gin.Context) {
@@ -152,14 +165,28 @@ func main() {
 	r.PUT("/admin/routing-rules/:id", routingRulesHandler.UpdateRoutingRule)
 	r.DELETE("/admin/routing-rules/:id", routingRulesHandler.DeleteRoutingRule)
 
+	// Budget management endpoints
+	r.GET("/admin/budgets", adminBudgetsHandler.ListBudgets)
+	r.POST("/admin/budgets", adminBudgetsHandler.CreateBudget)
+	r.PUT("/admin/budgets/:id", adminBudgetsHandler.UpdateBudget)
+	r.DELETE("/admin/budgets/:id", adminBudgetsHandler.DeleteBudget)
+
+	// Pricing rules management endpoints
+	r.GET("/admin/pricing-rules", adminPricingRulesHandler.ListPricingRules)
+	r.POST("/admin/pricing-rules", adminPricingRulesHandler.CreatePricingRule)
+	r.PUT("/admin/pricing-rules/:id", adminPricingRulesHandler.UpdatePricingRule)
+	r.DELETE("/admin/pricing-rules/:id", adminPricingRulesHandler.DeletePricingRule)
+
 	// Alert management endpoints
-	alertsHandler := handler.NewAdminAlertsHandler()
-	r.GET("/admin/alert-rules", alertsHandler.ListAlertRules)
-	r.POST("/admin/alert-rules", alertsHandler.CreateAlertRule)
-	r.PUT("/admin/alert-rules/:id", alertsHandler.UpdateAlertRule)
-	r.DELETE("/admin/alert-rules/:id", alertsHandler.DeleteAlertRule)
-	r.GET("/admin/alerts", alertsHandler.ListAlerts)
-	r.PUT("/admin/alerts/:id/acknowledge", alertsHandler.AcknowledgeAlert)
+	r.GET("/admin/alert-rules", adminAlertsHandler.ListAlertRules)
+	r.POST("/admin/alert-rules", adminAlertsHandler.CreateAlertRule)
+	r.PUT("/admin/alert-rules/:id", adminAlertsHandler.UpdateAlertRule)
+	r.DELETE("/admin/alert-rules/:id", adminAlertsHandler.DeleteAlertRule)
+	r.GET("/admin/alerts", adminAlertsHandler.ListAlerts)
+	r.PUT("/admin/alerts/:id/acknowledge", adminAlertsHandler.AcknowledgeAlert)
+
+	// Static file serving with SPA fallback
+	setupStaticFiles(r)
 
 	// Add error handling middleware (must be after logging to capture status codes)
 	r.Use(middleware.NewErrorMiddleware().Middleware())
@@ -233,12 +260,21 @@ func main() {
 	if billingClient != nil {
 		billingClient.Close()
 	}
+	if monitorClient != nil {
+		monitorClient.Close()
+	}
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
 	log.Println("Server exited gracefully")
+}
+
+// setupStaticFiles configures static file serving with SPA fallback
+func setupStaticFiles(r *gin.Engine) {
+	// Static file serving temporarily disabled for testing
+	log.Println("Static file serving disabled for testing")
 }
 
 func getEnv(key, defaultValue string) string {

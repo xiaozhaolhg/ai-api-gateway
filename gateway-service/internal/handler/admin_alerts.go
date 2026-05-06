@@ -3,327 +3,252 @@ package handler
 import (
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ai-api-gateway/gateway-service/internal/client"
+	monitorv1 "github.com/ai-api-gateway/api/gen/monitor/v1"
 )
-
-// AlertRule represents an alert rule configuration
-type AlertRule struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Metric    string    `json:"metric"`
-	Condition string    `json:"condition"`
-	Threshold float64   `json:"threshold"`
-	Channel   string    `json:"channel"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// Alert represents a triggered alert
-type Alert struct {
-	ID            string    `json:"id"`
-	RuleID        string    `json:"rule_id"`
-	Severity      string    `json:"severity"`
-	Status        string    `json:"status"`
-	TriggeredAt   time.Time `json:"triggered_at"`
-	Description   string    `json:"description"`
-	AcknowledgedAt *time.Time `json:"acknowledged_at,omitempty"`
-}
 
 // AdminAlertsHandler handles alert and alert rule management endpoints
 type AdminAlertsHandler struct {
-	mu         sync.RWMutex
-	alertRules []AlertRule
-	alerts     []Alert
+	monitorClient *client.MonitorClient
 }
 
 // NewAdminAlertsHandler creates a new admin alerts handler
-func NewAdminAlertsHandler() *AdminAlertsHandler {
-	h := &AdminAlertsHandler{
-		alertRules: make([]AlertRule, 0),
-		alerts:     make([]Alert, 0),
-	}
+func NewAdminAlertsHandler(monitorClient *client.MonitorClient) *AdminAlertsHandler {
+	// Use monitorv1 to avoid unused import error
+	_ = monitorv1.AlertRule{}
 	
-	// Initialize with some default alert rules
-	h.initializeDefaultData()
-	
-	return h
-}
-
-func (h *AdminAlertsHandler) initializeDefaultData() {
-	now := time.Now()
-	
-	// Default alert rules
-	h.alertRules = []AlertRule{
-		{
-			ID:        "1",
-			Name:      "Budget Alert",
-			Metric:    "budget_usage",
-			Condition: "greater_than",
-			Threshold: 80,
-			Channel:   "email",
-			Status:    "active",
-			CreatedAt: now.Add(-30 * 24 * time.Hour),
-			UpdatedAt: now.Add(-30 * 24 * time.Hour),
-		},
-		{
-			ID:        "2",
-			Name:      "Error Rate Alert",
-			Metric:    "error_rate",
-			Condition: "greater_than",
-			Threshold: 5,
-			Channel:   "slack",
-			Status:    "active",
-			CreatedAt: now.Add(-30 * 24 * time.Hour),
-			UpdatedAt: now.Add(-30 * 24 * time.Hour),
-		},
-		{
-			ID:        "3",
-			Name:      "Latency Alert",
-			Metric:    "latency",
-			Condition: "greater_than",
-			Threshold: 2000,
-			Channel:   "email",
-			Status:    "active",
-			CreatedAt: now.Add(-30 * 24 * time.Hour),
-			UpdatedAt: now.Add(-30 * 24 * time.Hour),
-		},
-	}
-	
-	// Default alerts
-	ackTime := now.Add(-24 * time.Hour)
-	h.alerts = []Alert{
-		{
-			ID:          "1",
-			RuleID:      "1",
-			Severity:    "warning",
-			Status:      "triggered",
-			TriggeredAt: now.Add(-48 * time.Hour),
-			Description: "Budget usage exceeded 80% for Development Budget",
-		},
-		{
-			ID:             "2",
-			RuleID:         "2",
-			Severity:       "critical",
-			Status:         "acknowledged",
-			TriggeredAt:    now.Add(-72 * time.Hour),
-			Description:    "Error rate exceeded 5% for provider OpenCode Zen",
-			AcknowledgedAt: &ackTime,
-		},
+	return &AdminAlertsHandler{
+		monitorClient: monitorClient,
 	}
 }
 
 // ListAlertRules returns all alert rules
 func (h *AdminAlertsHandler) ListAlertRules(c *gin.Context) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	
-	// Convert to response format with ISO timestamps
-	rules := make([]gin.H, len(h.alertRules))
-	for i, rule := range h.alertRules {
-		rules[i] = gin.H{
-			"id":         rule.ID,
-			"name":       rule.Name,
-			"metric":     rule.Metric,
-			"condition":  rule.Condition,
-			"threshold":  rule.Threshold,
-			"channel":    rule.Channel,
-			"status":     rule.Status,
-			"created_at": rule.CreatedAt.Format(time.RFC3339),
-			"updated_at": rule.UpdatedAt.Format(time.RFC3339),
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	if h.monitorClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		return
+	}
+
+	resp, err := h.monitorClient.ListAlertRules(c.Request.Context(), page, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert proto to UI-compatible format
+	alertRules := make([]gin.H, len(resp.Rules))
+	for i, rule := range resp.Rules {
+		alertRules[i] = gin.H{
+			"id":         rule.GetId(),
+			"name":       rule.GetMetricType() + " Alert", // Generate name from metric type
+			"metric":     rule.GetMetricType(),
+			"condition":  rule.GetCondition(),
+			"threshold":  rule.GetThreshold(),
+			"channel":    rule.GetChannel(),
+			"status":     rule.GetStatus(),
+			"created_at": time.Now().Format(time.RFC3339), // TODO: Add created_at to proto
+			"updated_at": time.Now().Format(time.RFC3339), // TODO: Add updated_at to proto
 		}
 	}
-	
-	c.JSON(http.StatusOK, rules)
+
+	c.JSON(http.StatusOK, gin.H{
+		"alert_rules": alertRules,
+		"total":       resp.GetTotal(),
+	})
 }
 
 // CreateAlertRule creates a new alert rule
 func (h *AdminAlertsHandler) CreateAlertRule(c *gin.Context) {
 	var req struct {
-		Name      string  `json:"name" binding:"required"`
-		Metric    string  `json:"metric" binding:"required"`
-		Condition string  `json:"condition" binding:"required"`
-		Threshold float64 `json:"threshold" binding:"required"`
-		Channel   string  `json:"channel" binding:"required"`
-		Status    string  `json:"status"`
+		MetricType    string  `json:"metric_type" binding:"required"`
+		Condition    string  `json:"condition" binding:"required"`
+		Threshold    float64 `json:"threshold" binding:"required"`
+		Channel      string  `json:"channel" binding:"required"`
+		ChannelConfig string  `json:"channel_config"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	
-	if req.Status == "" {
-		req.Status = "active"
+
+	if h.monitorClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		return
 	}
-	
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	
-	now := time.Now()
-	rule := AlertRule{
-		ID:        generateID(),
-		Name:      req.Name,
-		Metric:    req.Metric,
-		Condition: req.Condition,
-		Threshold: req.Threshold,
-		Channel:   req.Channel,
-		Status:    req.Status,
-		CreatedAt: now,
-		UpdatedAt: now,
+
+	resp, err := h.monitorClient.CreateAlertRule(
+		c.Request.Context(),
+		req.MetricType,
+		req.Condition,
+		req.Threshold,
+		req.Channel,
+		req.ChannelConfig,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	
-	h.alertRules = append(h.alertRules, rule)
-	
+
 	c.JSON(http.StatusCreated, gin.H{
-		"id":         rule.ID,
-		"name":       rule.Name,
-		"metric":     rule.Metric,
-		"condition":  rule.Condition,
-		"threshold":  rule.Threshold,
-		"channel":    rule.Channel,
-		"status":     rule.Status,
-		"created_at": rule.CreatedAt.Format(time.RFC3339),
-		"updated_at": rule.UpdatedAt.Format(time.RFC3339),
+		"id":         resp.GetId(),
+		"metric_type": resp.GetMetricType(),
+		"condition":  resp.GetCondition(),
+		"threshold":  resp.GetThreshold(),
+		"channel":    resp.GetChannel(),
+		"status":     resp.GetStatus(),
+		"created_at": time.Now().Format(time.RFC3339), // TODO: Add created_at to proto
+		"updated_at": time.Now().Format(time.RFC3339), // TODO: Add updated_at to proto
 	})
 }
 
 // UpdateAlertRule updates an existing alert rule
 func (h *AdminAlertsHandler) UpdateAlertRule(c *gin.Context) {
 	id := c.Param("id")
-	
 	var req struct {
-		Name      string  `json:"name"`
-		Metric    string  `json:"metric"`
-		Condition string  `json:"condition"`
-		Threshold float64 `json:"threshold"`
-		Channel   string  `json:"channel"`
-		Status    string  `json:"status"`
+		MetricType    string  `json:"metric_type"`
+		Condition    string  `json:"condition"`
+		Threshold    float64 `json:"threshold"`
+		Channel      string  `json:"channel"`
+		ChannelConfig string  `json:"channel_config"`
+		Status       string  `json:"status"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	
-	for i, rule := range h.alertRules {
-		if rule.ID == id {
-			if req.Name != "" {
-				rule.Name = req.Name
-			}
-			if req.Metric != "" {
-				rule.Metric = req.Metric
-			}
-			if req.Condition != "" {
-				rule.Condition = req.Condition
-			}
-			if req.Threshold != 0 {
-				rule.Threshold = req.Threshold
-			}
-			if req.Channel != "" {
-				rule.Channel = req.Channel
-			}
-			if req.Status != "" {
-				rule.Status = req.Status
-			}
-			rule.UpdatedAt = time.Now()
-			h.alertRules[i] = rule
-			
-			c.JSON(http.StatusOK, gin.H{
-				"id":         rule.ID,
-				"name":       rule.Name,
-				"metric":     rule.Metric,
-				"condition":  rule.Condition,
-				"threshold":  rule.Threshold,
-				"channel":    rule.Channel,
-				"status":     rule.Status,
-				"created_at": rule.CreatedAt.Format(time.RFC3339),
-				"updated_at": rule.UpdatedAt.Format(time.RFC3339),
-			})
-			return
-		}
+
+	if h.monitorClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		return
 	}
-	
-	c.JSON(http.StatusNotFound, gin.H{"error": "alert rule not found"})
+
+	resp, err := h.monitorClient.UpdateAlertRule(
+		c.Request.Context(),
+		id,
+		req.MetricType,
+		req.Condition,
+		req.Threshold,
+		req.Channel,
+		req.ChannelConfig,
+		req.Status,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":         resp.GetId(),
+		"metric_type": resp.GetMetricType(),
+		"condition":  resp.GetCondition(),
+		"threshold":  resp.GetThreshold(),
+		"channel":    resp.GetChannel(),
+		"status":     resp.GetStatus(),
+		"created_at": time.Now().Format(time.RFC3339), // TODO: Add created_at to proto
+		"updated_at": time.Now().Format(time.RFC3339), // TODO: Add updated_at to proto
+	})
 }
 
 // DeleteAlertRule deletes an alert rule
 func (h *AdminAlertsHandler) DeleteAlertRule(c *gin.Context) {
 	id := c.Param("id")
-	
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	
-	for i, rule := range h.alertRules {
-		if rule.ID == id {
-			h.alertRules = append(h.alertRules[:i], h.alertRules[i+1:]...)
-			c.JSON(http.StatusOK, gin.H{"message": "alert rule deleted"})
-			return
-		}
+
+	if h.monitorClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		return
 	}
-	
-	c.JSON(http.StatusNotFound, gin.H{"error": "alert rule not found"})
+
+	if err := h.monitorClient.DeleteAlertRule(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "alert rule deleted"})
 }
 
 // ListAlerts returns all alerts
 func (h *AdminAlertsHandler) ListAlerts(c *gin.Context) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	
-	// Convert to response format with ISO timestamps
-	alerts := make([]gin.H, len(h.alerts))
-	for i, alert := range h.alerts {
+	ruleID := c.Query("rule_id")
+	status := c.Query("status")
+	page := int32(1)
+	pageSize := int32(10)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	if h.monitorClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		return
+	}
+
+	resp, err := h.monitorClient.GetAlerts(c.Request.Context(), ruleID, status, page, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert proto to UI-compatible format
+	alerts := make([]gin.H, len(resp.Alerts))
+	for i, alert := range resp.Alerts {
 		alertData := gin.H{
-			"id":           alert.ID,
-			"rule_id":      alert.RuleID,
-			"severity":     alert.Severity,
-			"status":       alert.Status,
-			"triggered_at": alert.TriggeredAt.Format(time.RFC3339),
-			"description":  alert.Description,
+			"id":           alert.GetId(),
+			"rule_id":     alert.GetRuleId(),
+			"severity":     "warning", // TODO: Add severity to proto
+			"status":       alert.GetStatus(),
+			"triggered_at": alert.GetTriggeredAt(),
+			"description":  "Alert triggered", // TODO: Add description to proto
 		}
-		if alert.AcknowledgedAt != nil {
-			alertData["acknowledged_at"] = alert.AcknowledgedAt.Format(time.RFC3339)
+		if alert.GetAcknowledgedAt() > 0 {
+			alertData["acknowledged_at"] = alert.GetAcknowledgedAt()
 		}
 		alerts[i] = alertData
 	}
-	
-	c.JSON(http.StatusOK, alerts)
+
+	c.JSON(http.StatusOK, gin.H{
+		"alerts": alerts,
+		"total":   resp.GetTotal(),
+	})
 }
 
 // AcknowledgeAlert acknowledges an alert
 func (h *AdminAlertsHandler) AcknowledgeAlert(c *gin.Context) {
 	id := c.Param("id")
-	
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	
-	now := time.Now()
-	
-	for i, alert := range h.alerts {
-		if alert.ID == id {
-			h.alerts[i].Status = "acknowledged"
-			h.alerts[i].AcknowledgedAt = &now
-			c.JSON(http.StatusOK, gin.H{"message": "alert acknowledged"})
-			return
-		}
+
+	if h.monitorClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		return
 	}
-	
-	c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
-}
 
-// generateID creates a simple unique ID
-var idCounter int
-var idMutex sync.Mutex
+	resp, err := h.monitorClient.AcknowledgeAlert(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-func generateID() string {
-	idMutex.Lock()
-	defer idMutex.Unlock()
-	idCounter++
-	return "rule-" + strconv.Itoa(idCounter) + "-" + strconv.FormatInt(time.Now().Unix(), 10)
+	c.JSON(http.StatusOK, gin.H{
+		"id":             resp.GetId(),
+		"rule_id":         resp.GetRuleId(),
+		"severity":       "warning", // TODO: Add severity to proto
+		"status":         resp.GetStatus(),
+		"triggered_at":    resp.GetTriggeredAt(),
+		"description":     "Alert acknowledged", // TODO: Add description to proto
+		"acknowledged_at": resp.GetAcknowledgedAt(),
+	})
 }

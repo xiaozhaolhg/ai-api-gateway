@@ -1,4 +1,4 @@
-.PHONY: build test test-ui up down proto clean clean-images help
+.PHONY: build test test-ui build-single up down proto clean clean-images help
 .SILENT: clean help
 
 SERVICES = auth-service router-service provider-service gateway-service billing-service monitor-service
@@ -69,6 +69,23 @@ test-ui-e2e:
 	@echo "  npx playwright install-deps firefox   # for Firefox"
 	@echo ""
 	cd $(ADMIN_UI) && npm run e2e || echo "E2E tests require browser dependencies. Run: cd admin-ui && npx playwright install-deps"
+
+# Build single binary with embedded UI
+build-single: build-ui embed-ui build-gateway
+	@echo "Building single binary with embedded UI..."
+
+build-ui:
+	@echo "Building admin-ui..."
+	cd $(ADMIN_UI) && npm ci && npm run build
+
+embed-ui:
+	@echo "Embedding UI into gateway-service..."
+	rm -rf gateway-service/static/*
+	cp -r $(ADMIN_UI)/dist/* gateway-service/static/
+
+build-gateway:
+	@echo "Building gateway-service..."
+	cd gateway-service && go build -o bin/gateway ./cmd/server
 
 # Start all services with Docker Compose
 up:

@@ -1,0 +1,2 @@
+# This file ensures the static directory is tracked by git
+# The actual static files will be embedded during build
