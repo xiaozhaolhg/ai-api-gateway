@@ -28,6 +28,8 @@ func (m *RouteMiddleware) Middleware() gin.HandlerFunc {
 			models, _ = authorizedModels.([]string)
 		}
 
+		userID, _ := c.Get("userId")
+
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "Failed to read request body"})
@@ -45,7 +47,7 @@ func (m *RouteMiddleware) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		result, err := m.routerClient.ResolveRoute(c.Request.Context(), req.Model, models)
+		result, err := m.routerClient.ResolveRoute(c.Request.Context(), req.Model, models, userID.(string))
 		if err != nil {
 			c.JSON(404, gin.H{"error": "Model not found: " + req.Model})
 			c.Abort()

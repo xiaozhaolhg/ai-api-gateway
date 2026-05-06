@@ -27,6 +27,7 @@ type ResolveRouteRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Model            string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
 	AuthorizedModels []string               `protobuf:"bytes,2,rep,name=authorized_models,json=authorizedModels,proto3" json:"authorized_models,omitempty"` // from auth-service
+	UserId           string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -73,6 +74,13 @@ func (x *ResolveRouteRequest) GetAuthorizedModels() []string {
 		return x.AuthorizedModels
 	}
 	return nil
+}
+
+func (x *ResolveRouteRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 type RouteResult struct {
@@ -145,15 +153,17 @@ func (x *RouteResult) GetFallbackModels() []string {
 
 // Routing Rule
 type RoutingRule struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ModelPattern       string                 `protobuf:"bytes,2,opt,name=model_pattern,json=modelPattern,proto3" json:"model_pattern,omitempty"` // e.g., "gpt-4*" or "claude-*"
-	ProviderId         string                 `protobuf:"bytes,3,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Priority           int32                  `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
-	FallbackProviderId string                 `protobuf:"bytes,5,opt,name=fallback_provider_id,json=fallbackProviderId,proto3" json:"fallback_provider_id,omitempty"`
-	FallbackModel      string                 `protobuf:"bytes,6,opt,name=fallback_model,json=fallbackModel,proto3" json:"fallback_model,omitempty"` // NEW: model to use when falling back to fallback_provider_id
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId              string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ModelPattern        string                 `protobuf:"bytes,3,opt,name=model_pattern,json=modelPattern,proto3" json:"model_pattern,omitempty"` // e.g., "gpt-4*" or "claude-*"
+	ProviderId          string                 `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Priority            int32                  `protobuf:"varint,5,opt,name=priority,proto3" json:"priority,omitempty"`
+	FallbackProviderIds []string               `protobuf:"bytes,6,rep,name=fallback_provider_ids,json=fallbackProviderIds,proto3" json:"fallback_provider_ids,omitempty"`
+	FallbackModels      []string               `protobuf:"bytes,7,rep,name=fallback_models,json=fallbackModels,proto3" json:"fallback_models,omitempty"`
+	IsSystemDefault     bool                   `protobuf:"varint,8,opt,name=is_system_default,json=isSystemDefault,proto3" json:"is_system_default,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RoutingRule) Reset() {
@@ -193,6 +203,13 @@ func (x *RoutingRule) GetId() string {
 	return ""
 }
 
+func (x *RoutingRule) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 func (x *RoutingRule) GetModelPattern() string {
 	if x != nil {
 		return x.ModelPattern
@@ -214,18 +231,25 @@ func (x *RoutingRule) GetPriority() int32 {
 	return 0
 }
 
-func (x *RoutingRule) GetFallbackProviderId() string {
+func (x *RoutingRule) GetFallbackProviderIds() []string {
 	if x != nil {
-		return x.FallbackProviderId
+		return x.FallbackProviderIds
 	}
-	return ""
+	return nil
 }
 
-func (x *RoutingRule) GetFallbackModel() string {
+func (x *RoutingRule) GetFallbackModels() []string {
 	if x != nil {
-		return x.FallbackModel
+		return x.FallbackModels
 	}
-	return ""
+	return nil
+}
+
+func (x *RoutingRule) GetIsSystemDefault() bool {
+	if x != nil {
+		return x.IsSystemDefault
+	}
+	return false
 }
 
 type GetRoutingRulesRequest struct {
@@ -333,14 +357,16 @@ func (x *ListRoutingRulesResponse) GetTotal() int32 {
 }
 
 type CreateRoutingRuleRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	ModelPattern       string                 `protobuf:"bytes,1,opt,name=model_pattern,json=modelPattern,proto3" json:"model_pattern,omitempty"`
-	ProviderId         string                 `protobuf:"bytes,2,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Priority           int32                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
-	FallbackProviderId string                 `protobuf:"bytes,4,opt,name=fallback_provider_id,json=fallbackProviderId,proto3" json:"fallback_provider_id,omitempty"`
-	FallbackModel      string                 `protobuf:"bytes,5,opt,name=fallback_model,json=fallbackModel,proto3" json:"fallback_model,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ModelPattern        string                 `protobuf:"bytes,1,opt,name=model_pattern,json=modelPattern,proto3" json:"model_pattern,omitempty"`
+	ProviderId          string                 `protobuf:"bytes,2,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Priority            int32                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
+	FallbackProviderIds []string               `protobuf:"bytes,4,rep,name=fallback_provider_ids,json=fallbackProviderIds,proto3" json:"fallback_provider_ids,omitempty"`
+	FallbackModels      []string               `protobuf:"bytes,5,rep,name=fallback_models,json=fallbackModels,proto3" json:"fallback_models,omitempty"`
+	UserId              string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IsSystemDefault     bool                   `protobuf:"varint,7,opt,name=is_system_default,json=isSystemDefault,proto3" json:"is_system_default,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CreateRoutingRuleRequest) Reset() {
@@ -394,30 +420,47 @@ func (x *CreateRoutingRuleRequest) GetPriority() int32 {
 	return 0
 }
 
-func (x *CreateRoutingRuleRequest) GetFallbackProviderId() string {
+func (x *CreateRoutingRuleRequest) GetFallbackProviderIds() []string {
 	if x != nil {
-		return x.FallbackProviderId
+		return x.FallbackProviderIds
+	}
+	return nil
+}
+
+func (x *CreateRoutingRuleRequest) GetFallbackModels() []string {
+	if x != nil {
+		return x.FallbackModels
+	}
+	return nil
+}
+
+func (x *CreateRoutingRuleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
 
-func (x *CreateRoutingRuleRequest) GetFallbackModel() string {
+func (x *CreateRoutingRuleRequest) GetIsSystemDefault() bool {
 	if x != nil {
-		return x.FallbackModel
+		return x.IsSystemDefault
 	}
-	return ""
+	return false
 }
 
 type UpdateRoutingRuleRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ModelPattern       string                 `protobuf:"bytes,2,opt,name=model_pattern,json=modelPattern,proto3" json:"model_pattern,omitempty"`
-	ProviderId         string                 `protobuf:"bytes,3,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Priority           int32                  `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
-	FallbackProviderId string                 `protobuf:"bytes,5,opt,name=fallback_provider_id,json=fallbackProviderId,proto3" json:"fallback_provider_id,omitempty"`
-	FallbackModel      string                 `protobuf:"bytes,6,opt,name=fallback_model,json=fallbackModel,proto3" json:"fallback_model,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ModelPattern        string                 `protobuf:"bytes,2,opt,name=model_pattern,json=modelPattern,proto3" json:"model_pattern,omitempty"`
+	ProviderId          string                 `protobuf:"bytes,3,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Priority            int32                  `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
+	FallbackProviderIds []string               `protobuf:"bytes,5,rep,name=fallback_provider_ids,json=fallbackProviderIds,proto3" json:"fallback_provider_ids,omitempty"`
+	FallbackModels      []string               `protobuf:"bytes,6,rep,name=fallback_models,json=fallbackModels,proto3" json:"fallback_models,omitempty"`
+	UserId              string                 `protobuf:"bytes,7,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IsSystemDefault     bool                   `protobuf:"varint,8,opt,name=is_system_default,json=isSystemDefault,proto3" json:"is_system_default,omitempty"`
+	RequestingUserId    string                 `protobuf:"bytes,9,opt,name=requesting_user_id,json=requestingUserId,proto3" json:"requesting_user_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *UpdateRoutingRuleRequest) Reset() {
@@ -478,25 +521,47 @@ func (x *UpdateRoutingRuleRequest) GetPriority() int32 {
 	return 0
 }
 
-func (x *UpdateRoutingRuleRequest) GetFallbackProviderId() string {
+func (x *UpdateRoutingRuleRequest) GetFallbackProviderIds() []string {
 	if x != nil {
-		return x.FallbackProviderId
+		return x.FallbackProviderIds
+	}
+	return nil
+}
+
+func (x *UpdateRoutingRuleRequest) GetFallbackModels() []string {
+	if x != nil {
+		return x.FallbackModels
+	}
+	return nil
+}
+
+func (x *UpdateRoutingRuleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
 
-func (x *UpdateRoutingRuleRequest) GetFallbackModel() string {
+func (x *UpdateRoutingRuleRequest) GetIsSystemDefault() bool {
 	if x != nil {
-		return x.FallbackModel
+		return x.IsSystemDefault
+	}
+	return false
+}
+
+func (x *UpdateRoutingRuleRequest) GetRequestingUserId() string {
+	if x != nil {
+		return x.RequestingUserId
 	}
 	return ""
 }
 
 type DeleteRoutingRuleRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	RequestingUserId string                 `protobuf:"bytes,2,opt,name=requesting_user_id,json=requestingUserId,proto3" json:"requesting_user_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *DeleteRoutingRuleRequest) Reset() {
@@ -532,6 +597,13 @@ func (*DeleteRoutingRuleRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteRoutingRuleRequest) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *DeleteRoutingRuleRequest) GetRequestingUserId() string {
+	if x != nil {
+		return x.RequestingUserId
 	}
 	return ""
 }
@@ -593,47 +665,56 @@ var File_router_v1_router_proto protoreflect.FileDescriptor
 
 const file_router_v1_router_proto_rawDesc = "" +
 	"\n" +
-	"\x16router/v1/router.proto\x12\trouter.v1\x1a\x16common/v1/common.proto\"X\n" +
+	"\x16router/v1/router.proto\x12\trouter.v1\x1a\x16common/v1/common.proto\"q\n" +
 	"\x13ResolveRouteRequest\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12+\n" +
-	"\x11authorized_models\x18\x02 \x03(\tR\x10authorizedModels\"\xae\x01\n" +
+	"\x11authorized_models\x18\x02 \x03(\tR\x10authorizedModels\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"\xae\x01\n" +
 	"\vRouteResult\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
 	"providerId\x12!\n" +
 	"\fadapter_type\x18\x02 \x01(\tR\vadapterType\x122\n" +
 	"\x15fallback_provider_ids\x18\x03 \x03(\tR\x13fallbackProviderIds\x12'\n" +
-	"\x0ffallback_models\x18\x04 \x03(\tR\x0efallbackModels\"\xd8\x01\n" +
+	"\x0ffallback_models\x18\x04 \x03(\tR\x0efallbackModels\"\xa1\x02\n" +
 	"\vRoutingRule\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
-	"\rmodel_pattern\x18\x02 \x01(\tR\fmodelPattern\x12\x1f\n" +
-	"\vprovider_id\x18\x03 \x01(\tR\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12#\n" +
+	"\rmodel_pattern\x18\x03 \x01(\tR\fmodelPattern\x12\x1f\n" +
+	"\vprovider_id\x18\x04 \x01(\tR\n" +
 	"providerId\x12\x1a\n" +
-	"\bpriority\x18\x04 \x01(\x05R\bpriority\x120\n" +
-	"\x14fallback_provider_id\x18\x05 \x01(\tR\x12fallbackProviderId\x12%\n" +
-	"\x0efallback_model\x18\x06 \x01(\tR\rfallbackModel\"I\n" +
+	"\bpriority\x18\x05 \x01(\x05R\bpriority\x122\n" +
+	"\x15fallback_provider_ids\x18\x06 \x03(\tR\x13fallbackProviderIds\x12'\n" +
+	"\x0ffallback_models\x18\a \x03(\tR\x0efallbackModels\x12*\n" +
+	"\x11is_system_default\x18\b \x01(\bR\x0fisSystemDefault\"I\n" +
 	"\x16GetRoutingRulesRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"^\n" +
 	"\x18ListRoutingRulesResponse\x12,\n" +
 	"\x05rules\x18\x01 \x03(\v2\x16.router.v1.RoutingRuleR\x05rules\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"\xd5\x01\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\x9e\x02\n" +
 	"\x18CreateRoutingRuleRequest\x12#\n" +
 	"\rmodel_pattern\x18\x01 \x01(\tR\fmodelPattern\x12\x1f\n" +
 	"\vprovider_id\x18\x02 \x01(\tR\n" +
 	"providerId\x12\x1a\n" +
-	"\bpriority\x18\x03 \x01(\x05R\bpriority\x120\n" +
-	"\x14fallback_provider_id\x18\x04 \x01(\tR\x12fallbackProviderId\x12%\n" +
-	"\x0efallback_model\x18\x05 \x01(\tR\rfallbackModel\"\xe5\x01\n" +
+	"\bpriority\x18\x03 \x01(\x05R\bpriority\x122\n" +
+	"\x15fallback_provider_ids\x18\x04 \x03(\tR\x13fallbackProviderIds\x12'\n" +
+	"\x0ffallback_models\x18\x05 \x03(\tR\x0efallbackModels\x12\x17\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\x12*\n" +
+	"\x11is_system_default\x18\a \x01(\bR\x0fisSystemDefault\"\xdc\x02\n" +
 	"\x18UpdateRoutingRuleRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
 	"\rmodel_pattern\x18\x02 \x01(\tR\fmodelPattern\x12\x1f\n" +
 	"\vprovider_id\x18\x03 \x01(\tR\n" +
 	"providerId\x12\x1a\n" +
-	"\bpriority\x18\x04 \x01(\x05R\bpriority\x120\n" +
-	"\x14fallback_provider_id\x18\x05 \x01(\tR\x12fallbackProviderId\x12%\n" +
-	"\x0efallback_model\x18\x06 \x01(\tR\rfallbackModel\"*\n" +
+	"\bpriority\x18\x04 \x01(\x05R\bpriority\x122\n" +
+	"\x15fallback_provider_ids\x18\x05 \x03(\tR\x13fallbackProviderIds\x12'\n" +
+	"\x0ffallback_models\x18\x06 \x03(\tR\x0efallbackModels\x12\x17\n" +
+	"\auser_id\x18\a \x01(\tR\x06userId\x12*\n" +
+	"\x11is_system_default\x18\b \x01(\bR\x0fisSystemDefault\x12,\n" +
+	"\x12requesting_user_id\x18\t \x01(\tR\x10requestingUserId\"X\n" +
 	"\x18DeleteRoutingRuleRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\\\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12,\n" +
+	"\x12requesting_user_id\x18\x02 \x01(\tR\x10requestingUserId\"\\\n" +
 	"\x16ResolveFallbackRequest\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12,\n" +
 	"\x12failed_provider_id\x18\x02 \x01(\tR\x10failedProviderId2\xab\x04\n" +

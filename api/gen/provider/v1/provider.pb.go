@@ -423,7 +423,7 @@ type CreateProviderRequest struct {
 	BaseUrl       string                 `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
 	Credentials   string                 `protobuf:"bytes,4,opt,name=credentials,proto3" json:"credentials,omitempty"`
 	Models        []string               `protobuf:"bytes,5,rep,name=models,proto3" json:"models,omitempty"`
-	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // "active" | "inactive"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1109,13 +1109,14 @@ const file_provider_v1_provider_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\t \x01(\x03R\tupdatedAt\"$\n" +
 	"\x12GetProviderRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x94\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xac\x01\n" +
 	"\x15CreateProviderRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x19\n" +
 	"\bbase_url\x18\x03 \x01(\tR\abaseUrl\x12 \n" +
 	"\vcredentials\x18\x04 \x01(\tR\vcredentials\x12\x16\n" +
-	"\x06models\x18\x05 \x03(\tR\x06models\"\xbc\x01\n" +
+	"\x06models\x18\x05 \x03(\tR\x06models\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xbc\x01\n" +
 	"\x15UpdateProviderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +

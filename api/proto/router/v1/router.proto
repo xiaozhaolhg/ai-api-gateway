@@ -27,6 +27,7 @@ service RouterService {
 message ResolveRouteRequest {
   string model = 1;
   repeated string authorized_models = 2;    // from auth-service
+  string user_id = 3;
 }
 
 message RouteResult {
@@ -39,11 +40,13 @@ message RouteResult {
 // Routing Rule
 message RoutingRule {
   string id = 1;
-  string model_pattern = 2;     // e.g., "gpt-4*" or "claude-*"
-  string provider_id = 3;
-  int32 priority = 4;
-  string fallback_provider_id = 5;
-  string fallback_model = 6;      // NEW: model to use when falling back to fallback_provider_id
+  string user_id = 2;
+  string model_pattern = 3;                  // e.g., "gpt-4*" or "claude-*"
+  string provider_id = 4;
+  int32 priority = 5;
+  repeated string fallback_provider_ids = 6;
+  repeated string fallback_models = 7;
+  bool is_system_default = 8;
 }
 
 message GetRoutingRulesRequest {
@@ -60,8 +63,10 @@ message CreateRoutingRuleRequest {
   string model_pattern = 1;
   string provider_id = 2;
   int32 priority = 3;
-  string fallback_provider_id = 4;
-  string fallback_model = 5;
+  repeated string fallback_provider_ids = 4;
+  repeated string fallback_models = 5;
+  string user_id = 6;
+  bool is_system_default = 7;
 }
 
 message UpdateRoutingRuleRequest {
@@ -69,12 +74,16 @@ message UpdateRoutingRuleRequest {
   string model_pattern = 2;
   string provider_id = 3;
   int32 priority = 4;
-  string fallback_provider_id = 5;
-  string fallback_model = 6;
+  repeated string fallback_provider_ids = 5;
+  repeated string fallback_models = 6;
+  string user_id = 7;
+  bool is_system_default = 8;
+  string requesting_user_id = 9;
 }
 
 message DeleteRoutingRuleRequest {
   string id = 1;
+  string requesting_user_id = 2;
 }
 
 // Fallback (Phase 2+)

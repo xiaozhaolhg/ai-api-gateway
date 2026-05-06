@@ -72,7 +72,7 @@ func (h *HealthHandler) GatewayHealth(c *gin.Context) {
 
 	// Check router service
 	routerStatus, routerLatency := h.checkService(ctx, "router", func(ctx context.Context) error {
-		_, err := h.routerClient.ResolveRoute(ctx, "test-model", []string{"test-model"})
+		_, err := h.routerClient.ResolveRoute(ctx, "test-model", []string{"test-model"}, "")
 		// Ignore "model not found" errors - we're just checking connectivity
 		return err
 	})
@@ -172,7 +172,7 @@ func (h *HealthHandler) gatewayHealthHTTP(w http.ResponseWriter, r *http.Request
 
 	// Check router service
 	routerStatus, routerLatency := h.checkService(ctx, "router", func(ctx context.Context) error {
-		_, err := h.routerClient.ResolveRoute(ctx, "test-model", []string{"test-model"})
+		_, err := h.routerClient.ResolveRoute(ctx, "test-model", []string{"test-model"}, "")
 		// Ignore "model not found" errors - we're just checking connectivity
 		return err
 	})

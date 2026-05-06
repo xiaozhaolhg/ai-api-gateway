@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/ai-api-gateway/router-service/internal/domain/entity"
@@ -25,9 +24,9 @@ func NewService(ruleRepo port.RoutingRuleRepository, cache port.Cache) *Service 
 	}
 }
 
-func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedModels []string) (*entity.RouteResult, error) {
+func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedModels []string, userID string) (*entity.RouteResult, error) {
 	if s.cache != nil {
-		cacheKey := fmt.Sprintf("router:route:%s", model)
+		cacheKey := fmt.Sprintf("router:route:%s:%s", model, userID)
 		cached, err := s.cache.Get(ctx, cacheKey)
 		if err == nil && cached != "" {
 			var result entity.RouteResult
@@ -39,19 +38,15 @@ func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedMode
 		}
 	}
 
-	rules, _, err := s.ruleRepo.List(0, 1000)
+	var rule *entity.RoutingRule
+	var err error
+
+	if userID != "" {
+		rule, err = s.ruleRepo.FindByModel(model, &userID)
+	} else {
+		rule, err = s.ruleRepo.FindByModel(model, nil)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get routing rules: %w", err)
-	}
-
-	var matchingRules []*entity.RoutingRule
-	for _, rule := range rules {
-		if s.matchPattern(rule.ModelPattern, model) {
-			matchingRules = append(matchingRules, rule)
-		}
-	}
-
-	if len(matchingRules) == 0 {
 		for i, c := range model {
 			if c == ':' {
 				providerType := model[:i]
@@ -64,26 +59,9 @@ func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedMode
 		return nil, fmt.Errorf("no routing rule found for model: %s", model)
 	}
 
-	sort.Slice(matchingRules, func(i, j int) bool {
-		return matchingRules[i].Priority > matchingRules[j].Priority
-	})
-
-	var authorizedRules []*entity.RoutingRule
-	for _, rule := range matchingRules {
-		if s.isAuthorized(rule.ModelPattern, authorizedModels) {
-			authorizedRules = append(authorizedRules, rule)
-		}
-	}
-
-	if len(authorizedRules) == 0 {
-		return nil, fmt.Errorf("no authorized route found for model: %s", model)
-	}
-
-	rule := authorizedRules[0]
-
 	adapterType := s.inferAdapterType(rule.ProviderID)
+	fallbackProviderIDs, fallbackModels := s.getFallbackProviders(rule, nil)
 
-	fallbackProviderIDs, fallbackModels := s.getFallbackProviders(rule, authorizedRules)
 	result := &entity.RouteResult{
 		ProviderID:          rule.ProviderID,
 		AdapterType:         adapterType,
@@ -92,7 +70,7 @@ func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedMode
 	}
 
 	if s.cache != nil {
-		cacheKey := fmt.Sprintf("router:route:%s", model)
+		cacheKey := fmt.Sprintf("router:route:%s:%s", model, userID)
 		resultJSON, _ := json.Marshal(result)
 		s.cache.Set(ctx, cacheKey, string(resultJSON), s.ttl)
 	}
@@ -162,12 +140,11 @@ func (s *Service) getFallbackProviders(rule *entity.RoutingRule, rules []*entity
 	var providerIDs []string
 	var models []string
 
-	if rule.FallbackProviderID != "" {
-		providerIDs = append(providerIDs, rule.FallbackProviderID)
-		models = append(models, rule.FallbackModel)
+	if rule.FallbackProviderIDs != "" {
+		json.Unmarshal([]byte(rule.FallbackProviderIDs), &providerIDs)
+		json.Unmarshal([]byte(rule.FallbackModels), &models)
 	}
 
-	// MVP: only one fallback provider supported
 	return providerIDs, models
 }
 
@@ -182,13 +159,13 @@ func (s *Service) CreateRoutingRule(rule *entity.RoutingRule) error {
 }
 
 // UpdateRoutingRule updates an existing routing rule.
-func (s *Service) UpdateRoutingRule(rule *entity.RoutingRule) error {
-	return s.ruleRepo.Update(rule)
+func (s *Service) UpdateRoutingRule(rule *entity.RoutingRule, requestingUserID string) error {
+	return s.ruleRepo.UpdateWithOwnership(rule, requestingUserID)
 }
 
 // DeleteRoutingRule deletes a routing rule by ID.
-func (s *Service) DeleteRoutingRule(id string) error {
-	return s.ruleRepo.Delete(id)
+func (s *Service) DeleteRoutingRule(id string, requestingUserID string) error {
+	return s.ruleRepo.DeleteWithOwnership(id, requestingUserID)
 }
 
 // RefreshRoutingTable invalidates the routing table cache.
