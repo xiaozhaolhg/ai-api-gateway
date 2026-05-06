@@ -9,48 +9,76 @@ import (
 	"github.com/ai-api-gateway/gateway-service/internal/middleware"
 )
 
-type AdminRoutingRulesHandler struct {
+type AdminUserRoutingRulesHandler struct {
 	routerSvc *client.RouterClient
 }
 
-// NewAdminRoutingRulesHandler creates a new AdminRoutingRulesHandler with lazy connection
-func NewAdminRoutingRulesHandler(routerAddr string) *AdminRoutingRulesHandler {
+// NewAdminUserRoutingRulesHandler creates a new AdminUserRoutingRulesHandler
+func NewAdminUserRoutingRulesHandler(routerAddr string) *AdminUserRoutingRulesHandler {
 	routerSvc, _ := client.NewRouterClient(routerAddr)
-	return &AdminRoutingRulesHandler{
+	return &AdminUserRoutingRulesHandler{
 		routerSvc: routerSvc,
 	}
 }
 
-func (h *AdminRoutingRulesHandler) ListRoutingRules(c *gin.Context) {
-	page, pageSize := parsePageParams(c)
-	resp, err := h.routerSvc.ListRoutingRules(c.Request.Context(), page, pageSize)
+func (h *AdminUserRoutingRulesHandler) ListUserRoutingRules(c *gin.Context) {
+	userID := c.Param("userId")
+
+	resp, err := h.routerSvc.ListRoutingRules(c.Request.Context(), 0, 1000)
 	if err != nil {
 		middleware.HandleGRPCError(c, err, "router service")
 		return
 	}
-	c.JSON(http.StatusOK, resp.Rules)
+
+	rules := filterRulesByUser(resp.Rules, userID)
+	c.JSON(http.StatusOK, rules)
 }
 
-func (h *AdminRoutingRulesHandler) CreateRoutingRule(c *gin.Context) {
+func (h *AdminUserRoutingRulesHandler) CreateUserRoutingRule(c *gin.Context) {
+	userID := c.Param("userId")
+
 	var rule client.RoutingRule
 	if err := c.ShouldBindJSON(&rule); err != nil {
 		middleware.AbortWithError(c, errors.New(errors.ErrBadRequest, "invalid request"))
 		return
 	}
+	rule.UserID = userID
+
 	created, err := h.routerSvc.CreateRoutingRule(c.Request.Context(), &rule)
 	if err != nil {
 		middleware.HandleGRPCError(c, err, "router service")
 		return
 	}
+
 	if err := h.routerSvc.RefreshRoutingTable(c.Request.Context()); err != nil {
-		// Log but don't fail - rule was created successfully
 		c.JSON(http.StatusCreated, created)
 		return
 	}
+
 	c.JSON(http.StatusCreated, created)
 }
 
-func (h *AdminRoutingRulesHandler) UpdateRoutingRule(c *gin.Context) {
+func (h *AdminUserRoutingRulesHandler) GetUserRoutingRule(c *gin.Context) {
+	userID := c.Param("userId")
+	id := c.Param("id")
+
+	resp, err := h.routerSvc.ListRoutingRules(c.Request.Context(), 0, 1000)
+	if err != nil {
+		middleware.HandleGRPCError(c, err, "router service")
+		return
+	}
+
+	rule := findRuleByID(resp.Rules, id)
+	if rule == nil || rule.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Routing rule not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, rule)
+}
+
+func (h *AdminUserRoutingRulesHandler) UpdateUserRoutingRule(c *gin.Context) {
+	userID := c.Param("userId")
 	id := c.Param("id")
 
 	var rule client.RoutingRule
@@ -59,6 +87,7 @@ func (h *AdminRoutingRulesHandler) UpdateRoutingRule(c *gin.Context) {
 		return
 	}
 	rule.ID = id
+	rule.UserID = userID
 
 	updated, err := h.routerSvc.UpdateRoutingRule(c.Request.Context(), &rule, "")
 	if err != nil {
@@ -74,8 +103,23 @@ func (h *AdminRoutingRulesHandler) UpdateRoutingRule(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
-func (h *AdminRoutingRulesHandler) DeleteRoutingRule(c *gin.Context) {
+func (h *AdminUserRoutingRulesHandler) DeleteUserRoutingRule(c *gin.Context) {
+	userID := c.Param("userId")
 	id := c.Param("id")
+
+	// First verify the rule belongs to the user
+	resp, err := h.routerSvc.ListRoutingRules(c.Request.Context(), 0, 1000)
+	if err != nil {
+		middleware.HandleGRPCError(c, err, "router service")
+		return
+	}
+
+	rule := findRuleByID(resp.Rules, id)
+	if rule == nil || rule.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Routing rule not found"})
+		return
+	}
+
 	if err := h.routerSvc.DeleteRoutingRule(c.Request.Context(), id, ""); err != nil {
 		middleware.HandleGRPCError(c, err, "router service")
 		return

@@ -30,12 +30,14 @@ type RouteResolution struct {
 
 // RoutingRule represents a routing rule for model-to-provider mapping.
 type RoutingRule struct {
-	ID                 string `json:"id"`
-	ModelPattern       string `json:"model_pattern"`
-	ProviderID         string `json:"provider_id"`
-	Priority           int32  `json:"priority"`
-	FallbackProviderID string `json:"fallback_provider_id"`
-	FallbackModel      string `json:"fallback_model"`
+	ID                  string   `json:"id"`
+	UserID              string   `json:"user_id"`
+	ModelPattern        string   `json:"model_pattern"`
+	ProviderID          string   `json:"provider_id"`
+	Priority            int32    `json:"priority"`
+	FallbackProviderIDs []string `json:"fallback_provider_ids"`
+	FallbackModels      []string `json:"fallback_models"`
+	IsSystemDefault    bool     `json:"is_system_default"`
 }
 
 // ListRoutingRulesResponse represents the response from listing routing rules.
@@ -99,7 +101,7 @@ func (c *RouterClient) Close() error {
 }
 
 // ResolveRoute resolves a model to a provider using the router service.
-func (c *RouterClient) ResolveRoute(ctx context.Context, model string, authorizedModels []string) (*RouteResolution, error) {
+func (c *RouterClient) ResolveRoute(ctx context.Context, model string, authorizedModels []string, userID string) (*RouteResolution, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -108,6 +110,7 @@ func (c *RouterClient) ResolveRoute(ctx context.Context, model string, authorize
 	req := &routerv1.ResolveRouteRequest{
 		Model:            model,
 		AuthorizedModels: authorizedModels,
+		UserId:           userID,
 	}
 
 	resp, err := client.ResolveRoute(ctx, req)
@@ -156,12 +159,14 @@ func (c *RouterClient) ListRoutingRules(ctx context.Context, page, pageSize int3
 	rules := make([]*RoutingRule, len(resp.Rules))
 	for i, r := range resp.Rules {
 		rules[i] = &RoutingRule{
-			ID:                 r.Id,
-			ModelPattern:       r.ModelPattern,
-			ProviderID:         r.ProviderId,
-			Priority:           r.Priority,
-			FallbackProviderID: r.FallbackProviderId,
-			FallbackModel:      r.FallbackModel,
+			ID:                  r.Id,
+			UserID:              r.UserId,
+			ModelPattern:        r.ModelPattern,
+			ProviderID:          r.ProviderId,
+			Priority:            r.Priority,
+			FallbackProviderIDs: r.FallbackProviderIds,
+			FallbackModels:      r.FallbackModels,
+			IsSystemDefault:     r.IsSystemDefault,
 		}
 	}
 
@@ -182,8 +187,10 @@ func (c *RouterClient) CreateRoutingRule(ctx context.Context, rule *RoutingRule)
 		ModelPattern:       rule.ModelPattern,
 		ProviderId:         rule.ProviderID,
 		Priority:           rule.Priority,
-		FallbackProviderId: rule.FallbackProviderID,
-		FallbackModel:      rule.FallbackModel,
+		FallbackProviderIds: rule.FallbackProviderIDs,
+		FallbackModels:      rule.FallbackModels,
+		UserId:              rule.UserID,
+		IsSystemDefault:     rule.IsSystemDefault,
 	}
 
 	resp, err := client.CreateRoutingRule(ctx, req)
@@ -192,17 +199,18 @@ func (c *RouterClient) CreateRoutingRule(ctx context.Context, rule *RoutingRule)
 	}
 
 	return &RoutingRule{
-		ID:                 resp.Id,
-		ModelPattern:       resp.ModelPattern,
-		ProviderID:         resp.ProviderId,
-		Priority:           resp.Priority,
-		FallbackProviderID: resp.FallbackProviderId,
-		FallbackModel:      resp.FallbackModel,
+		ID:                  resp.Id,
+		UserID:              resp.UserId,
+		ModelPattern:        resp.ModelPattern,
+		ProviderID:          resp.ProviderId,
+		Priority:            resp.Priority,
+		FallbackProviderIDs: resp.FallbackProviderIds,
+		FallbackModels:      resp.FallbackModels,
+		IsSystemDefault:     resp.IsSystemDefault,
 	}, nil
 }
-
 // UpdateRoutingRule updates an existing routing rule.
-func (c *RouterClient) UpdateRoutingRule(ctx context.Context, rule *RoutingRule) (*RoutingRule, error) {
+func (c *RouterClient) UpdateRoutingRule(ctx context.Context, rule *RoutingRule, requestingUserID string) (*RoutingRule, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -213,8 +221,11 @@ func (c *RouterClient) UpdateRoutingRule(ctx context.Context, rule *RoutingRule)
 		ModelPattern:       rule.ModelPattern,
 		ProviderId:         rule.ProviderID,
 		Priority:           rule.Priority,
-		FallbackProviderId: rule.FallbackProviderID,
-		FallbackModel:      rule.FallbackModel,
+		FallbackProviderIds: rule.FallbackProviderIDs,
+		FallbackModels:      rule.FallbackModels,
+		UserId:              rule.UserID,
+		IsSystemDefault:     rule.IsSystemDefault,
+		RequestingUserId:   requestingUserID,
 	}
 
 	resp, err := client.UpdateRoutingRule(ctx, req)
@@ -223,23 +234,28 @@ func (c *RouterClient) UpdateRoutingRule(ctx context.Context, rule *RoutingRule)
 	}
 
 	return &RoutingRule{
-		ID:                 resp.Id,
-		ModelPattern:       resp.ModelPattern,
-		ProviderID:         resp.ProviderId,
-		Priority:           resp.Priority,
-		FallbackProviderID: resp.FallbackProviderId,
-		FallbackModel:      resp.FallbackModel,
+		ID:                  resp.Id,
+		UserID:              resp.UserId,
+		ModelPattern:        resp.ModelPattern,
+		ProviderID:          resp.ProviderId,
+		Priority:            resp.Priority,
+		FallbackProviderIDs: resp.FallbackProviderIds,
+		FallbackModels:      resp.FallbackModels,
+		IsSystemDefault:     resp.IsSystemDefault,
 	}, nil
 }
 
 // DeleteRoutingRule deletes a routing rule by ID.
-func (c *RouterClient) DeleteRoutingRule(ctx context.Context, id string) error {
+func (c *RouterClient) DeleteRoutingRule(ctx context.Context, id string, requestingUserID string) error {
 	client, err := c.getClient()
 	if err != nil {
 		return err
 	}
 
-	_, err = client.DeleteRoutingRule(ctx, &routerv1.DeleteRoutingRuleRequest{Id: id})
+	_, err = client.DeleteRoutingRule(ctx, &routerv1.DeleteRoutingRuleRequest{
+		Id:                id,
+		RequestingUserId: requestingUserID,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to delete routing rule: %w", err)
 	}

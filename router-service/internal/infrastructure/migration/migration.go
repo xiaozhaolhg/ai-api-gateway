@@ -13,11 +13,20 @@ func Migrate(dbPath string) error {
 		return err
 	}
 
-	// Auto-migrate the schema
 	err = db.AutoMigrate(&entity.RoutingRule{})
 	if err != nil {
 		return err
 	}
+
+	result := db.Model(&entity.RoutingRule{}).
+		Where("is_system_default = ? OR is_system_default IS NULL", false).
+		Update("is_system_default", true)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_routing_rules_user_id ON routing_rules(user_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_routing_rules_model_pattern ON routing_rules(model_pattern)")
 
 	return nil
 }

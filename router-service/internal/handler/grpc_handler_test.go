@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/ai-api-gateway/router-service/internal/application"
@@ -45,7 +46,27 @@ func (m *mockRoutingRuleRepository) Update(rule *entity.RoutingRule) error {
 	return nil
 }
 
+func (m *mockRoutingRuleRepository) UpdateWithOwnership(rule *entity.RoutingRule, requestingUserID string) error {
+	for i, r := range m.rules {
+		if r.ID == rule.ID {
+			m.rules[i] = rule
+			return nil
+		}
+	}
+	return nil
+}
+
 func (m *mockRoutingRuleRepository) Delete(id string) error {
+	for i, r := range m.rules {
+		if r.ID == id {
+			m.rules = append(m.rules[:i], m.rules[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (m *mockRoutingRuleRepository) DeleteWithOwnership(id string, requestingUserID string) error {
 	for i, r := range m.rules {
 		if r.ID == id {
 			m.rules = append(m.rules[:i], m.rules[i+1:]...)
@@ -57,6 +78,52 @@ func (m *mockRoutingRuleRepository) Delete(id string) error {
 
 func (m *mockRoutingRuleRepository) List(page, pageSize int) ([]*entity.RoutingRule, int, error) {
 	return m.rules, len(m.rules), nil
+}
+
+func (m *mockRoutingRuleRepository) FindByModel(model string, userID *string) (*entity.RoutingRule, error) {
+	matchPattern := func(pattern, modelStr string) bool {
+		if pattern == "*" {
+			return true
+		}
+		if pattern == modelStr {
+			return true
+		}
+		if strings.HasSuffix(pattern, "*") {
+			prefix := strings.TrimSuffix(pattern, "*")
+			return strings.HasPrefix(modelStr, prefix)
+		}
+		if strings.HasPrefix(pattern, "*") {
+			suffix := strings.TrimPrefix(pattern, "*")
+			return strings.HasSuffix(modelStr, suffix)
+		}
+		return false
+	}
+
+	if userID != nil && *userID != "" {
+		for _, rule := range m.rules {
+			if rule.UserID == *userID && matchPattern(rule.ModelPattern, model) {
+				return rule, nil
+			}
+		}
+	}
+
+	for _, rule := range m.rules {
+		if (rule.UserID == "" || rule.IsSystemDefault) && matchPattern(rule.ModelPattern, model) {
+			return rule, nil
+		}
+	}
+
+	return nil, fmt.Errorf("record not found")
+}
+
+func (m *mockRoutingRuleRepository) FindByUserID(userID string) ([]*entity.RoutingRule, error) {
+	var result []*entity.RoutingRule
+	for _, rule := range m.rules {
+		if rule.UserID == userID {
+			result = append(result, rule)
+		}
+	}
+	return result, nil
 }
 
 // TestHandlerResolveRoute tests the ResolveRoute gRPC method
@@ -125,7 +192,7 @@ func TestHandlerCreateRoutingRule(t *testing.T) {
 		ModelPattern:       "claude-*",
 		ProviderId:         "anthropic-provider",
 		Priority:           5,
-		FallbackProviderId: "",
+		FallbackProviderIds: []string{},
 	}
 
 	resp, err := handler.CreateRoutingRule(context.Background(), req)

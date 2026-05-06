@@ -78,6 +78,7 @@ func main() {
 	authzMiddleware := middleware.NewAuthzMiddleware(authClient)
 	routeMiddleware := middleware.NewRouteMiddleware(routerClient)
 	proxyMiddleware := middleware.NewProxyMiddleware(providerClient, billingClient, streamingInterval)
+	adminMiddleware := middleware.NewAdminMiddleware()
 
 	r := gin.Default()
 
@@ -167,10 +168,25 @@ func main() {
 
 	// Routing rules management endpoints
 	routingRulesHandler := handler.NewAdminRoutingRulesHandler(cfg.RouterService.Address)
+	userRoutingRulesHandler := handler.NewUserRoutingRulesHandler(cfg.RouterService.Address)
+	adminUserRoutingRulesHandler := handler.NewAdminUserRoutingRulesHandler(cfg.RouterService.Address)
+
 	r.POST("/admin/routing-rules", routingRulesHandler.CreateRoutingRule)
 	r.GET("/admin/routing-rules", routingRulesHandler.ListRoutingRules)
 	r.PUT("/admin/routing-rules/:id", routingRulesHandler.UpdateRoutingRule)
 	r.DELETE("/admin/routing-rules/:id", routingRulesHandler.DeleteRoutingRule)
+
+	// Admin user routing rules override
+	adminUserRouting := r.Group("/admin/users/:userId/routing-rules")
+	adminUserRouting.Use(authMiddleware.Middleware())
+	adminUserRouting.Use(adminMiddleware.Middleware())
+	{
+		adminUserRouting.GET("", adminUserRoutingRulesHandler.ListUserRoutingRules)
+		adminUserRouting.POST("", adminUserRoutingRulesHandler.CreateUserRoutingRule)
+		adminUserRouting.GET("/:id", adminUserRoutingRulesHandler.GetUserRoutingRule)
+		adminUserRouting.PUT("/:id", adminUserRoutingRulesHandler.UpdateUserRoutingRule)
+		adminUserRouting.DELETE("/:id", adminUserRoutingRulesHandler.DeleteUserRoutingRule)
+	}
 
 	// Budget management endpoints
 	r.GET("/admin/budgets", adminBudgetsHandler.ListBudgets)
@@ -223,6 +239,16 @@ func main() {
 		v1Auth.POST("/api-keys", handleCreateUserAPIKey)
 		v1Auth.GET("/api-keys", handleListUserAPIKeys)
 		v1Auth.DELETE("/api-keys/:id", handleDeleteUserAPIKey)
+	}
+	// User self-service routing rules (API key required)
+	v1Routing := v1.Group("/routing-rules")
+	v1Routing.Use(authMiddleware.Middleware())
+	{
+		v1Routing.GET("", userRoutingRulesHandler.ListRoutingRules)
+		v1Routing.POST("", userRoutingRulesHandler.CreateRoutingRule)
+		v1Routing.GET("/:id", userRoutingRulesHandler.GetRoutingRule)
+		v1Routing.PUT("/:id", userRoutingRulesHandler.UpdateRoutingRule)
+		v1Routing.DELETE("/:id", userRoutingRulesHandler.DeleteRoutingRule)
 	}
 
 	// Setup HTTP server with timeouts
