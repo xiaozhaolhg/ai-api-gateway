@@ -1,6 +1,7 @@
 // API client interface and types
 export interface APIClientInterface {
   // Authentication
+  onUnauthorized?: UnauthorizedCallback;
   login(email: string, password: string): Promise<LoginResponse>;
   register(name: string, username: string, email: string, password: string): Promise<RegisterResponse>;
   logout(): Promise<void>;
@@ -234,3 +235,5 @@ export interface APIConfig {
   mockDelay: number;
   baseURL: string;
 }
+
+export type UnauthorizedCallback = () => void;

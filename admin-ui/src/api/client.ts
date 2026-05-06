@@ -134,8 +134,9 @@ export interface ProviderHealth {
   last_check: string;
 }
 
-class RealAPIClient implements APIClientInterface {
+export class RealAPIClient implements APIClientInterface {
   private baseURL: string;
+  private onUnauthorized?: UnauthorizedCallback;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -169,7 +170,14 @@ class RealAPIClient implements APIClientInterface {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.message || `API error: ${response.status} ${response.statusText}`;
-        message.error(errorMessage);
+
+        if (response.status === 401) {
+          message.error('Session expired. Please login again.');
+          this.onUnauthorized?.();
+        } else {
+          message.error(errorMessage);
+        }
+
         throw new Error(errorMessage);
       }
 
@@ -574,6 +582,14 @@ class RealAPIClient implements APIClientInterface {
       return [];
     }
   }
+
+  setOnUnauthorized(callback?: UnauthorizedCallback) {
+    this.onUnauthorized = callback;
+  }
+
+  getOnUnauthorized(): UnauthorizedCallback | undefined {
+    return this.onUnauthorized;
+  }
 }
 
 // Unified APIClient that switches between Real and Mock based on configuration
@@ -792,6 +808,14 @@ class UnifiedAPIClient implements APIClientInterface {
 
   getMockMode(): boolean {
     return this.useMock;
+  }
+
+  setOnUnauthorized(callback?: UnauthorizedCallback) {
+    this.realClient.setOnUnauthorized(callback);
+  }
+
+  getOnUnauthorized(): UnauthorizedCallback | undefined {
+    return this.realClient.getOnUnauthorized();
   }
 }
 

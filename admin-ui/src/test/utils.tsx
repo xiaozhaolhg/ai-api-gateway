@@ -84,8 +84,25 @@ export const renderWithAuth = (
   return render(ui, { wrapper: Wrapper });
 };
 
-export const createMockToken = (role: 'admin' | 'user' | 'viewer' = 'admin') => {
-  return `mock-jwt-token-${role}-${Date.now()}`;
+export const createMockToken = ({
+  role = 'admin' as const,
+  expiresIn = 86400000,
+}: {
+  role?: 'admin' | 'user' | 'viewer';
+  expiresIn?: number;
+} = {}) => {
+  const base64urlEncode = (str: string) => {
+    return btoa(str)
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+  };
+
+  const header = base64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const exp = Math.floor((Date.now() + expiresIn) / 1000);
+  const payload = base64urlEncode(JSON.stringify({ exp, role, id: 'usr_test123' }));
+  const signature = 'mock-signature';
+  return `${header}.${payload}.${signature}`;
 };
 
 export const setMockAuthToken = (token: string) => {

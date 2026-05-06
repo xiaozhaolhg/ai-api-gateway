@@ -2,6 +2,20 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
+vi.mock('antd', async () => {
+  const actual = await vi.importActual('antd');
+  return {
+    ...actual,
+    message: {
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+      info: vi.fn(),
+      loading: vi.fn(),
+    },
+  };
+});
+
 afterEach(() => {
   cleanup();
 });

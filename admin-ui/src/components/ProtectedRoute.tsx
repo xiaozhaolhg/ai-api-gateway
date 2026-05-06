@@ -10,6 +10,23 @@ interface ProtectedRouteProps {
   requiredRole?: Role;
 }
 
+// Role hierarchy: admin > user > viewer
+const roleHierarchy: Record<Role, number> = {
+  admin: 3,
+  user: 2,
+  viewer: 1,
+};
+
+const hasPermission = (userRole: string, requiredRole: Role): boolean => {
+  if (!userRole || !requiredRole) return false;
+  
+  // Convert user role to Role type if valid
+  const userRoleTyped = userRole as Role;
+  if (!roleHierarchy[userRoleTyped]) return false;
+  
+  return roleHierarchy[userRoleTyped] >= roleHierarchy[requiredRole];
+};
+
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
@@ -18,7 +35,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole && user?.role !== 'admin') {
+  if (requiredRole && user?.role && !hasPermission(user.role, requiredRole)) {
     return (
       <Result
         status="403"
