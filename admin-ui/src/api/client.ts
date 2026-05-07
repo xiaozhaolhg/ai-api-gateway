@@ -1,138 +1,41 @@
 // API client for admin endpoints
 import { message } from 'antd';
-import type { APIClientInterface, UnauthorizedCallback } from './types';
+import type {
+  APIClientInterface,
+  UnauthorizedCallback,
+  Provider,
+  User,
+  APIKey,
+  UsageRecord,
+  RoutingRule,
+  Group,
+  Permission,
+  Budget,
+  PricingRule,
+  AlertRule,
+  Alert,
+  ProviderHealth,
+} from './types';
+
+export type {
+  Provider,
+  User,
+  APIKey,
+  UsageRecord,
+  RoutingRule,
+  Group,
+  Permission,
+  Budget,
+  PricingRule,
+  AlertRule,
+  Alert,
+  ProviderHealth,
+} from './types';
+
 import MockAPIClient from './mockClient';
 import { API_CONFIG } from './config';
 
 const TOKEN_KEY = 'auth_token';
-
-export interface Provider {
-  id: string;
-  name: string;
-  type: string;
-  base_url: string;
-  models: string[];
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  created_at: string;
-}
-
-export interface APIKey {
-  id: string;
-  user_id: string;
-  name: string;
-  scopes: string[];
-  created_at: string;
-  expires_at?: string;
-}
-
-export interface UsageRecord {
-  id: string;
-  user_id: string;
-  model: string;
-  provider: string;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  cost: number;
-  timestamp: string;
-}
-
-export interface RoutingRule {
-  id: string;
-  model_pattern: string;
-  provider: string;
-  adapter_type: string;
-  priority: number;
-  fallback_chain: string[];
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Group {
-  id: string;
-  name: string;
-  description: string;
-  member_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Permission {
-  id: string;
-  group_id: string;
-  model_pattern: string;
-  effect: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Budget {
-  id: string;
-  name: string;
-  scope: string;
-  scope_id?: string;
-  limit: number;
-  current_spend: number;
-  period: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PricingRule {
-  id: string;
-  model: string;
-  provider: string;
-  prompt_price: number;
-  completion_price: number;
-  currency: string;
-  effective_date: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AlertRule {
-  id: string;
-  name: string;
-  metric: string;
-  condition: string;
-  threshold: number;
-  channel: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Alert {
-  id: string;
-  rule_id: string;
-  severity: string;
-  status: string;
-  triggered_at: string;
-  description: string;
-  acknowledged_at?: string;
-}
-
-export interface ProviderHealth {
-  id: string;
-  name: string;
-  status: string;
-  latency_ms: number;
-  error_rate: number;
-  last_check: string;
-}
 
 export class RealAPIClient implements APIClientInterface {
   private baseURL: string;
@@ -402,6 +305,16 @@ export class RealAPIClient implements APIClientInterface {
     });
   }
 
+  async getGroupMembers(groupId: string): Promise<User[]> {
+    try {
+      const response = await this.request<{members: User[]; total: number}>(`/admin/auth/groups/${groupId}/members`);
+      return response.members || [];
+    } catch (error) {
+      console.error('Failed to fetch group members:', error);
+      return [];
+    }
+  }
+
   async addGroupMember(groupId: string, userId: string): Promise<void> {
     await this.request<void>(`/admin/auth/groups/${groupId}/members`, {
       method: 'POST',
@@ -413,6 +326,26 @@ export class RealAPIClient implements APIClientInterface {
     await this.request<void>(`/admin/auth/groups/${groupId}/members/${userId}`, {
       method: 'DELETE',
     });
+  }
+
+  async getGroupPermissions(groupId: string): Promise<Permission[]> {
+    try {
+      const response = await this.request<{permissions: Permission[]; total: number}>(`/admin/auth/permissions?group_id=${groupId}`);
+      return response.permissions || [];
+    } catch (error) {
+      console.error('Failed to fetch group permissions:', error);
+      return [];
+    }
+  }
+
+  async getUserGroups(_userId: string): Promise<Group[]> {
+    try {
+      const allGroups = await this.getGroups();
+      return allGroups;
+    } catch (error) {
+      console.error('Failed to fetch user groups:', error);
+      return [];
+    }
   }
 
   // Permission endpoints
@@ -699,16 +632,20 @@ class UnifiedAPIClient implements APIClientInterface {
     return this.getActiveClient().getGroups();
   }
 
-  async createGroup(group: Omit<any, 'id' | 'created_at' | 'updated_at' | 'member_count'>) {
+  async createGroup(group: Omit<Group, 'id' | 'created_at' | 'updated_at' | 'member_count'>) {
     return this.getActiveClient().createGroup(group);
   }
 
-  async updateGroup(id: string, group: Partial<any>) {
+  async updateGroup(id: string, group: Partial<Group>) {
     return this.getActiveClient().updateGroup(id, group);
   }
 
   async deleteGroup(id: string) {
     return this.getActiveClient().deleteGroup(id);
+  }
+
+  async getGroupMembers(groupId: string): Promise<User[]> {
+    return this.getActiveClient().getGroupMembers(groupId);
   }
 
   async addGroupMember(groupId: string, userId: string) {
@@ -717,6 +654,14 @@ class UnifiedAPIClient implements APIClientInterface {
 
   async removeGroupMember(groupId: string, userId: string) {
     return this.getActiveClient().removeGroupMember(groupId, userId);
+  }
+
+  async getGroupPermissions(groupId: string): Promise<Permission[]> {
+    return this.getActiveClient().getGroupPermissions(groupId);
+  }
+
+  async getUserGroups(userId: string): Promise<Group[]> {
+    return this.getActiveClient().getUserGroups(userId);
   }
 
   // Permissions

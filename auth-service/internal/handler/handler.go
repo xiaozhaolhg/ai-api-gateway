@@ -351,8 +351,10 @@ func (h *Handler) CreateGroup(ctx context.Context, req *authv1.CreateGroupReques
 	return &authv1.Group{
 		Id:            group.ID,
 		Name:          group.Name,
+		Description:   group.Description,
 		ParentGroupId: group.ParentGroupID,
 		CreatedAt:     group.CreatedAt.Unix(),
+		UpdatedAt:     group.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -365,8 +367,10 @@ func (h *Handler) UpdateGroup(ctx context.Context, req *authv1.UpdateGroupReques
 	return &authv1.Group{
 		Id:            group.ID,
 		Name:          group.Name,
+		Description:   group.Description,
 		ParentGroupId: group.ParentGroupID,
 		CreatedAt:     group.CreatedAt.Unix(),
+		UpdatedAt:     group.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -397,14 +401,53 @@ func (h *Handler) ListGroups(ctx context.Context, req *authv1.ListGroupsRequest)
 		groupProtos[i] = &authv1.Group{
 			Id:            group.ID,
 			Name:          group.Name,
+			Description:   group.Description,
 			ParentGroupId: group.ParentGroupID,
 			CreatedAt:     group.CreatedAt.Unix(),
+			UpdatedAt:     group.UpdatedAt.Unix(),
 		}
 	}
 
 	return &authv1.ListGroupsResponse{
 		Groups: groupProtos,
 		Total:  int32(total),
+	}, nil
+}
+
+func (h *Handler) ListGroupMembers(ctx context.Context, req *authv1.ListGroupMembersRequest) (*authv1.ListGroupMembersResponse, error) {
+	page := int(req.Page)
+	pageSize := int(req.PageSize)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	memberships, total, err := h.userGroupService.GetGroupMembers(req.GroupId, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	memberProtos := make([]*authv1.User, 0, len(memberships))
+	for _, m := range memberships {
+		user, err := h.userRepo.GetByID(m.UserID)
+		if err != nil {
+			continue
+		}
+		memberProtos = append(memberProtos, &authv1.User{
+			Id:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			Status:    user.Status,
+			CreatedAt: user.CreatedAt.Unix(),
+		})
+	}
+
+	return &authv1.ListGroupMembersResponse{
+		Members: memberProtos,
+		Total:   int32(total),
 	}, nil
 }
 
@@ -430,12 +473,15 @@ func (h *Handler) GrantPermission(ctx context.Context, req *authv1.GrantPermissi
 		return nil, err
 	}
 
-	return &authv1.Permission{
+return &authv1.Permission{
 		Id:           permission.ID,
 		GroupId:      permission.GroupID,
 		ResourceType: permission.ResourceType,
 		ResourceId:   permission.ResourceID,
 		Action:       permission.Action,
+		Effect:       permission.Effect,
+		CreatedAt:    permission.CreatedAt.Unix(),
+		UpdatedAt:    permission.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -469,6 +515,9 @@ func (h *Handler) ListPermissions(ctx context.Context, req *authv1.ListPermissio
 			ResourceType: p.ResourceType,
 			ResourceId:   p.ResourceID,
 			Action:       p.Action,
+			Effect:       p.Effect,
+			CreatedAt:    p.CreatedAt.Unix(),
+			UpdatedAt:    p.UpdatedAt.Unix(),
 		}
 	}
 

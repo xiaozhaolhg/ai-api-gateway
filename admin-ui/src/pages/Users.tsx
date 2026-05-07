@@ -3,7 +3,7 @@ import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, mess
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type User } from '../api/client';
+import { apiClient, type User, type Group } from '../api/client';
 
 export default function Users() {
   const { t } = useTranslation(['users', 'common']);
@@ -11,50 +11,77 @@ export default function Users() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => apiClient.getUsers(),
   });
 
+  const [searchText, setSearchText] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
+
+  const filteredUsers = users.filter((u: User) => {
+    const matchesSearch = !searchText ||
+      u.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchText.toLowerCase());
+    const matchesRole = !roleFilter || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const { data: groups = [] } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => apiClient.getGroups(),
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: Omit<User, 'id' | 'created_at'>) => apiClient.createUser(data),
-    onMutate: async (newUser) => {
-      await queryClient.cancelQueries({ queryKey: ['users'] });
-      const previous = queryClient.getQueryData<User[]>(['users']);
-      queryClient.setQueryData<User[]>(['users'], (old = []) => [
-        ...old,
-        { ...newUser, id: `temp-${Date.now()}`, created_at: new Date().toISOString() } as User,
-      ]);
-      return { previous };
-    },
-    onError: (_err, _new, context) => {
-      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
-      message.error('Failed to create user');
-    },
-    onSuccess: () => {
+    onSuccess: async (newUser) => {
       message.success('User created successfully');
+      for (const groupId of selectedGroups) {
+        try {
+          await apiClient.addGroupMember(groupId, newUser.id);
+        } catch (error) {
+          console.error(`Failed to add user to group ${groupId}:`, error);
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    },
+    onError: () => {
+      message.error('Failed to create user');
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => apiClient.updateUser(id, data),
-    onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ['users'] });
-      const previous = queryClient.getQueryData<User[]>(['users']);
-      queryClient.setQueryData<User[]>(['users'], (old = []) =>
-        old.map(u => u.id === id ? { ...u, ...data } : u)
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
-      message.error('Failed to update user');
-    },
-    onSuccess: () => {
+    onSuccess: async (updatedUser) => {
       message.success('User updated successfully');
+      const oldGroups = editingUser?.groups || [];
+      const newGroups = selectedGroups;
+      const added = newGroups.filter(g => !oldGroups.includes(g));
+      const removed = oldGroups.filter(g => !newGroups.includes(g));
+
+      for (const groupId of added) {
+        try {
+          await apiClient.addGroupMember(groupId, updatedUser.id);
+        } catch (error) {
+          console.error(`Failed to add user to group ${groupId}:`, error);
+        }
+      }
+      for (const groupId of removed) {
+        try {
+          await apiClient.removeGroupMember(groupId, updatedUser.id);
+        } catch (error) {
+          console.error(`Failed to remove user from group ${groupId}:`, error);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    },
+    onError: () => {
+      message.error('Failed to update user');
     },
   });
 
@@ -77,23 +104,27 @@ export default function Users() {
 
   const handleAdd = () => {
     setEditingUser(null);
+    setSelectedGroups([]);
     form.resetFields();
     setModalVisible(true);
   };
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
+    setSelectedGroups(user.groups || []);
     form.setFieldsValue(user);
     setModalVisible(true);
   };
 
   const handleModalOk = async () => {
     const values = await form.validateFields();
+    const { password, ...userData } = values;
 
     if (editingUser) {
-      updateMutation.mutate({ id: editingUser.id, data: values });
+      updateMutation.mutate({ id: editingUser.id, data: userData });
     } else {
-      createMutation.mutate(values);
+      const payload = { ...userData, password };
+      createMutation.mutate(payload as any);
     }
     setModalVisible(false);
   };
@@ -113,6 +144,20 @@ export default function Users() {
       title: t('users:fields.email'),
       dataIndex: 'email',
       key: 'email',
+    },
+    {
+      title: 'Groups',
+      key: 'groups',
+      render: (_: any, record: User) => (
+        <>
+          {record.groups?.map((groupId: string) => {
+            const group = groups.find((g: Group) => g.id === groupId);
+            return group ? (
+              <Tag key={groupId} style={{ marginBottom: 4 }}>{group.name}</Tag>
+            ) : null;
+          })}
+        </>
+      ),
     },
     {
       title: t('users:fields.role'),
@@ -168,18 +213,38 @@ export default function Users() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>{t('users:title')}</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          {t('users:addUser')}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input
+            placeholder="Search by name or email..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 250 }}
+            allowClear
+          />
+          <Select
+            style={{ width: 150 }}
+            placeholder="Filter by role"
+            value={roleFilter}
+            onChange={(value) => setRoleFilter(value)}
+            allowClear
+          >
+            <Select.Option value="admin">Admin</Select.Option>
+            <Select.Option value="user">User</Select.Option>
+            <Select.Option value="viewer">Viewer</Select.Option>
+          </Select>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            {t('users:addUser')}
+          </Button>
+        </div>
       </div>
 
-      {users.length === 0 ? (
+      {filteredUsers.length === 0 ? (
         <Empty description="No users found" />
       ) : (
         <Table
-          dataSource={users}
+          dataSource={filteredUsers}
           columns={columns}
           rowKey="id"
           pagination={{ pageSize: 10 }}
@@ -211,6 +276,19 @@ export default function Users() {
             <Input type="email" />
           </Form.Item>
 
+          {!editingUser && (
+            <Form.Item
+              label="Password"
+              name="password"
+              rules={[
+                { required: true, message: 'Please input password' },
+                { min: 8, message: 'Password must be at least 8 characters' },
+              ]}
+            >
+              <Input.Password placeholder="Minimum 8 characters" />
+            </Form.Item>
+          )}
+
           <Form.Item
             label={t('users:fields.role')}
             name="role"
@@ -220,6 +298,25 @@ export default function Users() {
               <Select.Option value="user">User</Select.Option>
               <Select.Option value="admin">Admin</Select.Option>
               <Select.Option value="viewer">Viewer</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Groups"
+            name="groups"
+            valuePropName="value"
+          >
+            <Select
+              mode="multiple"
+              placeholder="Select groups"
+              value={selectedGroups}
+              onChange={(values) => setSelectedGroups(values)}
+            >
+              {groups.map((group: Group) => (
+                <Select.Option key={group.id} value={group.id}>
+                  {group.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 

@@ -493,6 +493,22 @@ class MockAPIClient implements APIClientInterface {
     return this.simulateNetworkDelay(undefined);
   }
 
+  async getGroupMembers(groupId: string): Promise<User[]> {
+    const group = this.dataHandler.getGroupById(groupId);
+    if (!group) return [];
+    
+    return this.simulateNetworkDelay(this.dataHandler.getUsers().filter((_, idx) => idx < 2));
+  }
+
+  async getGroupPermissions(groupId: string): Promise<Permission[]> {
+    const permissions = this.dataHandler.getPermissions().filter(p => p.group_id === groupId);
+    return this.simulateNetworkDelay(permissions);
+  }
+
+  async getUserGroups(_userId: string): Promise<Group[]> {
+    return this.simulateNetworkDelay(this.dataHandler.getGroups().filter((_, idx) => idx < 1));
+  }
+
   // ===== Health =====
   async getProviderHealth(): Promise<ProviderHealth[]> {
     return this.simulateNetworkDelay(this.dataHandler.getProviderHealth());

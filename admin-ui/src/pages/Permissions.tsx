@@ -11,10 +11,13 @@ export const Permissions: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
   const [form] = Form.useForm();
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string | undefined>(undefined);
 
   const { data: permissions = [], isLoading: permsLoading } = useQuery({
-    queryKey: ['permissions'],
-    queryFn: () => apiClient.getPermissions(),
+    queryKey: ['permissions', selectedGroupFilter],
+    queryFn: () => selectedGroupFilter
+      ? apiClient.getGroupPermissions(selectedGroupFilter)
+      : apiClient.getPermissions(),
   });
 
   const { data: groups = [] } = useQuery({
@@ -93,10 +96,17 @@ export const Permissions: React.FC = () => {
 
   const handleModalOk = async () => {
     const values = await form.validateFields();
+    const payload = {
+      group_id: values.group_id,
+      resource_type: values.resource_type,
+      resource_id: values.resource_id,
+      action: values.action,
+      effect: values.effect,
+    };
     if (editingPermission) {
-      updateMutation.mutate({ id: editingPermission.id, data: values });
+      updateMutation.mutate({ id: editingPermission.id, data: payload });
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(payload as any);
     }
     setModalVisible(false);
   };
@@ -117,24 +127,26 @@ export const Permissions: React.FC = () => {
       },
     },
     {
-      title: t('permissions:fields.modelPattern'),
-      dataIndex: 'model_pattern',
-      key: 'model_pattern',
+      title: 'Resource Type',
+      dataIndex: 'resource_type',
+      key: 'resource_type',
     },
     {
-      title: t('permissions:fields.effect'),
+      title: 'Resource ID',
+      dataIndex: 'resource_id',
+      key: 'resource_id',
+    },
+    {
+      title: 'Action',
+      dataIndex: 'action',
+      key: 'action',
+    },
+    {
+      title: 'Effect',
       dataIndex: 'effect',
       key: 'effect',
       render: (effect: string) => (
         <Tag color={effect === 'allow' ? 'green' : 'red'}>{effect}</Tag>
-      ),
-    },
-    {
-      title: t('permissions:fields.status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
       ),
     },
     {
@@ -171,11 +183,26 @@ export const Permissions: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>{t('permissions:title')}</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          {t('permissions:addPermission')}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Select
+            style={{ width: 200 }}
+            placeholder="Filter by group"
+            allowClear
+            value={selectedGroupFilter}
+            onChange={(value) => setSelectedGroupFilter(value)}
+          >
+            {groups.map((group: Group) => (
+              <Select.Option key={group.id} value={group.id}>
+                {group.name}
+              </Select.Option>
+            ))}
+          </Select>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            {t('permissions:addPermission')}
+          </Button>
+        </div>
       </div>
 
       <Table
@@ -210,32 +237,45 @@ export const Permissions: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            label={t('permissions:fields.modelPattern')}
-            name="model_pattern"
-            rules={[{ required: true, message: 'Please input model pattern' }]}
+            label="Resource Type"
+            name="resource_type"
+            rules={[{ required: true, message: 'Please select resource type' }]}
           >
-            <Input placeholder="gpt-*" />
+            <Select>
+              <Select.Option value="model">Model</Select.Option>
+              <Select.Option value="provider">Provider</Select.Option>
+              <Select.Option value="system">System</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Resource ID"
+            name="resource_id"
+            rules={[{ required: true, message: 'Please input resource ID' }]}
+          >
+            <Input placeholder="e.g., gpt-4, ollama:*" />
+          </Form.Item>
+
+          <Form.Item
+            label="Action"
+            name="action"
+            rules={[{ required: true, message: 'Please select action' }]}
+          >
+            <Select>
+              <Select.Option value="access">Access</Select.Option>
+              <Select.Option value="manage">Manage</Select.Option>
+            </Select>
           </Form.Item>
 
           <Form.Item
             label={t('permissions:fields.effect')}
             name="effect"
             rules={[{ required: true, message: 'Please select effect' }]}
+            initialValue="allow"
           >
             <Select>
               <Select.Option value="allow">Allow</Select.Option>
               <Select.Option value="deny">Deny</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            label={t('permissions:fields.status')}
-            name="status"
-            initialValue="active"
-          >
-            <Select>
-              <Select.Option value="active">Active</Select.Option>
-              <Select.Option value="inactive">Inactive</Select.Option>
             </Select>
           </Form.Item>
         </Form>

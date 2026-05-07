@@ -43,9 +43,9 @@
 
 ---
 
-## Developer B — Auth, Data Access Layer & Token Tracker
+## Developer B — Auth, Data Access Layer, Token Tracker & Admin UI
 
-**Focus:** Authentication, data persistence abstraction, usage tracking
+**Focus:** Authentication, data persistence, usage tracking, and **atomic end-to-end feature delivery** (backend API + admin UI page together)
 
 ### Week 1 — Foundation
 - [x] Define repository interfaces: `UserRepo`, `APIKeyRepo`, `GroupRepo`, `PermissionRepo`, `UserGroupRepo` (completed: rbac-group-foundation)
@@ -61,14 +61,32 @@
 - [x] Admin auth: session-based or basic auth for admin endpoints (completed: rbac-group-foundation)
 - [ ] Integration test: create user → issue API key → authenticate request
 
-### Week 3 — Token Tracker
+### Week 3 — Token Tracker, Comprehensive User & Group Management (API + UI)
 - [x] Implement Token Tracker: record prompt/completion tokens per request (completed: token-tracker-implementation)
 - [x] Token extraction: parse from provider response (non-streaming) and accumulate from SSE chunks (streaming) (completed: token-tracker-implementation)
 - [x] Admin API endpoints: `GET /admin/usage` (filterable by user, model, provider, date range) (completed: token-tracker-implementation)
 - [x] Usage aggregation: daily totals per user/model/provider (completed: token-tracker-implementation)
-- [ ] Integration test: send request → verify usage record written → query usage API
+- [x] **User Management API**: `PUT /admin/users/:id`, `GET /admin/users/:id`, user search/filter, pagination (completed: group-management-ui)
+- [x] **Group Management API**: `POST/GET/PUT/DELETE /admin/groups`, `GET /admin/groups/:id`, `POST /admin/groups/:id/members`, `DELETE /admin/groups/:id/members/:userId` (completed: group-management-ui)
+- [x] **Permission Management API**: `GET /admin/permissions`, `POST /admin/groups/:id/permissions`, `DELETE /admin/groups/:id/permissions/:permissionId` (completed: group-management-ui)
+- [x] **Enhanced API Key API**: `PUT /admin/api-keys/:id`, `GET /admin/api-keys/:id`, scope management, expiration config (completed: group-management-ui)
+- [x] **User Management Page**: list users, create/edit user form (name, email, role, groups, password), disable/enable toggle, search/filter (completed: group-management-ui)
+- [x] **Group Management Page**: list groups, create/edit group form (name, description, model patterns, parent group), expandable rows with members/permissions tabs, member management, permission matrix (completed: group-management-ui)
+- [x] **API Key Management Page**: list keys, create key form (name, scopes, expiration), key detail view (usage stats, scopes, expiration), revoke (completed: group-management-ui)
+- [ ] Unit tests: API handlers, UI components, form validation
+- [ ] Integration test: create group → assign permissions → add user to group → verify access
 
-### Week 4 — Proto Schema Improvements
+### Week 4 — Usage Dashboard & Advanced Features (API + UI)
+- [ ] **Enhanced Usage API**: `GET /admin/usage/users/:id`, `GET /admin/usage/groups/:id`, export endpoints (CSV/JSON)
+- [ ] **Group-based Access Control**: enforce group permissions in auth middleware, model-level authorization
+- [ ] **API Key Lifecycle**: expiration handling, scope validation, usage limits per key, rotation
+- [ ] **Usage Dashboard Page**: token consumption charts, per-user/per-group breakdown, date range filter, export
+- [ ] **Audit & Security**: audit logging for admin operations, rate limiting per user/group/key
+- [ ] **Pagination & Performance**: pagination for all list endpoints, database connection pooling
+- [ ] Unit tests: access control enforcement, usage aggregation, key lifecycle
+- [ ] Integration test: send request → verify usage → query per-user usage → export
+
+### Pending — Proto Schema & Real-time Billing
 - [ ] **Add `model` field to provider proto messages**
   - Update `api/proto/provider/v1/provider.proto`:
     - Add `model` field to `ForwardRequestRequest`
@@ -149,7 +167,7 @@ These must be agreed upon before parallel work begins:
 
 ```
 Dev A (Adapters + Routing)  ──needs──▶  Dev B (Repo interfaces + Auth)
-Dev C (Admin UI)            ──needs──▶  Dev A + B (Admin API endpoints)
+Dev B (Admin UI pages)      ──needs──▶  Dev C (UI shell, layout, navigation)
 Dev A (Token extraction)    ──needs──▶  Dev B (UsageRepo interface)
 Dev B (Cache invalidation)  ──needs──▶  Dev A (Provider Manager events)
 ```
@@ -160,5 +178,5 @@ Dev B (Cache invalidation)  ──needs──▶  Dev A (Provider Manager events
 |---|---|---|
 | 1 | Interfaces defined | All Go interfaces and Admin API spec agreed; each dev can start parallel work |
 | 2 | Core flow works | Request can flow: Consumer → Auth → Route → Adapter → Provider → Response (non-streaming) |
-| 3 | Admin flow works | Provider + user can be managed via Admin API; usage records queryable |
-| 4 | MVP complete | Full demo: UI → add provider → create user → chat request (streaming + non-streaming) → view usage |
+| 3 | Admin CRUD complete | User, group, API key, permission fully manageable via API + UI pages |
+| 4 | MVP complete | Full demo: UI → add provider → create user/group → chat request (streaming + non-streaming) → view usage |

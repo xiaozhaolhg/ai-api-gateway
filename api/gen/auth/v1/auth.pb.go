@@ -1275,8 +1275,10 @@ type Group struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ParentGroupId string                 `protobuf:"bytes,3,opt,name=parent_group_id,json=parentGroupId,proto3" json:"parent_group_id,omitempty"`
-	CreatedAt     int64                  `protobuf:"varint,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	ParentGroupId string                 `protobuf:"bytes,4,opt,name=parent_group_id,json=parentGroupId,proto3" json:"parent_group_id,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     int64                  `protobuf:"varint,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1325,6 +1327,13 @@ func (x *Group) GetName() string {
 	return ""
 }
 
+func (x *Group) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 func (x *Group) GetParentGroupId() string {
 	if x != nil {
 		return x.ParentGroupId
@@ -1335,6 +1344,13 @@ func (x *Group) GetParentGroupId() string {
 func (x *Group) GetCreatedAt() int64 {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *Group) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
 	}
 	return 0
 }
@@ -1599,6 +1615,118 @@ func (x *ListGroupsResponse) GetTotal() int32 {
 	return 0
 }
 
+type ListGroupMembersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	Page          int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGroupMembersRequest) Reset() {
+	*x = ListGroupMembersRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGroupMembersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGroupMembersRequest) ProtoMessage() {}
+
+func (x *ListGroupMembersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGroupMembersRequest.ProtoReflect.Descriptor instead.
+func (*ListGroupMembersRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ListGroupMembersRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *ListGroupMembersRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListGroupMembersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ListGroupMembersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Members       []*User                `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGroupMembersResponse) Reset() {
+	*x = ListGroupMembersResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGroupMembersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGroupMembersResponse) ProtoMessage() {}
+
+func (x *ListGroupMembersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGroupMembersResponse.ProtoReflect.Descriptor instead.
+func (*ListGroupMembersResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ListGroupMembersResponse) GetMembers() []*User {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+func (x *ListGroupMembersResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 type AddUserToGroupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -1609,7 +1737,7 @@ type AddUserToGroupRequest struct {
 
 func (x *AddUserToGroupRequest) Reset() {
 	*x = AddUserToGroupRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[27]
+	mi := &file_auth_v1_auth_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1621,7 +1749,7 @@ func (x *AddUserToGroupRequest) String() string {
 func (*AddUserToGroupRequest) ProtoMessage() {}
 
 func (x *AddUserToGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[27]
+	mi := &file_auth_v1_auth_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1634,7 +1762,7 @@ func (x *AddUserToGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddUserToGroupRequest.ProtoReflect.Descriptor instead.
 func (*AddUserToGroupRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{27}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AddUserToGroupRequest) GetUserId() string {
@@ -1661,7 +1789,7 @@ type RemoveUserFromGroupRequest struct {
 
 func (x *RemoveUserFromGroupRequest) Reset() {
 	*x = RemoveUserFromGroupRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[28]
+	mi := &file_auth_v1_auth_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1673,7 +1801,7 @@ func (x *RemoveUserFromGroupRequest) String() string {
 func (*RemoveUserFromGroupRequest) ProtoMessage() {}
 
 func (x *RemoveUserFromGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[28]
+	mi := &file_auth_v1_auth_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1686,7 +1814,7 @@ func (x *RemoveUserFromGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveUserFromGroupRequest.ProtoReflect.Descriptor instead.
 func (*RemoveUserFromGroupRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{28}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *RemoveUserFromGroupRequest) GetUserId() string {
@@ -1711,13 +1839,16 @@ type Permission struct {
 	ResourceType  string                 `protobuf:"bytes,3,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"` // "model" | "provider" | "admin_feature"
 	ResourceId    string                 `protobuf:"bytes,4,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
 	Action        string                 `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"` // "access" | "manage" | "view"
+	Effect        string                 `protobuf:"bytes,6,opt,name=effect,proto3" json:"effect,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     int64                  `protobuf:"varint,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Permission) Reset() {
 	*x = Permission{}
-	mi := &file_auth_v1_auth_proto_msgTypes[29]
+	mi := &file_auth_v1_auth_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1729,7 +1860,7 @@ func (x *Permission) String() string {
 func (*Permission) ProtoMessage() {}
 
 func (x *Permission) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[29]
+	mi := &file_auth_v1_auth_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1742,7 +1873,7 @@ func (x *Permission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Permission.ProtoReflect.Descriptor instead.
 func (*Permission) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{29}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *Permission) GetId() string {
@@ -1780,19 +1911,41 @@ func (x *Permission) GetAction() string {
 	return ""
 }
 
+func (x *Permission) GetEffect() string {
+	if x != nil {
+		return x.Effect
+	}
+	return ""
+}
+
+func (x *Permission) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *Permission) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
 type GrantPermissionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	ResourceType  string                 `protobuf:"bytes,2,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
 	ResourceId    string                 `protobuf:"bytes,3,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
 	Action        string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	Effect        string                 `protobuf:"bytes,5,opt,name=effect,proto3" json:"effect,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GrantPermissionRequest) Reset() {
 	*x = GrantPermissionRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[30]
+	mi := &file_auth_v1_auth_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1804,7 +1957,7 @@ func (x *GrantPermissionRequest) String() string {
 func (*GrantPermissionRequest) ProtoMessage() {}
 
 func (x *GrantPermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[30]
+	mi := &file_auth_v1_auth_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1817,7 +1970,7 @@ func (x *GrantPermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantPermissionRequest.ProtoReflect.Descriptor instead.
 func (*GrantPermissionRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{30}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GrantPermissionRequest) GetGroupId() string {
@@ -1848,6 +2001,13 @@ func (x *GrantPermissionRequest) GetAction() string {
 	return ""
 }
 
+func (x *GrantPermissionRequest) GetEffect() string {
+	if x != nil {
+		return x.Effect
+	}
+	return ""
+}
+
 type RevokePermissionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1857,7 +2017,7 @@ type RevokePermissionRequest struct {
 
 func (x *RevokePermissionRequest) Reset() {
 	*x = RevokePermissionRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[31]
+	mi := &file_auth_v1_auth_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1869,7 +2029,7 @@ func (x *RevokePermissionRequest) String() string {
 func (*RevokePermissionRequest) ProtoMessage() {}
 
 func (x *RevokePermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[31]
+	mi := &file_auth_v1_auth_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1882,7 +2042,7 @@ func (x *RevokePermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokePermissionRequest.ProtoReflect.Descriptor instead.
 func (*RevokePermissionRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{31}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *RevokePermissionRequest) GetId() string {
@@ -1903,7 +2063,7 @@ type ListPermissionsRequest struct {
 
 func (x *ListPermissionsRequest) Reset() {
 	*x = ListPermissionsRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[32]
+	mi := &file_auth_v1_auth_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1915,7 +2075,7 @@ func (x *ListPermissionsRequest) String() string {
 func (*ListPermissionsRequest) ProtoMessage() {}
 
 func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[32]
+	mi := &file_auth_v1_auth_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1928,7 +2088,7 @@ func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*ListPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{32}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListPermissionsRequest) GetGroupId() string {
@@ -1962,7 +2122,7 @@ type ListPermissionsResponse struct {
 
 func (x *ListPermissionsResponse) Reset() {
 	*x = ListPermissionsResponse{}
-	mi := &file_auth_v1_auth_proto_msgTypes[33]
+	mi := &file_auth_v1_auth_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1974,7 +2134,7 @@ func (x *ListPermissionsResponse) String() string {
 func (*ListPermissionsResponse) ProtoMessage() {}
 
 func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[33]
+	mi := &file_auth_v1_auth_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1987,7 +2147,7 @@ func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPermissionsResponse.ProtoReflect.Descriptor instead.
 func (*ListPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{33}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListPermissionsResponse) GetPermissions() []*Permission {
@@ -2016,7 +2176,7 @@ type CheckPermissionRequest struct {
 
 func (x *CheckPermissionRequest) Reset() {
 	*x = CheckPermissionRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[34]
+	mi := &file_auth_v1_auth_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2028,7 +2188,7 @@ func (x *CheckPermissionRequest) String() string {
 func (*CheckPermissionRequest) ProtoMessage() {}
 
 func (x *CheckPermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[34]
+	mi := &file_auth_v1_auth_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2041,7 +2201,7 @@ func (x *CheckPermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckPermissionRequest.ProtoReflect.Descriptor instead.
 func (*CheckPermissionRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{34}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *CheckPermissionRequest) GetUserId() string {
@@ -2081,7 +2241,7 @@ type CheckPermissionResponse struct {
 
 func (x *CheckPermissionResponse) Reset() {
 	*x = CheckPermissionResponse{}
-	mi := &file_auth_v1_auth_proto_msgTypes[35]
+	mi := &file_auth_v1_auth_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2093,7 +2253,7 @@ func (x *CheckPermissionResponse) String() string {
 func (*CheckPermissionResponse) ProtoMessage() {}
 
 func (x *CheckPermissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[35]
+	mi := &file_auth_v1_auth_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2106,7 +2266,7 @@ func (x *CheckPermissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckPermissionResponse.ProtoReflect.Descriptor instead.
 func (*CheckPermissionResponse) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{35}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *CheckPermissionResponse) GetAllowed() bool {
@@ -2206,13 +2366,16 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x06 \x01(\x03R\texpiresAt\"r\n" +
+	"expires_at\x18\x06 \x01(\x03R\texpiresAt\"\xb3\x01\n" +
 	"\x05Group\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12&\n" +
-	"\x0fparent_group_id\x18\x03 \x01(\tR\rparentGroupId\x12\x1d\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12&\n" +
+	"\x0fparent_group_id\x18\x04 \x01(\tR\rparentGroupId\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x04 \x01(\x03R\tcreatedAt\"P\n" +
+	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\"P\n" +
 	"\x12CreateGroupRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12&\n" +
 	"\x0fparent_group_id\x18\x02 \x01(\tR\rparentGroupId\"`\n" +
@@ -2227,13 +2390,20 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"R\n" +
 	"\x12ListGroupsResponse\x12&\n" +
 	"\x06groups\x18\x01 \x03(\v2\x0e.auth.v1.GroupR\x06groups\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"e\n" +
+	"\x17ListGroupMembersRequest\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"Y\n" +
+	"\x18ListGroupMembersResponse\x12'\n" +
+	"\amembers\x18\x01 \x03(\v2\r.auth.v1.UserR\amembers\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"K\n" +
 	"\x15AddUserToGroupRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\"P\n" +
 	"\x1aRemoveUserFromGroupRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
-	"\bgroup_id\x18\x02 \x01(\tR\agroupId\"\x95\x01\n" +
+	"\bgroup_id\x18\x02 \x01(\tR\agroupId\"\xeb\x01\n" +
 	"\n" +
 	"Permission\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
@@ -2241,13 +2411,19 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\rresource_type\x18\x03 \x01(\tR\fresourceType\x12\x1f\n" +
 	"\vresource_id\x18\x04 \x01(\tR\n" +
 	"resourceId\x12\x16\n" +
-	"\x06action\x18\x05 \x01(\tR\x06action\"\x91\x01\n" +
+	"\x06action\x18\x05 \x01(\tR\x06action\x12\x16\n" +
+	"\x06effect\x18\x06 \x01(\tR\x06effect\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\a \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\x03R\tupdatedAt\"\xa9\x01\n" +
 	"\x16GrantPermissionRequest\x12\x19\n" +
 	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12#\n" +
 	"\rresource_type\x18\x02 \x01(\tR\fresourceType\x12\x1f\n" +
 	"\vresource_id\x18\x03 \x01(\tR\n" +
 	"resourceId\x12\x16\n" +
-	"\x06action\x18\x04 \x01(\tR\x06action\")\n" +
+	"\x06action\x18\x04 \x01(\tR\x06action\x12\x16\n" +
+	"\x06effect\x18\x05 \x01(\tR\x06effect\")\n" +
 	"\x17RevokePermissionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"d\n" +
 	"\x16ListPermissionsRequest\x12\x19\n" +
@@ -2264,7 +2440,7 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"resourceId\x12\x16\n" +
 	"\x06action\x18\x04 \x01(\tR\x06action\"3\n" +
 	"\x17CheckPermissionResponse\x12\x18\n" +
-	"\aallowed\x18\x01 \x01(\bR\aallowed2\xf9\v\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed2\xd2\f\n" +
 	"\vAuthService\x12G\n" +
 	"\x0eValidateAPIKey\x12\x1e.auth.v1.ValidateAPIKeyRequest\x1a\x15.auth.v1.UserIdentity\x126\n" +
 	"\x05Login\x12\x15.auth.v1.LoginRequest\x1a\x16.auth.v1.LoginResponse\x12?\n" +
@@ -2285,7 +2461,8 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\vUpdateGroup\x12\x1b.auth.v1.UpdateGroupRequest\x1a\x0e.auth.v1.Group\x12<\n" +
 	"\vDeleteGroup\x12\x1b.auth.v1.DeleteGroupRequest\x1a\x10.common.v1.Empty\x12E\n" +
 	"\n" +
-	"ListGroups\x12\x1a.auth.v1.ListGroupsRequest\x1a\x1b.auth.v1.ListGroupsResponse\x12B\n" +
+	"ListGroups\x12\x1a.auth.v1.ListGroupsRequest\x1a\x1b.auth.v1.ListGroupsResponse\x12W\n" +
+	"\x10ListGroupMembers\x12 .auth.v1.ListGroupMembersRequest\x1a!.auth.v1.ListGroupMembersResponse\x12B\n" +
 	"\x0eAddUserToGroup\x12\x1e.auth.v1.AddUserToGroupRequest\x1a\x10.common.v1.Empty\x12L\n" +
 	"\x13RemoveUserFromGroup\x12#.auth.v1.RemoveUserFromGroupRequest\x1a\x10.common.v1.Empty\x12G\n" +
 	"\x0fGrantPermission\x12\x1f.auth.v1.GrantPermissionRequest\x1a\x13.auth.v1.Permission\x12F\n" +
@@ -2305,7 +2482,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(*ValidateAPIKeyRequest)(nil),          // 0: auth.v1.ValidateAPIKeyRequest
 	(*LoginRequest)(nil),                   // 1: auth.v1.LoginRequest
@@ -2334,16 +2511,18 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*DeleteGroupRequest)(nil),             // 24: auth.v1.DeleteGroupRequest
 	(*ListGroupsRequest)(nil),              // 25: auth.v1.ListGroupsRequest
 	(*ListGroupsResponse)(nil),             // 26: auth.v1.ListGroupsResponse
-	(*AddUserToGroupRequest)(nil),          // 27: auth.v1.AddUserToGroupRequest
-	(*RemoveUserFromGroupRequest)(nil),     // 28: auth.v1.RemoveUserFromGroupRequest
-	(*Permission)(nil),                     // 29: auth.v1.Permission
-	(*GrantPermissionRequest)(nil),         // 30: auth.v1.GrantPermissionRequest
-	(*RevokePermissionRequest)(nil),        // 31: auth.v1.RevokePermissionRequest
-	(*ListPermissionsRequest)(nil),         // 32: auth.v1.ListPermissionsRequest
-	(*ListPermissionsResponse)(nil),        // 33: auth.v1.ListPermissionsResponse
-	(*CheckPermissionRequest)(nil),         // 34: auth.v1.CheckPermissionRequest
-	(*CheckPermissionResponse)(nil),        // 35: auth.v1.CheckPermissionResponse
-	(*v1.Empty)(nil),                       // 36: common.v1.Empty
+	(*ListGroupMembersRequest)(nil),        // 27: auth.v1.ListGroupMembersRequest
+	(*ListGroupMembersResponse)(nil),       // 28: auth.v1.ListGroupMembersResponse
+	(*AddUserToGroupRequest)(nil),          // 29: auth.v1.AddUserToGroupRequest
+	(*RemoveUserFromGroupRequest)(nil),     // 30: auth.v1.RemoveUserFromGroupRequest
+	(*Permission)(nil),                     // 31: auth.v1.Permission
+	(*GrantPermissionRequest)(nil),         // 32: auth.v1.GrantPermissionRequest
+	(*RevokePermissionRequest)(nil),        // 33: auth.v1.RevokePermissionRequest
+	(*ListPermissionsRequest)(nil),         // 34: auth.v1.ListPermissionsRequest
+	(*ListPermissionsResponse)(nil),        // 35: auth.v1.ListPermissionsResponse
+	(*CheckPermissionRequest)(nil),         // 36: auth.v1.CheckPermissionRequest
+	(*CheckPermissionResponse)(nil),        // 37: auth.v1.CheckPermissionResponse
+	(*v1.Empty)(nil),                       // 38: common.v1.Empty
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
 	8,  // 0: auth.v1.LoginResponse.user:type_name -> auth.v1.User
@@ -2351,56 +2530,59 @@ var file_auth_v1_auth_proto_depIdxs = []int32{
 	8,  // 2: auth.v1.ListUsersResponse.users:type_name -> auth.v1.User
 	20, // 3: auth.v1.ListAPIKeysResponse.api_keys:type_name -> auth.v1.APIKey
 	21, // 4: auth.v1.ListGroupsResponse.groups:type_name -> auth.v1.Group
-	29, // 5: auth.v1.ListPermissionsResponse.permissions:type_name -> auth.v1.Permission
-	0,  // 6: auth.v1.AuthService.ValidateAPIKey:input_type -> auth.v1.ValidateAPIKeyRequest
-	1,  // 7: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
-	3,  // 8: auth.v1.AuthService.Register:input_type -> auth.v1.RegisterRequest
-	6,  // 9: auth.v1.AuthService.CheckModelAuthorization:input_type -> auth.v1.CheckModelAuthorizationRequest
-	9,  // 10: auth.v1.AuthService.GetUser:input_type -> auth.v1.GetUserRequest
-	10, // 11: auth.v1.AuthService.CreateUser:input_type -> auth.v1.CreateUserRequest
-	11, // 12: auth.v1.AuthService.UpdateUser:input_type -> auth.v1.UpdateUserRequest
-	12, // 13: auth.v1.AuthService.DeleteUser:input_type -> auth.v1.DeleteUserRequest
-	13, // 14: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
-	15, // 15: auth.v1.AuthService.CreateAPIKey:input_type -> auth.v1.CreateAPIKeyRequest
-	17, // 16: auth.v1.AuthService.DeleteAPIKey:input_type -> auth.v1.DeleteAPIKeyRequest
-	18, // 17: auth.v1.AuthService.ListAPIKeys:input_type -> auth.v1.ListAPIKeysRequest
-	22, // 18: auth.v1.AuthService.CreateGroup:input_type -> auth.v1.CreateGroupRequest
-	23, // 19: auth.v1.AuthService.UpdateGroup:input_type -> auth.v1.UpdateGroupRequest
-	24, // 20: auth.v1.AuthService.DeleteGroup:input_type -> auth.v1.DeleteGroupRequest
-	25, // 21: auth.v1.AuthService.ListGroups:input_type -> auth.v1.ListGroupsRequest
-	27, // 22: auth.v1.AuthService.AddUserToGroup:input_type -> auth.v1.AddUserToGroupRequest
-	28, // 23: auth.v1.AuthService.RemoveUserFromGroup:input_type -> auth.v1.RemoveUserFromGroupRequest
-	30, // 24: auth.v1.AuthService.GrantPermission:input_type -> auth.v1.GrantPermissionRequest
-	31, // 25: auth.v1.AuthService.RevokePermission:input_type -> auth.v1.RevokePermissionRequest
-	32, // 26: auth.v1.AuthService.ListPermissions:input_type -> auth.v1.ListPermissionsRequest
-	34, // 27: auth.v1.AuthService.CheckPermission:input_type -> auth.v1.CheckPermissionRequest
-	5,  // 28: auth.v1.AuthService.ValidateAPIKey:output_type -> auth.v1.UserIdentity
-	2,  // 29: auth.v1.AuthService.Login:output_type -> auth.v1.LoginResponse
-	4,  // 30: auth.v1.AuthService.Register:output_type -> auth.v1.RegisterResponse
-	7,  // 31: auth.v1.AuthService.CheckModelAuthorization:output_type -> auth.v1.AuthorizationResult
-	8,  // 32: auth.v1.AuthService.GetUser:output_type -> auth.v1.User
-	8,  // 33: auth.v1.AuthService.CreateUser:output_type -> auth.v1.User
-	8,  // 34: auth.v1.AuthService.UpdateUser:output_type -> auth.v1.User
-	36, // 35: auth.v1.AuthService.DeleteUser:output_type -> common.v1.Empty
-	14, // 36: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
-	16, // 37: auth.v1.AuthService.CreateAPIKey:output_type -> auth.v1.CreateAPIKeyResponse
-	36, // 38: auth.v1.AuthService.DeleteAPIKey:output_type -> common.v1.Empty
-	19, // 39: auth.v1.AuthService.ListAPIKeys:output_type -> auth.v1.ListAPIKeysResponse
-	21, // 40: auth.v1.AuthService.CreateGroup:output_type -> auth.v1.Group
-	21, // 41: auth.v1.AuthService.UpdateGroup:output_type -> auth.v1.Group
-	36, // 42: auth.v1.AuthService.DeleteGroup:output_type -> common.v1.Empty
-	26, // 43: auth.v1.AuthService.ListGroups:output_type -> auth.v1.ListGroupsResponse
-	36, // 44: auth.v1.AuthService.AddUserToGroup:output_type -> common.v1.Empty
-	36, // 45: auth.v1.AuthService.RemoveUserFromGroup:output_type -> common.v1.Empty
-	29, // 46: auth.v1.AuthService.GrantPermission:output_type -> auth.v1.Permission
-	36, // 47: auth.v1.AuthService.RevokePermission:output_type -> common.v1.Empty
-	33, // 48: auth.v1.AuthService.ListPermissions:output_type -> auth.v1.ListPermissionsResponse
-	35, // 49: auth.v1.AuthService.CheckPermission:output_type -> auth.v1.CheckPermissionResponse
-	28, // [28:50] is the sub-list for method output_type
-	6,  // [6:28] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	8,  // 5: auth.v1.ListGroupMembersResponse.members:type_name -> auth.v1.User
+	31, // 6: auth.v1.ListPermissionsResponse.permissions:type_name -> auth.v1.Permission
+	0,  // 7: auth.v1.AuthService.ValidateAPIKey:input_type -> auth.v1.ValidateAPIKeyRequest
+	1,  // 8: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
+	3,  // 9: auth.v1.AuthService.Register:input_type -> auth.v1.RegisterRequest
+	6,  // 10: auth.v1.AuthService.CheckModelAuthorization:input_type -> auth.v1.CheckModelAuthorizationRequest
+	9,  // 11: auth.v1.AuthService.GetUser:input_type -> auth.v1.GetUserRequest
+	10, // 12: auth.v1.AuthService.CreateUser:input_type -> auth.v1.CreateUserRequest
+	11, // 13: auth.v1.AuthService.UpdateUser:input_type -> auth.v1.UpdateUserRequest
+	12, // 14: auth.v1.AuthService.DeleteUser:input_type -> auth.v1.DeleteUserRequest
+	13, // 15: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
+	15, // 16: auth.v1.AuthService.CreateAPIKey:input_type -> auth.v1.CreateAPIKeyRequest
+	17, // 17: auth.v1.AuthService.DeleteAPIKey:input_type -> auth.v1.DeleteAPIKeyRequest
+	18, // 18: auth.v1.AuthService.ListAPIKeys:input_type -> auth.v1.ListAPIKeysRequest
+	22, // 19: auth.v1.AuthService.CreateGroup:input_type -> auth.v1.CreateGroupRequest
+	23, // 20: auth.v1.AuthService.UpdateGroup:input_type -> auth.v1.UpdateGroupRequest
+	24, // 21: auth.v1.AuthService.DeleteGroup:input_type -> auth.v1.DeleteGroupRequest
+	25, // 22: auth.v1.AuthService.ListGroups:input_type -> auth.v1.ListGroupsRequest
+	27, // 23: auth.v1.AuthService.ListGroupMembers:input_type -> auth.v1.ListGroupMembersRequest
+	29, // 24: auth.v1.AuthService.AddUserToGroup:input_type -> auth.v1.AddUserToGroupRequest
+	30, // 25: auth.v1.AuthService.RemoveUserFromGroup:input_type -> auth.v1.RemoveUserFromGroupRequest
+	32, // 26: auth.v1.AuthService.GrantPermission:input_type -> auth.v1.GrantPermissionRequest
+	33, // 27: auth.v1.AuthService.RevokePermission:input_type -> auth.v1.RevokePermissionRequest
+	34, // 28: auth.v1.AuthService.ListPermissions:input_type -> auth.v1.ListPermissionsRequest
+	36, // 29: auth.v1.AuthService.CheckPermission:input_type -> auth.v1.CheckPermissionRequest
+	5,  // 30: auth.v1.AuthService.ValidateAPIKey:output_type -> auth.v1.UserIdentity
+	2,  // 31: auth.v1.AuthService.Login:output_type -> auth.v1.LoginResponse
+	4,  // 32: auth.v1.AuthService.Register:output_type -> auth.v1.RegisterResponse
+	7,  // 33: auth.v1.AuthService.CheckModelAuthorization:output_type -> auth.v1.AuthorizationResult
+	8,  // 34: auth.v1.AuthService.GetUser:output_type -> auth.v1.User
+	8,  // 35: auth.v1.AuthService.CreateUser:output_type -> auth.v1.User
+	8,  // 36: auth.v1.AuthService.UpdateUser:output_type -> auth.v1.User
+	38, // 37: auth.v1.AuthService.DeleteUser:output_type -> common.v1.Empty
+	14, // 38: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
+	16, // 39: auth.v1.AuthService.CreateAPIKey:output_type -> auth.v1.CreateAPIKeyResponse
+	38, // 40: auth.v1.AuthService.DeleteAPIKey:output_type -> common.v1.Empty
+	19, // 41: auth.v1.AuthService.ListAPIKeys:output_type -> auth.v1.ListAPIKeysResponse
+	21, // 42: auth.v1.AuthService.CreateGroup:output_type -> auth.v1.Group
+	21, // 43: auth.v1.AuthService.UpdateGroup:output_type -> auth.v1.Group
+	38, // 44: auth.v1.AuthService.DeleteGroup:output_type -> common.v1.Empty
+	26, // 45: auth.v1.AuthService.ListGroups:output_type -> auth.v1.ListGroupsResponse
+	28, // 46: auth.v1.AuthService.ListGroupMembers:output_type -> auth.v1.ListGroupMembersResponse
+	38, // 47: auth.v1.AuthService.AddUserToGroup:output_type -> common.v1.Empty
+	38, // 48: auth.v1.AuthService.RemoveUserFromGroup:output_type -> common.v1.Empty
+	31, // 49: auth.v1.AuthService.GrantPermission:output_type -> auth.v1.Permission
+	38, // 50: auth.v1.AuthService.RevokePermission:output_type -> common.v1.Empty
+	35, // 51: auth.v1.AuthService.ListPermissions:output_type -> auth.v1.ListPermissionsResponse
+	37, // 52: auth.v1.AuthService.CheckPermission:output_type -> auth.v1.CheckPermissionResponse
+	30, // [30:53] is the sub-list for method output_type
+	7,  // [7:30] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }
@@ -2414,7 +2596,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   36,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

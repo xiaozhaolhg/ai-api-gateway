@@ -37,12 +37,17 @@ func (r *PermissionRepository) ListByGroupID(groupID string, page, pageSize int)
 	var permissions []*entity.Permission
 	var total int64
 
-	if err := r.db.Model(&entity.Permission{}).Where("group_id = ?", groupID).Count(&total).Error; err != nil {
+	query := r.db.Model(&entity.Permission{})
+	if groupID != "" {
+		query = query.Where("group_id = ?", groupID)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	err := r.db.Where("group_id = ?", groupID).Offset(offset).Limit(pageSize).Find(&permissions).Error
+	err := query.Offset(offset).Limit(pageSize).Find(&permissions).Error
 	if err != nil {
 		return nil, 0, err
 	}

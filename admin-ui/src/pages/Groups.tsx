@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Table, Button, Modal, Form, Input, Popconfirm, Empty, message } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Empty, message, Tabs } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Group } from '../api/client';
+import { GroupMembersTab } from '../components/GroupMembersTab';
+import { GroupPermissionsTab } from '../components/GroupPermissionsTab';
 
 export const Groups: React.FC = () => {
   const { t } = useTranslation(['groups', 'common']);
@@ -16,6 +18,12 @@ export const Groups: React.FC = () => {
     queryKey: ['groups'],
     queryFn: () => apiClient.getGroups(),
   });
+
+  const [searchText, setSearchText] = useState('');
+
+  const filteredGroups = groups.filter((g: Group) =>
+    g.name.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   const createMutation = useMutation({
     mutationFn: (data: Omit<Group, 'id' | 'created_at' | 'updated_at' | 'member_count'>) => apiClient.createGroup(data),
@@ -86,10 +94,16 @@ export const Groups: React.FC = () => {
 
   const handleModalOk = async () => {
     const values = await form.validateFields();
+    const payload = {
+      name: values.name,
+      description: values.description,
+      model_patterns: values.model_patterns || [],
+      parent_group_id: values.parent_group_id || undefined,
+    };
     if (editingGroup) {
-      updateMutation.mutate({ id: editingGroup.id, data: values });
+      updateMutation.mutate({ id: editingGroup.id, data: payload });
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(payload as any);
     }
     setModalVisible(false);
   };
@@ -97,6 +111,26 @@ export const Groups: React.FC = () => {
   const handleModalCancel = () => {
     setModalVisible(false);
     form.resetFields();
+  };
+
+  const expandedRowRender = (record: Group) => {
+    return (
+      <Tabs
+        defaultActiveKey="members"
+        items={[
+          {
+            key: 'members',
+            label: 'Members',
+            children: <GroupMembersTab groupId={record.id} />,
+          },
+          {
+            key: 'permissions',
+            label: 'Permissions',
+            children: <GroupPermissionsTab groupId={record.id} />,
+          },
+        ]}
+      />
+    );
   };
 
   const columns = [
@@ -149,19 +183,32 @@ export const Groups: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>{t('groups:title')}</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          {t('groups:addGroup')}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input
+            placeholder="Search groups..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 250 }}
+            allowClear
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            {t('groups:addGroup')}
+          </Button>
+        </div>
       </div>
 
       <Table
-        dataSource={groups}
+        dataSource={filteredGroups}
         columns={columns}
         rowKey="id"
         pagination={{ pageSize: 10 }}
         locale={{ emptyText: <Empty description="No groups found" /> }}
+        expandable={{
+          expandedRowRender,
+          expandRowByClick: false,
+        }}
       />
 
       <Modal
@@ -186,6 +233,35 @@ export const Groups: React.FC = () => {
             name="description"
           >
             <Input.TextArea rows={4} />
+          </Form.Item>
+
+          <Form.Item
+            label="Model Patterns"
+            name="model_patterns"
+          >
+            <Select
+              mode="tags"
+              placeholder="e.g., gpt-*, ollama:*"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Parent Group"
+            name="parent_group_id"
+          >
+            <Select
+              placeholder="Select parent group (optional)"
+              allowClear
+            >
+              {groups
+                .filter((g: Group) => !editingGroup || g.id !== editingGroup.id)
+                .map((group: Group) => (
+                  <Select.Option key={group.id} value={group.id}>
+                    {group.name}
+                  </Select.Option>
+                ))}
+            </Select>
           </Form.Item>
         </Form>
       </Modal>

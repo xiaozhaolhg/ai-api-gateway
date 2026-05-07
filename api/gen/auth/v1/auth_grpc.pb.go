@@ -36,6 +36,7 @@ const (
 	AuthService_UpdateGroup_FullMethodName             = "/auth.v1.AuthService/UpdateGroup"
 	AuthService_DeleteGroup_FullMethodName             = "/auth.v1.AuthService/DeleteGroup"
 	AuthService_ListGroups_FullMethodName              = "/auth.v1.AuthService/ListGroups"
+	AuthService_ListGroupMembers_FullMethodName        = "/auth.v1.AuthService/ListGroupMembers"
 	AuthService_AddUserToGroup_FullMethodName          = "/auth.v1.AuthService/AddUserToGroup"
 	AuthService_RemoveUserFromGroup_FullMethodName     = "/auth.v1.AuthService/RemoveUserFromGroup"
 	AuthService_GrantPermission_FullMethodName         = "/auth.v1.AuthService/GrantPermission"
@@ -71,6 +72,7 @@ type AuthServiceClient interface {
 	UpdateGroup(ctx context.Context, in *UpdateGroupRequest, opts ...grpc.CallOption) (*Group, error)
 	DeleteGroup(ctx context.Context, in *DeleteGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 	ListGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error)
+	ListGroupMembers(ctx context.Context, in *ListGroupMembersRequest, opts ...grpc.CallOption) (*ListGroupMembersResponse, error)
 	AddUserToGroup(ctx context.Context, in *AddUserToGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 	RemoveUserFromGroup(ctx context.Context, in *RemoveUserFromGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 	// Permission Management (Phase 2+)
@@ -248,6 +250,16 @@ func (c *authServiceClient) ListGroups(ctx context.Context, in *ListGroupsReques
 	return out, nil
 }
 
+func (c *authServiceClient) ListGroupMembers(ctx context.Context, in *ListGroupMembersRequest, opts ...grpc.CallOption) (*ListGroupMembersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGroupMembersResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListGroupMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authServiceClient) AddUserToGroup(ctx context.Context, in *AddUserToGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.Empty)
@@ -335,6 +347,7 @@ type AuthServiceServer interface {
 	UpdateGroup(context.Context, *UpdateGroupRequest) (*Group, error)
 	DeleteGroup(context.Context, *DeleteGroupRequest) (*v1.Empty, error)
 	ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error)
+	ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error)
 	AddUserToGroup(context.Context, *AddUserToGroupRequest) (*v1.Empty, error)
 	RemoveUserFromGroup(context.Context, *RemoveUserFromGroupRequest) (*v1.Empty, error)
 	// Permission Management (Phase 2+)
@@ -399,6 +412,9 @@ func (UnimplementedAuthServiceServer) DeleteGroup(context.Context, *DeleteGroupR
 }
 func (UnimplementedAuthServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListGroups not implemented")
+}
+func (UnimplementedAuthServiceServer) ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGroupMembers not implemented")
 }
 func (UnimplementedAuthServiceServer) AddUserToGroup(context.Context, *AddUserToGroupRequest) (*v1.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddUserToGroup not implemented")
@@ -727,6 +743,24 @@ func _AuthService_ListGroups_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_ListGroupMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGroupMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListGroupMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListGroupMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListGroupMembers(ctx, req.(*ListGroupMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthService_AddUserToGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddUserToGroupRequest)
 	if err := dec(in); err != nil {
@@ -905,6 +939,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListGroups",
 			Handler:    _AuthService_ListGroups_Handler,
+		},
+		{
+			MethodName: "ListGroupMembers",
+			Handler:    _AuthService_ListGroupMembers_Handler,
 		},
 		{
 			MethodName: "AddUserToGroup",

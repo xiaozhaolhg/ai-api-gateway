@@ -40,6 +40,9 @@ export interface APIClientInterface {
   deleteGroup(id: string): Promise<void>;
   addGroupMember(groupId: string, userId: string): Promise<void>;
   removeGroupMember(groupId: string, userId: string): Promise<void>;
+  getGroupMembers(groupId: string): Promise<User[]>;
+  getGroupPermissions(groupId: string): Promise<Permission[]>;
+  getUserGroups(userId: string): Promise<Group[]>;
 
   // Permissions
   getPermissions(): Promise<Permission[]>;
@@ -100,8 +103,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string;
   role: string;
   status: string;
+  groups?: string[];
   created_at: string;
 }
 
@@ -143,6 +148,8 @@ export interface Group {
   name: string;
   description: string;
   member_count: number;
+  model_patterns?: string[];
+  parent_group_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -150,9 +157,10 @@ export interface Group {
 export interface Permission {
   id: string;
   group_id: string;
-  model_pattern: string;
+  resource_type: string;
+  resource_id: string;
+  action: string;
   effect: string;
-  status: string;
   created_at: string;
   updated_at: string;
 }
