@@ -1,6 +1,6 @@
 // API client for admin endpoints
 import { message } from 'antd';
-import type { APIClientInterface } from './types';
+import type { APIClientInterface, UnauthorizedCallback } from './types';
 import MockAPIClient from './mockClient';
 import { API_CONFIG } from './config';
 
@@ -136,7 +136,7 @@ export interface ProviderHealth {
 
 export class RealAPIClient implements APIClientInterface {
   private baseURL: string;
-  private onUnauthorized?: UnauthorizedCallback;
+  onUnauthorized?: UnauthorizedCallback;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
