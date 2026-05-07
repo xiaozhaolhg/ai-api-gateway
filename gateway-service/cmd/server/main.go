@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"log"
 	"net/http"
 	"os"
@@ -26,7 +27,8 @@ var (
 	monitorClient  *client.MonitorClient
 )
 
-// var staticFiles embed.FS // Temporarily disabled for testing
+//go:embed static
+var staticFiles embed.FS
 
 func main() {
 	log.Println("Gateway service starting...")
