@@ -59,3 +59,12 @@ func (s *UserGroupService) GetUserGroups(userID string) ([]*entity.UserGroupMemb
 	}
 	return memberships, nil
 }
+
+// GetGroupMembers returns all members of a group
+func (s *UserGroupService) GetGroupMembers(groupID string, page, pageSize int) ([]*entity.UserGroupMembership, int, error) {
+	memberships, total, err := s.userGroupRepo.GetByGroupID(groupID, page, pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get group members: %w", err)
+	}
+	return memberships, total, nil
+}

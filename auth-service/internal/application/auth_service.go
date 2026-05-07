@@ -164,15 +164,13 @@ func (s *AuthService) RegisterWithUsername(name, username, email, role, password
 
 // CreateUser creates a new user
 func (s *AuthService) CreateUser(name, username, email, role, passwordHash string) (*entity.User, error) {
-	validRoles := map[string]bool{"admin": true, "user": true, "viewer": true}
-	if role == "" {
-		role = "user"
-	}
-	if !validRoles[role] {
-		role = "user"
-	}
-
 	log.Printf("[DEBUG] CreateUser: name=%s, username=%s, email=%s, role=%s", name, username, email, role)
+
+	// Check if user already exists by email
+	existing, _ := s.userRepo.GetByEmail(email)
+	if existing != nil {
+		return nil, fmt.Errorf("user with email %s already exists", email)
+	}
 
 	user := &entity.User{
 		ID:           generateID(),
@@ -191,7 +189,6 @@ func (s *AuthService) CreateUser(name, username, email, role, passwordHash strin
 
 	return user, nil
 }
-
 // UpdatePassword updates a user's password
 func (s *AuthService) UpdatePassword(userID, newPasswordHash string) error {
 	user, err := s.userRepo.GetByID(userID)

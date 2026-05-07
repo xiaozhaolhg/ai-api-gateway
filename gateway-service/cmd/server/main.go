@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ai-api-gateway/api/gen/auth/v1"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 	"github.com/ai-api-gateway/gateway-service/internal/handler"
 	"github.com/ai-api-gateway/gateway-service/internal/infrastructure/config"
@@ -146,6 +147,7 @@ func main() {
 		admin.POST("/groups", handleCreateGroup)
 		admin.PUT("/groups/:id", handleUpdateGroup)
 		admin.DELETE("/groups/:id", handleDeleteGroup)
+		admin.GET("/groups/:id/members", handleGetGroupMembers)
 		admin.POST("/groups/:id/members", handleAddUserToGroup)
 		admin.DELETE("/groups/:id/members/:user_id", handleRemoveUserFromGroup)
 
@@ -726,6 +728,37 @@ func handleDeleteGroup(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "group deleted"})
 }
 
+func handleGetGroupMembers(c *gin.Context) {
+	groupID := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	page := int32(1)
+	pageSize := int32(100)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	resp, err := authClient.ListGroupMembers(context.Background(), groupID, page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	members := resp.Members
+	if members == nil {
+		members = make([]*authv1.User, 0)
+	}
+
+	c.JSON(200, gin.H{"members": members, "total": resp.Total})
+}
+
 func handleAddUserToGroup(c *gin.Context) {
 	groupID := c.Param("id")
 	var req struct {
@@ -811,7 +844,7 @@ func handleGrantPermission(c *gin.Context) {
 		return
 	}
 
-	permission, err := authClient.GrantPermission(context.Background(), req.GroupID, req.ResourceType, req.ResourceID, req.Action)
+	permission, err := authClient.GrantPermission(context.Background(), req.GroupID, req.ResourceType, req.ResourceID, req.Action, req.Effect)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
