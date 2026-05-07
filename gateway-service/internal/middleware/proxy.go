@@ -76,6 +76,12 @@ func (m *ProxyMiddleware) Middleware() gin.HandlerFunc {
 func (m *ProxyMiddleware) handleNonStreamingRequest(c *gin.Context, providerID string, requestBody []byte) {
 	r := c.Request
 
+	model := "unknown"
+	req, parseErr := parseChatCompletionRequest(requestBody)
+	if parseErr == nil && req.Model != "" {
+		model = req.Model
+	}
+
 	// Get fallback info from context
 	fallbackProviderIDs, _ := r.Context().Value("fallbackProviderIds").([]string)
 	fallbackModels, _ := r.Context().Value("fallbackModels").([]string)
@@ -89,9 +95,9 @@ func (m *ProxyMiddleware) handleNonStreamingRequest(c *gin.Context, providerID s
 	}
 
 	// Try primary provider first
-	resp, statusCode, err := m.tryNonStreamingProvider(r.Context(), providerID, requestBody, headers)
+	resp, statusCode, err := m.tryNonStreamingProvider(r.Context(), providerID, model, requestBody, headers)
 	if err == nil {
-		m.writeNonStreamingResponse(c, providerID, resp, requestBody)
+		m.writeNonStreamingResponse(c, providerID, resp)
 		return
 	}
 
@@ -125,14 +131,14 @@ func (m *ProxyMiddleware) handleNonStreamingRequest(c *gin.Context, providerID s
 			bodyToSend = requestBody
 		}
 
-		resp, _, err := m.tryNonStreamingProvider(r.Context(), fallbackID, bodyToSend, headers)
+		resp, _, err := m.tryNonStreamingProvider(r.Context(), fallbackID, fallbackModel, bodyToSend, headers)
 		if err != nil {
 			log.Printf("[Fallback] Fallback provider %s failed: %v", fallbackID, err)
 			continue
 		}
 
 		log.Printf("[Fallback] Successfully fell back to provider %s", fallbackID)
-		m.writeNonStreamingResponse(c, fallbackID, resp, bodyToSend)
+		m.writeNonStreamingResponse(c, fallbackID, resp)
 		return
 	}
 
@@ -197,7 +203,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 			bodyToSend = requestBody
 		}
 
-		err := m.tryStreamingProvider(w, r, fallbackID, bodyToSend, headers, model, false)
+		err := m.tryStreamingProvider(w, r, fallbackID, bodyToSend, headers, fallbackModel, false)
 		if err != nil {
 			log.Printf("[Fallback] Fallback streaming provider %s failed: %v", fallbackID, err)
 			continue
@@ -212,7 +218,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 }
 
 func (m *ProxyMiddleware) tryStreamingProvider(w http.ResponseWriter, r *http.Request, providerID string, requestBody []byte, headers map[string]string, model string, isPrimary bool) error {
-	stream, err := m.providerClient.StreamRequest(r.Context(), providerID, requestBody, headers)
+	stream, err := m.providerClient.StreamRequest(r.Context(), providerID, model, requestBody, headers)
 	if err != nil {
 		return err
 	}
@@ -326,8 +332,8 @@ func rewriteModelInRequest(requestBody []byte, newModel string) ([]byte, error) 
 
 // tryNonStreamingProvider attempts a single non-streaming request to a provider
 // Returns response, HTTP status code from provider, and error
-func (m *ProxyMiddleware) tryNonStreamingProvider(ctx context.Context, providerID string, requestBody []byte, headers map[string]string) (*client.ForwardRequestResponse, int32, error) {
-	resp, err := m.providerClient.ForwardRequest(ctx, providerID, requestBody, headers)
+func (m *ProxyMiddleware) tryNonStreamingProvider(ctx context.Context, providerID string, model string, requestBody []byte, headers map[string]string) (*client.ForwardRequestResponse, int32, error) {
+	resp, err := m.providerClient.ForwardRequest(ctx, providerID, model, requestBody, headers)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -341,18 +347,18 @@ func (m *ProxyMiddleware) writeFallbackError(c *gin.Context, code, message strin
 }
 
 // writeNonStreamingResponse writes the response and records usage
-func (m *ProxyMiddleware) writeNonStreamingResponse(c *gin.Context, providerID string, resp *client.ForwardRequestResponse, requestBody []byte) {
+func (m *ProxyMiddleware) writeNonStreamingResponse(c *gin.Context, providerID string, resp *client.ForwardRequestResponse) {
 	c.Header("Content-Type", "application/json")
 	c.Header("X-Prompt-Tokens", fmt.Sprintf("%d", resp.TokenCounts.PromptTokens))
 	c.Header("X-Completion-Tokens", fmt.Sprintf("%d", resp.TokenCounts.CompletionTokens))
 	c.Header("X-Total-Tokens", fmt.Sprintf("%d", resp.TokenCounts.TotalTokens))
 	c.Data(http.StatusOK, "application/json", resp.ResponseBody)
 
-	req, err := parseChatCompletionRequest(requestBody)
-	model := "unknown"
-	if err == nil && req.Model != "" {
-		model = req.Model
+	model := resp.Model
+	if model == "" {
+		model = "unknown"
 	}
+
 	go m.recordUsage(c.Request.Context(), providerID, model, resp.TokenCounts.PromptTokens, resp.TokenCounts.CompletionTokens)
 }
 

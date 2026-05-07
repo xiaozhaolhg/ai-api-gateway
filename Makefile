@@ -80,8 +80,8 @@ build-ui:
 
 embed-ui:
 	@echo "Embedding UI into gateway-service..."
-	rm -rf gateway-service/static/*
-	cp -r $(ADMIN_UI)/dist/* gateway-service/static/
+	rm -rf gateway-service/cmd/server/static/*
+	cp -r $(ADMIN_UI)/dist/* gateway-service/cmd/server/static/
 
 build-gateway:
 	@echo "Building gateway-service..."

@@ -26,7 +26,8 @@ const (
 type ForwardRequestRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	RequestBody   []byte                 `protobuf:"bytes,2,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"` // JSON-encoded request
+	Model         string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
+	RequestBody   []byte                 `protobuf:"bytes,2,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"`
 	Headers       map[string]string      `protobuf:"bytes,3,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -69,6 +70,13 @@ func (x *ForwardRequestRequest) GetProviderId() string {
 	return ""
 }
 
+func (x *ForwardRequestRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
 func (x *ForwardRequestRequest) GetRequestBody() []byte {
 	if x != nil {
 		return x.RequestBody
@@ -85,9 +93,10 @@ func (x *ForwardRequestRequest) GetHeaders() map[string]string {
 
 type ForwardRequestResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ResponseBody  []byte                 `protobuf:"bytes,1,opt,name=response_body,json=responseBody,proto3" json:"response_body,omitempty"` // JSON-encoded response
+	ResponseBody  []byte                 `protobuf:"bytes,1,opt,name=response_body,json=responseBody,proto3" json:"response_body,omitempty"`
 	TokenCounts   *v1.TokenCounts        `protobuf:"bytes,2,opt,name=token_counts,json=tokenCounts,proto3" json:"token_counts,omitempty"`
 	StatusCode    int32                  `protobuf:"varint,3,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	Model         string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -143,9 +152,17 @@ func (x *ForwardRequestResponse) GetStatusCode() int32 {
 	return 0
 }
 
+func (x *ForwardRequestResponse) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
 type StreamRequestRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Model         string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
 	RequestBody   []byte                 `protobuf:"bytes,2,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"`
 	Headers       map[string]string      `protobuf:"bytes,3,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
@@ -189,6 +206,13 @@ func (x *StreamRequestRequest) GetProviderId() string {
 	return ""
 }
 
+func (x *StreamRequestRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
 func (x *StreamRequestRequest) GetRequestBody() []byte {
 	if x != nil {
 		return x.RequestBody
@@ -205,9 +229,10 @@ func (x *StreamRequestRequest) GetHeaders() map[string]string {
 
 type ProviderChunk struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	ChunkData         []byte                 `protobuf:"bytes,1,opt,name=chunk_data,json=chunkData,proto3" json:"chunk_data,omitempty"` // SSE chunk
+	ChunkData         []byte                 `protobuf:"bytes,1,opt,name=chunk_data,json=chunkData,proto3" json:"chunk_data,omitempty"`
 	AccumulatedTokens *v1.TokenCounts        `protobuf:"bytes,2,opt,name=accumulated_tokens,json=accumulatedTokens,proto3" json:"accumulated_tokens,omitempty"`
 	Done              bool                   `protobuf:"varint,3,opt,name=done,proto3" json:"done,omitempty"`
+	Model             string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -261,6 +286,13 @@ func (x *ProviderChunk) GetDone() bool {
 		return x.Done
 	}
 	return false
+}
+
+func (x *ProviderChunk) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
 }
 
 // Provider
@@ -1069,33 +1101,37 @@ var File_provider_v1_provider_proto protoreflect.FileDescriptor
 
 const file_provider_v1_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x1aprovider/v1/provider.proto\x12\vprovider.v1\x1a\x16common/v1/common.proto\"\xe2\x01\n" +
+	"\x1aprovider/v1/provider.proto\x12\vprovider.v1\x1a\x16common/v1/common.proto\"\xf8\x01\n" +
 	"\x15ForwardRequestRequest\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
-	"providerId\x12!\n" +
+	"providerId\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\x12!\n" +
 	"\frequest_body\x18\x02 \x01(\fR\vrequestBody\x12I\n" +
 	"\aheaders\x18\x03 \x03(\v2/.provider.v1.ForwardRequestRequest.HeadersEntryR\aheaders\x1a:\n" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x99\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaf\x01\n" +
 	"\x16ForwardRequestResponse\x12#\n" +
 	"\rresponse_body\x18\x01 \x01(\fR\fresponseBody\x129\n" +
 	"\ftoken_counts\x18\x02 \x01(\v2\x16.common.v1.TokenCountsR\vtokenCounts\x12\x1f\n" +
 	"\vstatus_code\x18\x03 \x01(\x05R\n" +
-	"statusCode\"\xe0\x01\n" +
+	"statusCode\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\"\xf6\x01\n" +
 	"\x14StreamRequestRequest\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
-	"providerId\x12!\n" +
+	"providerId\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\x12!\n" +
 	"\frequest_body\x18\x02 \x01(\fR\vrequestBody\x12H\n" +
 	"\aheaders\x18\x03 \x03(\v2..provider.v1.StreamRequestRequest.HeadersEntryR\aheaders\x1a:\n" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x89\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9f\x01\n" +
 	"\rProviderChunk\x12\x1d\n" +
 	"\n" +
 	"chunk_data\x18\x01 \x01(\fR\tchunkData\x12E\n" +
 	"\x12accumulated_tokens\x18\x02 \x01(\v2\x16.common.v1.TokenCountsR\x11accumulatedTokens\x12\x12\n" +
-	"\x04done\x18\x03 \x01(\bR\x04done\"\xed\x01\n" +
+	"\x04done\x18\x03 \x01(\bR\x04done\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\"\xed\x01\n" +
 	"\bProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
