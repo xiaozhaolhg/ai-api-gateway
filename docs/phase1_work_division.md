@@ -113,7 +113,7 @@
 - [ ] Provider management page: list, add, edit, remove providers
 - [ ] Provider form: name, type selector, API credentials, model list
 - [ ] User management page: list, create, disable users
-- [ ] API key management: issue new key, display once, revoke key
+- [x] API key management: issue new key, display once, revoke key (completed: api-key-single-display)
 - [ ] Integration with real Admin API (Developer B's endpoints)
 
 ### Week 3 — Dashboard & Usage Pages
