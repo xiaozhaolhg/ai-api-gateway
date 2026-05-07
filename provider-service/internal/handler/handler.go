@@ -171,6 +171,7 @@ func (h *Handler) ForwardRequest(ctx context.Context, req *providerv1.ForwardReq
 			CompletionTokens: completionTokens,
 		},
 		StatusCode: statusCode,
+		Model:       req.Model,
 	}, nil
 }
 
@@ -184,7 +185,7 @@ func (h *Handler) StreamRequest(req *providerv1.StreamRequestRequest, stream pro
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(&providerv1.ProviderChunk{ChunkData: chunk}); err != nil {
+			if err := stream.Send(&providerv1.ProviderChunk{ChunkData: chunk, Model: req.Model}); err != nil {
 				return status.Errorf(codes.Internal, "failed to send chunk: %v", err)
 			}
 		case err := <-errChan:

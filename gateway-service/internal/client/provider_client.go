@@ -74,7 +74,7 @@ func (c *ProviderClient) Close() error {
 }
 
 // ForwardRequest forwards a non-streaming request to the provider service.
-func (c *ProviderClient) ForwardRequest(ctx context.Context, providerID string, requestBody []byte, headers map[string]string) (*ForwardRequestResponse, error) {
+func (c *ProviderClient) ForwardRequest(ctx context.Context, providerID string, model string, requestBody []byte, headers map[string]string) (*ForwardRequestResponse, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -82,6 +82,7 @@ func (c *ProviderClient) ForwardRequest(ctx context.Context, providerID string, 
 
 	req := &providerv1.ForwardRequestRequest{
 		ProviderId:  providerID,
+		Model:       model,
 		RequestBody: requestBody,
 		Headers:     headers,
 	}
@@ -99,11 +100,12 @@ func (c *ProviderClient) ForwardRequest(ctx context.Context, providerID string, 
 			TotalTokens:      resp.TokenCounts.PromptTokens + resp.TokenCounts.CompletionTokens,
 		},
 		StatusCode: resp.StatusCode,
+		Model:      resp.Model,
 	}, nil
 }
 
 // StreamRequest forwards a streaming request to the provider service.
-func (c *ProviderClient) StreamRequest(ctx context.Context, providerID string, requestBody []byte, headers map[string]string) (grpc.ServerStreamingClient[providerv1.ProviderChunk], error) {
+func (c *ProviderClient) StreamRequest(ctx context.Context, providerID string, model string, requestBody []byte, headers map[string]string) (grpc.ServerStreamingClient[providerv1.ProviderChunk], error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -111,6 +113,7 @@ func (c *ProviderClient) StreamRequest(ctx context.Context, providerID string, r
 
 	req := &providerv1.StreamRequestRequest{
 		ProviderId:  providerID,
+		Model:       model,
 		RequestBody: requestBody,
 		Headers:     headers,
 	}
@@ -135,6 +138,7 @@ type ForwardRequestResponse struct {
 	ResponseBody []byte      `json:"response_body"`
 	TokenCounts  TokenCounts `json:"token_counts"`
 	StatusCode   int32       `json:"status_code"`
+	Model        string      `json:"model"`
 }
 
 // Provider represents a provider configuration.
