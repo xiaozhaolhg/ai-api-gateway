@@ -6,24 +6,15 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      auth-service:
-        condition: service_healthy
-      router-service:
-        condition: service_healthy
-      provider-service:
-        condition: service_healthy
+      - auth-service
+      - router-service
+      - provider-service
     networks:
       - ai-gateway
     environment:
       - AUTH_SERVICE_ADDRESS=auth-service:50051
       - ROUTER_SERVICE_ADDRESS=router-service:50052
       - PROVIDER_SERVICE_ADDRESS=provider-service:50053
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   auth-service:
     build:
@@ -35,12 +26,6 @@ services:
       - auth-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   router-service:
     build:
@@ -51,8 +36,7 @@ services:
     volumes:
       - router-service-data:/data
     depends_on:
-      redis:
-        condition: service_started
+      - redis
     networks:
       - ai-gateway
     environment:
@@ -60,12 +44,6 @@ services:
       - REDIS_PASSWORD=
       - REDIS_DB=0
       - REDIS_TTL_SECONDS=300
-    healthcheck:
-      test: ["CMD", "grpc_health_probe", "-addr=localhost:50052"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   provider-service:
     build:
@@ -76,21 +54,13 @@ services:
     volumes:
       - provider-service-data:/data
     depends_on:
-      billing-service:
-        condition: service_healthy
-      monitor-service:
-        condition: service_healthy
+      - billing-service
+      - monitor-service
     networks:
       - ai-gateway
     environment:
       - BILLING_SERVICE_ADDRESS=billing-service:50054
       - MONITOR_SERVICE_ADDRESS=monitor-service:50055
-    healthcheck:
-      test: ["CMD", "grpc_health_probe", "-addr=localhost:50053"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   billing-service:
     build:
@@ -102,12 +72,6 @@ services:
       - billing-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc_health_probe", "-addr=localhost:50054"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   monitor-service:
     build:
@@ -119,12 +83,6 @@ services:
       - monitor-service-data:/data
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "grpc_health_probe", "-addr=localhost:50055"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   admin-ui:
     build:
@@ -133,16 +91,9 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      gateway-service:
-        condition: service_healthy
+      - gateway-service
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   redis:
     image: redis:7-alpine
@@ -150,25 +101,20 @@ services:
       - "6379:6379"
     networks:
       - ai-gateway
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    networks:
-      - ai-gateway
-    volumes:
-      - ollama-data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # ollama:  # Commented out - Docker Hub pull issue in China
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   networks:
+  #     - ai-gateway
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
 networks:
   ai-gateway:
