@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Group } from '../api/client';
 import { GroupMembersTab } from '../components/GroupMembersTab';
-import { GroupPermissionsTab } from '../components/GroupPermissionsTab';
+import { GroupTierTab } from '../components/GroupTierTab';
 
 export const Groups: React.FC = () => {
   const { t } = useTranslation(['groups', 'common']);
@@ -17,6 +17,11 @@ export const Groups: React.FC = () => {
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ['groups'],
     queryFn: () => apiClient.getGroups(),
+  });
+
+  const { data: tiers = [] } = useQuery({
+    queryKey: ['tiers'],
+    queryFn: () => apiClient.getTiers(),
   });
 
   const [searchText, setSearchText] = useState('');
@@ -97,8 +102,8 @@ export const Groups: React.FC = () => {
     const payload = {
       name: values.name,
       description: values.description,
-      model_patterns: values.model_patterns || [],
       parent_group_id: values.parent_group_id || undefined,
+      tier_id: values.tier_id || undefined,
     };
     if (editingGroup) {
       updateMutation.mutate({ id: editingGroup.id, data: payload });
@@ -124,9 +129,9 @@ export const Groups: React.FC = () => {
             children: <GroupMembersTab groupId={record.id} />,
           },
           {
-            key: 'permissions',
-            label: 'Permissions',
-            children: <GroupPermissionsTab groupId={record.id} />,
+            key: 'tier',
+            label: 'Tier',
+            children: <GroupTierTab groupId={record.id} currentTierId={record.tier_id} />,
           },
         ]}
       />
@@ -236,17 +241,6 @@ export const Groups: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            label="Model Patterns"
-            name="model_patterns"
-          >
-            <Select
-              mode="tags"
-              placeholder="e.g., gpt-*, ollama:*"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-
-          <Form.Item
             label="Parent Group"
             name="parent_group_id"
           >
@@ -261,6 +255,22 @@ export const Groups: React.FC = () => {
                     {group.name}
                   </Select.Option>
                 ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Tier"
+            name="tier_id"
+          >
+            <Select
+              placeholder="Select tier (optional)"
+              allowClear
+            >
+              {tiers.map((tier) => (
+                <Select.Option key={tier.id} value={tier.id}>
+                  {tier.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
         </Form>

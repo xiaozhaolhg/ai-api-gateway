@@ -255,14 +255,114 @@ func (m *mockUserGroupRepositoryForHandler) Exists(userID, groupID string) (bool
 	return false, nil
 }
 
+// MockTierRepository for testing
+type mockTierRepository struct {
+	tiers map[string]*entity.Tier
+}
+
+func newMockTierRepository() *mockTierRepository {
+	return &mockTierRepository{tiers: make(map[string]*entity.Tier)}
+}
+
+func (m *mockTierRepository) Create(tier *entity.Tier) error {
+	m.tiers[tier.ID] = tier
+	return nil
+}
+
+func (m *mockTierRepository) GetByID(id string) (*entity.Tier, error) {
+	if tier, ok := m.tiers[id]; ok {
+		return tier, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *mockTierRepository) Update(tier *entity.Tier) error {
+	m.tiers[tier.ID] = tier
+	return nil
+}
+
+func (m *mockTierRepository) Delete(id string) error {
+	delete(m.tiers, id)
+	return nil
+}
+
+func (m *mockTierRepository) List(page, pageSize int) ([]*entity.Tier, int, error) {
+	tiers := make([]*entity.Tier, 0, len(m.tiers))
+	for _, tier := range m.tiers {
+		tiers = append(tiers, tier)
+	}
+	return tiers, len(tiers), nil
+}
+
+func (m *mockTierRepository) GetByName(name string) (*entity.Tier, error) {
+	for _, tier := range m.tiers {
+		if tier.Name == name {
+			return tier, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *mockTierRepository) GetDefaultTiers() ([]*entity.Tier, error) {
+	var tiers []*entity.Tier
+	for _, tier := range m.tiers {
+		if tier.IsDefault {
+			tiers = append(tiers, tier)
+		}
+	}
+	return tiers, nil
+}
+
+// MockGroupRepository for testing
+type mockGroupRepository struct {
+	groups map[string]*entity.Group
+}
+
+func newMockGroupRepository() *mockGroupRepository {
+	return &mockGroupRepository{groups: make(map[string]*entity.Group)}
+}
+
+func (m *mockGroupRepository) Create(group *entity.Group) error {
+	m.groups[group.ID] = group
+	return nil
+}
+
+func (m *mockGroupRepository) GetByID(id string) (*entity.Group, error) {
+	if group, ok := m.groups[id]; ok {
+		return group, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *mockGroupRepository) Update(group *entity.Group) error {
+	m.groups[group.ID] = group
+	return nil
+}
+
+func (m *mockGroupRepository) Delete(id string) error {
+	delete(m.groups, id)
+	return nil
+}
+
+func (m *mockGroupRepository) List(page, pageSize int) ([]*entity.Group, int, error) {
+	groups := make([]*entity.Group, 0, len(m.groups))
+	for _, group := range m.groups {
+		groups = append(groups, group)
+	}
+	return groups, len(groups), nil
+}
+
 func setupTestHandler(t *testing.T) *Handler {
 	userRepo := newMockUserRepository()
 	apiKeyRepo := newMockAPIKeyRepository()
 	userGroupRepo := newMockUserGroupRepositoryForHandler()
-	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo)
-	groupService := application.NewGroupService(newMockGroupRepositoryForHandler())
+	tierRepo := newMockTierRepository()
+	groupRepo := newMockGroupRepository()
+	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo, tierRepo, groupRepo)
+	groupService := application.NewGroupService(groupRepo)
 	permissionService := application.NewPermissionService(newMockPermissionRepositoryForHandler(), userGroupRepo)
 	userGroupService := application.NewUserGroupService(userGroupRepo)
+	tierService := application.NewTierService(tierRepo, groupRepo)
 
 	// Create a test user
 	user := &entity.User{
@@ -287,7 +387,7 @@ func setupTestHandler(t *testing.T) *Handler {
 	}
 	apiKeyRepo.Create(apiKeyRecord)
 
-	return NewHandler(authService, groupService, permissionService, userGroupService, userRepo, apiKeyRepo)
+	return NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
 }
 
 func TestHandler_ValidateAPIKey(t *testing.T) {
@@ -331,11 +431,44 @@ func TestHandler_ValidateAPIKey(t *testing.T) {
 }
 
 func TestHandler_CheckModelAuthorization(t *testing.T) {
-	handler := setupTestHandler(t)
+	userRepo := newMockUserRepository()
+	apiKeyRepo := newMockAPIKeyRepository()
+	userGroupRepo := newMockUserGroupRepositoryForHandler()
+	tierRepo := newMockTierRepository()
+	groupRepo := newMockGroupRepository()
+	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo, tierRepo, groupRepo)
+	groupService := application.NewGroupService(groupRepo)
+	permissionService := application.NewPermissionService(newMockPermissionRepositoryForHandler(), userGroupRepo)
+	userGroupService := application.NewUserGroupService(userGroupRepo)
+	tierService := application.NewTierService(tierRepo, groupRepo)
+	handler := NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
+
+	user := &entity.User{
+		ID:     "auth-user-1",
+		Name:   "Auth User",
+		Email:  "auth@example.com",
+		Role:   "user",
+		Status: "active",
+	}
+	userRepo.Create(user)
+
+	basicTier, _ := tierService.CreateTier("Basic", "Basic tier", true, []string{"ollama:*"}, []string{"ollama"})
+
+	group := &entity.Group{
+		ID:     "test-group-1",
+		Name:   "Test Group",
+		TierID: basicTier.ID,
+	}
+	groupRepo.Create(group)
+
+	userGroupRepo.Create(&entity.UserGroupMembership{
+		UserID:  "auth-user-1",
+		GroupID: "test-group-1",
+	})
 
 	req := &authv1.CheckModelAuthorizationRequest{
-		UserId:    "test-user-1",
-		GroupIds:  []string{},
+		UserId:    "auth-user-1",
+		GroupIds:  []string{"test-group-1"},
 		Model:     "ollama:llama2",
 	}
 
@@ -344,10 +477,58 @@ func TestHandler_CheckModelAuthorization(t *testing.T) {
 		t.Errorf("CheckModelAuthorization() error = %v", err)
 	}
 	if !resp.Allowed {
-		t.Error("Expected authorization to be allowed for MVP")
+		t.Error("Expected authorization to be allowed for model in tier")
 	}
 	if len(resp.AuthorizedModels) == 0 {
 		t.Error("Expected authorized models to be non-empty")
+	}
+}
+
+func TestHandler_CheckModelAuthorization_NoTier(t *testing.T) {
+	userRepo := newMockUserRepository()
+	apiKeyRepo := newMockAPIKeyRepository()
+	userGroupRepo := newMockUserGroupRepositoryForHandler()
+	tierRepo := newMockTierRepository()
+	groupRepo := newMockGroupRepository()
+	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo, tierRepo, groupRepo)
+	groupService := application.NewGroupService(groupRepo)
+	permissionService := application.NewPermissionService(newMockPermissionRepositoryForHandler(), userGroupRepo)
+	userGroupService := application.NewUserGroupService(userGroupRepo)
+	tierService := application.NewTierService(tierRepo, groupRepo)
+	handler := NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
+
+	user := &entity.User{
+		ID:     "auth-user-2",
+		Name:   "Auth User 2",
+		Email:  "auth2@example.com",
+		Role:   "user",
+		Status: "active",
+	}
+	userRepo.Create(user)
+
+	group := &entity.Group{
+		ID:   "test-group-no-tier",
+		Name: "No Tier Group",
+	}
+	groupRepo.Create(group)
+
+	userGroupRepo.Create(&entity.UserGroupMembership{
+		UserID:  "auth-user-2",
+		GroupID: "test-group-no-tier",
+	})
+
+	req := &authv1.CheckModelAuthorizationRequest{
+		UserId:    "auth-user-2",
+		GroupIds:  []string{"test-group-no-tier"},
+		Model:     "ollama:llama2",
+	}
+
+	resp, err := handler.CheckModelAuthorization(context.Background(), req)
+	if err != nil {
+		t.Errorf("CheckModelAuthorization() error = %v", err)
+	}
+	if resp.Allowed {
+		t.Error("Expected authorization to be denied when group has no tier")
 	}
 }
 

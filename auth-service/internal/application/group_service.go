@@ -77,3 +77,11 @@ func (s *GroupService) ListGroups(page, pageSize int) ([]*entity.Group, int, err
 	}
 	return groups, total, nil
 }
+
+func (s *GroupService) GetGroupByID(id string) (*entity.Group, error) {
+	group, err := s.groupRepo.GetByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("group not found: %w", err)
+	}
+	return group, nil
+}

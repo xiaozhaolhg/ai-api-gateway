@@ -14,6 +14,8 @@ import enUsers from './locales/en/users.json';
 import zhUsers from './locales/zh/users.json';
 import enGroups from './locales/en/groups.json';
 import zhGroups from './locales/zh/groups.json';
+import enTiers from './locales/en/tiers.json';
+import zhTiers from './locales/zh/tiers.json';
 import enApiKeys from './locales/en/apiKeys.json';
 import zhApiKeys from './locales/zh/apiKeys.json';
 import enPermissions from './locales/en/permissions.json';
@@ -37,6 +39,7 @@ const resources = {
     routing: enRouting,
     users: enUsers,
     groups: enGroups,
+    tiers: enTiers,
     apiKeys: enApiKeys,
     permissions: enPermissions,
     usage: enUsage,
@@ -52,6 +55,7 @@ const resources = {
     routing: zhRouting,
     users: zhUsers,
     groups: zhGroups,
+    tiers: zhTiers,
     apiKeys: zhApiKeys,
     permissions: zhPermissions,
     usage: zhUsage,
@@ -76,7 +80,7 @@ i18n
     interpolation: {
       escapeValue: false,
     },
-    ns: ['common', 'dashboard', 'providers', 'routing', 'users', 'groups', 'apiKeys', 'permissions', 'usage', 'budgets', 'pricing', 'health', 'alerts'],
+    ns: ['common', 'dashboard', 'providers', 'routing', 'users', 'groups', 'tiers', 'apiKeys', 'permissions', 'usage', 'budgets', 'pricing', 'health', 'alerts'],
     defaultNS: 'common',
   });
 

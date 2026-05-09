@@ -1,0 +1,22 @@
+{
+  "title": "Tiers",
+  "createTier": "Create Tier",
+  "editTier": "Edit Tier",
+  "deleteTier": "Delete Tier",
+  "name": "Name",
+  "description": "Description",
+  "isDefault": "Default",
+  "models": "Models",
+  "providers": "Providers",
+  "allowedModels": "Allowed Models",
+  "allowedProviders": "Allowed Providers",
+  "selectModels": "Select models",
+  "selectProviders": "Select providers",
+  "view": "View",
+  "actions": "Actions",
+  "confirmDelete": "Are you sure you want to delete this tier?",
+  "nameRequired": "Please enter tier name",
+  "close": "Close",
+  "yes": "Yes",
+  "no": "No"
+}

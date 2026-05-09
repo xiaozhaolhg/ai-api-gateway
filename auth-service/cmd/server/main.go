@@ -46,11 +46,16 @@ func main() {
 	groupRepo := repository.NewGroupRepository(db)
 	permissionRepo := repository.NewPermissionRepository(db)
 	userGroupRepo := repository.NewUserGroupRepository(db)
-	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo)
+	tierRepo := repository.NewTierRepository(db)
+	tierService := application.NewTierService(tierRepo, groupRepo)
+	if err := tierService.SeedDefaultTiers(); err != nil {
+		log.Printf("Warning: failed to seed default tiers: %v", err)
+	}
+	authService := application.NewAuthService(userRepo, apiKeyRepo, userGroupRepo, tierRepo, groupRepo)
 	groupService := application.NewGroupService(groupRepo)
 	permissionService := application.NewPermissionService(permissionRepo, userGroupRepo)
 	userGroupService := application.NewUserGroupService(userGroupRepo)
-	h := handler.NewHandler(authService, groupService, permissionService, userGroupService, userRepo, apiKeyRepo)
+	h := handler.NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
 
 	s := grpc.NewServer()
 	authv1.RegisterAuthServiceServer(s, h)

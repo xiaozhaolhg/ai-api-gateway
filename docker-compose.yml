@@ -29,6 +29,8 @@ services:
       PORT: "50051"
       HOST: "0.0.0.0"
       REDIS_ADDR: "redis:6379"
+    volumes:
+      - auth_data:/data
 
   provider-service:
     build:
@@ -84,10 +86,14 @@ services:
       context: .
       dockerfile: admin-ui/Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:80"
+    depends_on:
+      gateway-service:
+        condition: service_started
     environment:
       VITE_API_URL: "http://localhost:8080"
 
 volumes:
   ollama_data:
   provider_data:
+  auth_data:

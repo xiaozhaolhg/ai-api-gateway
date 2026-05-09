@@ -28,7 +28,7 @@ func hashAPIKey(apiKey string) string {
 
 func main() {
 	dbPath := "/data/auth.db"
-	
+
 	// Run migrations
 	log.Println("Running database migrations...")
 	if err := migration.Migrate(dbPath); err != nil {
@@ -66,6 +66,7 @@ func main() {
 	}
 	adminUser := &entity.User{
 		ID:           generateID(),
+		Username:     "admin",
 		Name:         "Admin",
 		Email:        "admin@example.com",
 		Role:         "admin",

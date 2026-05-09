@@ -14,7 +14,7 @@ func Migrate(dbPath string) error {
 	}
 
 	// Auto-migrate the schema
-	err = db.AutoMigrate(&entity.User{}, &entity.APIKey{}, &entity.Group{}, &entity.Permission{}, &entity.UserGroupMembership{})
+	err = db.AutoMigrate(&entity.User{}, &entity.APIKey{}, &entity.Group{}, &entity.Permission{}, &entity.UserGroupMembership{}, &entity.Tier{})
 	if err != nil {
 		return err
 	}

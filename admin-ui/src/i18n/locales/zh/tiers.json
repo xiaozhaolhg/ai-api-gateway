@@ -1,0 +1,22 @@
+{
+  "title": "层级",
+  "createTier": "创建层级",
+  "editTier": "编辑层级",
+  "deleteTier": "删除层级",
+  "name": "名称",
+  "description": "描述",
+  "isDefault": "默认",
+  "models": "模型",
+  "providers": "供应商",
+  "allowedModels": "允许的模型",
+  "allowedProviders": "允许的供应商",
+  "selectModels": "选择模型",
+  "selectProviders": "选择供应商",
+  "view": "查看",
+  "actions": "操作",
+  "confirmDelete": "确定要删除此层级吗？",
+  "nameRequired": "请输入层级名称",
+  "close": "关闭",
+  "yes": "是",
+  "no": "否"
+}

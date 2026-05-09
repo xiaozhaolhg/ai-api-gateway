@@ -58,3 +58,5 @@ Consumers → gateway-service → auth-service → router-service → provider-s
 - Model naming: `{provider}:{model}` (e.g., `ollama:llama2`)
 - Each service owns its database exclusively
 - Cross-service data flows through gRPC APIs
+- **Unit Test Completion**: Mark unit test tasks as complete only after running tests and confirming they pass. Do not mark tests as complete before implementation or execution.
+- **Integration Test Acceptance**: Integration test acceptance criteria must include running `make down && make clean-images && make up` and verifying all services run as expected before marking tests as complete.

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/ai-api-gateway/auth-service/internal/domain/entity"
@@ -13,16 +14,39 @@ import (
 	"github.com/ai-api-gateway/pkg/cache"
 )
 
+func matchGlob(pattern, text string) bool {
+	if pattern == "*" {
+		return true
+	}
+	patternParts := strings.Split(pattern, ":")
+	textParts := strings.Split(text, ":")
+	if len(patternParts) != 2 || len(textParts) != 2 {
+		return pattern == text
+	}
+	if patternParts[0] != "*" && patternParts[0] != textParts[0] {
+		return false
+	}
+	modelPattern := patternParts[1]
+	modelText := textParts[1]
+	if strings.HasSuffix(modelPattern, "*") {
+		prefix := strings.TrimSuffix(modelPattern, "*")
+		return strings.HasPrefix(modelText, prefix)
+	}
+	return modelPattern == modelText
+}
+
 // AuthService provides authentication and authorization logic
 type AuthService struct {
 	userRepo      port.UserRepository
 	apiKeyRepo    port.APIKeyRepository
 	userGroupRepo port.UserGroupRepository
+	tierRepo      port.TierRepository
+	groupRepo     port.GroupRepository
 	apiKeyCache   *cache.Cache[string, *entity.APIKey]
 }
 
 // NewAuthService creates a new AuthService
-func NewAuthService(userRepo port.UserRepository, apiKeyRepo port.APIKeyRepository, userGroupRepo port.UserGroupRepository) *AuthService {
+func NewAuthService(userRepo port.UserRepository, apiKeyRepo port.APIKeyRepository, userGroupRepo port.UserGroupRepository, tierRepo port.TierRepository, groupRepo port.GroupRepository) *AuthService {
 	// Cache API keys for 5 minutes
 	apiKeyCache := cache.New[string, *entity.APIKey](5 * time.Minute)
 	apiKeyCache.StartCleanup(1 * time.Minute)
@@ -31,6 +55,8 @@ func NewAuthService(userRepo port.UserRepository, apiKeyRepo port.APIKeyReposito
 		userRepo:      userRepo,
 		apiKeyRepo:    apiKeyRepo,
 		userGroupRepo: userGroupRepo,
+		tierRepo:      tierRepo,
+		groupRepo:     groupRepo,
 		apiKeyCache:   apiKeyCache,
 	}
 }
@@ -104,7 +130,6 @@ func (s *AuthService) ValidateAPIKey(apiKey string) (*entity.User, []string, []s
 
 // CheckModelAuthorization checks if a user is authorized to access a model
 func (s *AuthService) CheckModelAuthorization(userID string, groupIDs []string, model string) (bool, []string, string) {
-	// MVP: All active users are authorized to access all models
 	user, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return false, nil, "user not found"
@@ -114,9 +139,37 @@ func (s *AuthService) CheckModelAuthorization(userID string, groupIDs []string, 
 		return false, nil, "user disabled"
 	}
 
-	// MVP: Return all models as authorized
-	// In Phase 2+, this would check permissions and group memberships
-	return true, []string{"*"}, ""
+	if len(groupIDs) == 0 {
+		return false, nil, "user has no group memberships"
+	}
+
+	var allowedModels []string
+	for _, groupID := range groupIDs {
+		group, err := s.groupRepo.GetByID(groupID)
+		if err != nil {
+			continue
+		}
+		if group.TierID == "" {
+			continue
+		}
+		tier, err := s.tierRepo.GetByID(group.TierID)
+		if err != nil {
+			continue
+		}
+		allowedModels = append(allowedModels, tier.AllowedModels...)
+	}
+
+	if len(allowedModels) == 0 {
+		return false, nil, "no tier permissions found"
+	}
+
+	for _, pattern := range allowedModels {
+		if matchGlob(pattern, model) {
+			return true, allowedModels, ""
+		}
+	}
+
+	return false, allowedModels, "model not in allowed patterns"
 }
 
 // Login performs email/password authentication
