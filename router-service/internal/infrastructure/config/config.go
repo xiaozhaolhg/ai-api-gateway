@@ -9,9 +9,10 @@ import (
 
 // Config holds the service configuration
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Cache    CacheConfig    `yaml:"cache"`
+	Server        ServerConfig   `yaml:"server"`
+	Database      DatabaseConfig `yaml:"database"`
+	Cache         CacheConfig    `yaml:"cache"`
+	ProviderService ServerConfig   `yaml:"provider_service"`
 }
 
 // ServerConfig holds server configuration

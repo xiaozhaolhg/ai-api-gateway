@@ -25,6 +25,7 @@ Provider domain — provider CRUD, adapters, response callback dispatch.
 | gateway-service | `ForwardRequest`, `StreamRequest` | Forward consumer requests |
 | gateway-service | `CreateProvider`, `UpdateProvider`, `DeleteProvider` | Provider CRUD |
 | router-service | `GetProviderByType` | Verify provider exists |
+| router-service | `FindProvidersByModel` | Find providers supporting bare model names |
 
 ### Data Dependencies
 
@@ -53,6 +54,7 @@ After each provider response:
 - **StreamRequest**: Streaming request (SSE proxy)
 - **CreateProvider/UpdateProvider/DeleteProvider**: Provider lifecycle
 - **RegisterSubscriber/UnregisterSubscriber**: Callback registration
+- **FindProvidersByModel**: Find all providers supporting a specific model name
 
 ### Data Encryption
 
@@ -89,3 +91,20 @@ The provider-service SHALL provide complete provider lifecycle management includ
 - **WHEN** an integration test is run
 - **THEN** it SHALL use a mock HTTP server to simulate an external provider
 - **AND** verify the full flow: add provider via Admin API → route request through it
+
+### Requirement: FindProvidersByModel RPC
+
+The provider-service SHALL expose a `FindProvidersByModel` RPC that returns all providers supporting a given bare model name.
+
+#### Scenario: Model supported by multiple providers
+- **WHEN** `FindProvidersByModel` is called with model="llama2"
+- **THEN** return all providers where `Models` field contains "llama2"
+- **AND** return providers sorted by ID (deterministic order)
+
+#### Scenario: Model not supported by any provider
+- **WHEN** `FindProvidersByModel` is called with model="nonexistent-model"
+- **THEN** return an empty providers list (not an error)
+
+#### Scenario: Provider with empty Models field
+- **WHEN** a provider has empty `Models` field
+- **THEN** that provider SHALL NOT be included in results (even if name matches)

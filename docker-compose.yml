@@ -1,0 +1,93 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "50051:50051"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: "50051"
+      HOST: "0.0.0.0"
+      REDIS_ADDR: "redis:6379"
+
+  provider-service:
+    build:
+      context: .
+      dockerfile: provider-service/Dockerfile
+    ports:
+      - "50053:50053"
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      PORT: "50053"
+      HOST: "0.0.0.0"
+      OLLAMA_BASE_URL: "http://ollama:11434"
+    volumes:
+      - provider_data:/data
+
+  router-service:
+    build:
+      context: .
+      dockerfile: router-service/Dockerfile
+    ports:
+      - "50052:50052"
+    depends_on:
+      auth-service:
+        condition: service_started
+      provider-service:
+        condition: service_started
+    environment:
+      PORT: "50052"
+      HOST: "0.0.0.0"
+      PROVIDER_ADDR: "172.20.0.2:50053"
+      REDIS_ADDR: "redis:6379"
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-service:
+        condition: service_started
+      router-service:
+        condition: service_started
+    environment:
+      AUTH_SERVICE_ADDRESS: "auth-service:50051"
+      ROUTER_SERVICE_ADDRESS: "router-service:50052"
+      REDIS_ADDR: "redis:6379"
+
+  admin-ui:
+    build:
+      context: .
+      dockerfile: admin-ui/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: "http://localhost:8080"
+
+volumes:
+  ollama_data:
+  provider_data:

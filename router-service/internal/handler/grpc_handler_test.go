@@ -82,6 +82,9 @@ func (m *mockRoutingRuleRepository) List(page, pageSize int) ([]*entity.RoutingR
 
 func (m *mockRoutingRuleRepository) FindByModel(model string, userID *string) (*entity.RoutingRule, error) {
 	matchPattern := func(pattern, modelStr string) bool {
+		if idx := strings.Index(modelStr, ":"); idx >= 0 {
+			modelStr = modelStr[idx+1:]
+		}
 		if pattern == "*" {
 			return true
 		}
@@ -140,12 +143,15 @@ func TestHandlerResolveRoute(t *testing.T) {
 	}
 
 	mockCache := &mockCache{}
-	service := application.NewService(mockRepo, mockCache)
+	service, err := application.NewService(mockRepo, mockCache, "localhost:50053")
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
 	handler := NewHandler(service)
 
 	t.Run("SuccessfulResolution", func(t *testing.T) {
 		req := &routerv1.ResolveRouteRequest{
-			Model:            "gpt-4",
+			Model:            "openai:gpt-4",
 			AuthorizedModels: []string{"gpt-4"},
 		}
 
@@ -185,7 +191,10 @@ func TestHandlerResolveRoute(t *testing.T) {
 func TestHandlerCreateRoutingRule(t *testing.T) {
 	mockRepo := &mockRoutingRuleRepository{rules: []*entity.RoutingRule{}}
 	mockCache := &mockCache{}
-	service := application.NewService(mockRepo, mockCache)
+	service, err := application.NewService(mockRepo, mockCache, "localhost:50053")
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
 	handler := NewHandler(service)
 
 	req := &routerv1.CreateRoutingRuleRequest{
@@ -218,7 +227,10 @@ func TestHandlerGetRoutingRules(t *testing.T) {
 		},
 	}
 	mockCache := &mockCache{}
-	service := application.NewService(mockRepo, mockCache)
+	service, err := application.NewService(mockRepo, mockCache, "localhost:50053")
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
 	handler := NewHandler(service)
 
 	req := &routerv1.GetRoutingRulesRequest{
@@ -248,12 +260,15 @@ func TestHandlerDeleteRoutingRule(t *testing.T) {
 		},
 	}
 	mockCache := &mockCache{}
-	service := application.NewService(mockRepo, mockCache)
+	service, err := application.NewService(mockRepo, mockCache, "localhost:50053")
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
 	handler := NewHandler(service)
 
 	req := &routerv1.DeleteRoutingRuleRequest{Id: "rule1"}
 
-	_, err := handler.DeleteRoutingRule(context.Background(), req)
+	_, err = handler.DeleteRoutingRule(context.Background(), req)
 	if err != nil {
 		t.Fatalf("DeleteRoutingRule failed: %v", err)
 	}
@@ -268,12 +283,15 @@ func TestHandlerDeleteRoutingRule(t *testing.T) {
 func TestHandlerRefreshRoutingTable(t *testing.T) {
 	mockRepo := &mockRoutingRuleRepository{rules: []*entity.RoutingRule{}}
 	mockCache := &mockCache{}
-	service := application.NewService(mockRepo, mockCache)
+	service, err := application.NewService(mockRepo, mockCache, "localhost:50053")
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
 	handler := NewHandler(service)
 
 	req := &v1.Empty{}
 
-	_, err := handler.RefreshRoutingTable(context.Background(), req)
+	_, err = handler.RefreshRoutingTable(context.Background(), req)
 	if err != nil {
 		t.Fatalf("RefreshRoutingTable failed: %v", err)
 	}
@@ -283,7 +301,10 @@ func TestHandlerRefreshRoutingTable(t *testing.T) {
 func TestHandlerResolveFallback(t *testing.T) {
 	mockRepo := &mockRoutingRuleRepository{rules: []*entity.RoutingRule{}}
 	mockCache := &mockCache{}
-	service := application.NewService(mockRepo, mockCache)
+	service, err := application.NewService(mockRepo, mockCache, "localhost:50053")
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
 	handler := NewHandler(service)
 
 	req := &routerv1.ResolveFallbackRequest{
@@ -291,7 +312,7 @@ func TestHandlerResolveFallback(t *testing.T) {
 		FailedProviderId: "openai-provider",
 	}
 
-	_, err := handler.ResolveFallback(context.Background(), req)
+	_, err = handler.ResolveFallback(context.Background(), req)
 	if err == nil {
 		t.Error("Expected Unimplemented error for ResolveFallback")
 	}

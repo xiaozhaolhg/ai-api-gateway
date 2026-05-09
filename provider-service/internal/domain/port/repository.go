@@ -13,4 +13,5 @@ type ProviderRepository interface {
 	Update(provider *entity.Provider) error
 	Delete(id string) error
 	List(page, pageSize int) ([]*entity.Provider, int, error)
+	FindByModel(model string) ([]*entity.Provider, error)
 }

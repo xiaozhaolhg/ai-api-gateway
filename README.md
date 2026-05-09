@@ -178,10 +178,29 @@ Returns JWT cookie (HTTP-only, Secure, /admin path)
 
 ## Model Naming
 
-Provider prefix format: `{provider}:{model}`
+Provider prefix format: `{provider}:{model}` (e.g., `ollama:llama2`)
 
 - Ollama: `ollama:llama2`, `ollama:mistral`
 - OpenCode Zen: `opencode_zen:gpt-4`, `opencode_zen:claude-3`
+
+### Bare Model Names (New)
+
+You can now use bare model names without the provider prefix:
+- `llama2` → automatically resolves to an available provider
+- `gpt-4` → automatically resolves to an available provider
+
+When multiple providers support the same model, the healthiest provider is selected automatically, with the remaining healthy providers used as fallbacks.
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-xxx..." \
+  -d '{
+    "model": "llama2",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
 
 ## Testing
 

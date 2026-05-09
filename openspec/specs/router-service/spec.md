@@ -19,6 +19,8 @@ Routing domain — resolves model name to provider, manages fallback chains.
 | Service | Methods | Purpose |
 |---|---|---|
 | provider-service | `GetProviderByType` | Verify provider exists |
+| provider-service | `FindProvidersByModel` | Find providers supporting bare model names |
+| provider-service | `HealthCheck` | Check provider health status |
 
 ### Called By
 
@@ -37,8 +39,10 @@ Routing domain — resolves model name to provider, manages fallback chains.
 ### Route Resolution
 
 1. Receive model name from gateway-service
-2. Match against RoutingRule patterns (wildcard support)
-3. Return RouteResult with provider_id, adapter_type
+2. Check if model contains ":" separator (provider:model) or is bare model name
+3. If bare model: use FindProvidersByModel + health checks to resolve
+4. If provider:model: match against RoutingRule patterns (wildcard support)
+5. Return RouteResult with provider_id, adapter_type, fallback_provider_ids
 
 ### Key Operations
 
@@ -122,8 +126,53 @@ Router service ResolveRoute SHALL accept an optional `user_id` parameter to supp
 
 #### Scenario: ResolveRoute without user_id
 - **WHEN** `ResolveRoute` is called without `user_id` (or empty string)
-- **THEN** the router-service SHALL only match system-wide rules (user_id IS NULL)
+- **THEN** router-service SHALL only match system-wide rules (user_id IS NULL)
 - **AND** return NOT_FOUND if no system rule matches
+
+### Requirement: Bare Model Name Detection
+
+The router-service `ResolveRoute` SHALL detect bare model names (model strings that do not contain the ":" separator) and delegate to bare model resolution logic.
+
+#### Scenario: Bare model name detection
+- **WHEN** `ResolveRoute` is called with model="llama2" (no ":" separator)
+- **THEN** the router SHALL invoke bare model resolution instead of pattern matching
+
+#### Scenario: Provider-prefixed model name
+- **WHEN** `ResolveRoute` is called with model="ollama:llama2" (contains ":")
+- **THEN** the router SHALL use existing pattern matching logic (no bare model resolution)
+
+### Requirement: Health Check Integration
+
+The router-service SHALL use the provider-service `HealthCheck` RPC to determine provider health status when resolving bare model names.
+
+#### Scenario: Health check via existing RPC
+- **WHEN** resolving a bare model name with multiple supporting providers
+- **THEN** the router SHALL call `HealthCheck` RPC for each provider concurrently
+- **AND** wait for all health check results before selecting primary provider
+
+#### Scenario: HealthCheck RPC failure
+- **WHEN** `HealthCheck` RPC fails for a provider (network error, timeout)
+- **THEN** that provider SHALL be treated as unhealthy
+- **AND** excluded from primary/fallback selection
+
+### Requirement: Health-Priority Selection
+
+The router-service SHALL select the healthiest provider as primary, with remaining healthy providers as fallbacks.
+
+#### Scenario: All providers healthy
+- **WHEN** multiple providers support a model and all are healthy
+- **THEN** select the first provider (by sorted order) as primary
+- **AND** populate `fallback_provider_ids` with remaining providers in order
+
+#### Scenario: Some providers unhealthy
+- **WHEN** some providers are unhealthy
+- **THEN** select the first healthy provider as primary
+- **AND** populate `fallback_provider_ids` only with other healthy providers
+- **AND** exclude unhealthy providers entirely
+
+#### Scenario: No healthy providers
+- **WHEN** no providers are healthy for a model
+- **THEN** return an error: "no healthy provider found for model: <model>"
 
 ## References
 

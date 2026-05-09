@@ -3,7 +3,7 @@ server:
   host: "0.0.0.0"
 
 database:
-  path: "./data/provider.db"
+  path: "/data/provider.db"
 
 crypto:
   encryption_key: "32-byte-encryption-key-change-in-production"

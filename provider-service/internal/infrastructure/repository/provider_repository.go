@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"log"
+
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
 	"github.com/ai-api-gateway/provider-service/internal/domain/port"
 	"gorm.io/gorm"
@@ -81,4 +83,32 @@ func (r *ProviderRepository) List(page, pageSize int) ([]*entity.Provider, int, 
 	}
 
 	return providers, int(total), nil
+}
+
+func (r *ProviderRepository) FindByModel(model string) ([]*entity.Provider, error) {
+	var allProviders []*entity.Provider
+	if err := r.db.Find(&allProviders).Error; err != nil {
+		return nil, err
+	}
+
+	log.Printf("[FindByModel] Searching for model=%s, total providers=%d", model, len(allProviders))
+	for _, p := range allProviders {
+		log.Printf("[FindByModel] Provider ID=%s, Name=%s, Models=%v", p.ID, p.Name, p.Models)
+	}
+
+	var matched []*entity.Provider
+	for _, p := range allProviders {
+		if len(p.Models) == 0 {
+			continue
+		}
+		for _, m := range p.Models {
+			log.Printf("[FindByModel] Comparing model=%s with provider model=%s", model, m)
+			if m == model {
+				log.Printf("[FindByModel] MATCH found: provider ID=%s", p.ID)
+				matched = append(matched, p)
+				break
+			}
+		}
+	}
+	return matched, nil
 }

@@ -5,9 +5,13 @@ server:
 database:
   path: "./data/router.db"
 
+provider_service:
+  host: "provider-service"
+  port: "50053"
+
 cache:
   redis:
-    address: "localhost:6379"
+    address: "redis:6379"
     password: ""
     db: 0
     ttl_seconds: 300

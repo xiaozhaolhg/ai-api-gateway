@@ -22,11 +22,11 @@ func NewOllamaAdapter() port.ProviderAdapter {
 func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]string) ([]byte, map[string]string, error) {
 	// Parse OpenAI format request
 	var openAIReq struct {
-		Model    string                 `json:"model"`
-		Messages []map[string]interface{} `json:"messages"`
-		Stream   bool                   `json:"stream"`
-		Temperature float64             `json:"temperature,omitempty"`
-		MaxTokens int                   `json:"max_tokens,omitempty"`
+		Model       string                   `json:"model"`
+		Messages    []map[string]interface{} `json:"messages"`
+		Stream      bool                     `json:"stream"`
+		Temperature float64                  `json:"temperature,omitempty"`
+		MaxTokens   int                      `json:"max_tokens,omitempty"`
 	}
 
 	if err := json.Unmarshal(request, &openAIReq); err != nil {
@@ -84,11 +84,15 @@ func (a *OllamaAdapter) TransformResponse(response []byte, isStreaming bool, acc
 func (a *OllamaAdapter) transformNonStreamingResponse(response []byte, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
 	// Parse Ollama format response
 	var ollamaResp struct {
-		Model     string `json:"model"`
-		Response  string `json:"response"`
-		Done      bool   `json:"done"`
-		PromptEvalCount int64 `json:"prompt_eval_count"`
-		EvalCount      int64 `json:"eval_count"`
+		Model   string `json:"model"`
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+		Done            bool   `json:"done"`
+		DoneReason      string `json:"done_reason"`
+		PromptEvalCount int64  `json:"prompt_eval_count"`
+		EvalCount       int64  `json:"eval_count"`
 	}
 
 	if err := json.Unmarshal(response, &ollamaResp); err != nil {
@@ -105,10 +109,10 @@ func (a *OllamaAdapter) transformNonStreamingResponse(response []byte, accumulat
 			{
 				"index": 0,
 				"message": map[string]interface{}{
-					"role":    "assistant",
-					"content": ollamaResp.Response,
+					"role":    ollamaResp.Message.Role,
+					"content": ollamaResp.Message.Content,
 				},
-				"finish_reason": a.convertDoneToFinishReason(ollamaResp.Done),
+				"finish_reason": a.convertDoneReasonToFinishReason(ollamaResp.DoneReason),
 			},
 		},
 		"usage": map[string]interface{}{
@@ -141,7 +145,7 @@ func (a *OllamaAdapter) CountTokens(request []byte, response []byte, isStreaming
 		// Try to extract from response if available
 		var resp struct {
 			PromptEvalCount int64 `json:"prompt_eval_count"`
-			EvalCount      int64 `json:"eval_count"`
+			EvalCount       int64 `json:"eval_count"`
 		}
 
 		if err := json.Unmarshal(response, &resp); err == nil {
@@ -188,6 +192,18 @@ func (a *OllamaAdapter) convertDoneToFinishReason(done bool) string {
 		return "stop"
 	}
 	return "length"
+}
+
+// convertDoneReasonToFinishReason converts Ollama done_reason string to OpenAI finish reason
+func (a *OllamaAdapter) convertDoneReasonToFinishReason(doneReason string) string {
+	switch doneReason {
+	case "stop":
+		return "stop"
+	case "length":
+		return "length"
+	default:
+		return "stop"
+	}
 }
 
 func (a *OllamaAdapter) TestConnection(credentials string) error {
