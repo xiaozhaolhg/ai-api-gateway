@@ -64,7 +64,14 @@ func main() {
 	}()
 
 	// Initialize application service
-	appService := application.NewService(ruleRepo, redisCache)
+	providerAddr := cfg.ProviderService.Host + ":" + cfg.ProviderService.Port
+	if providerAddr == ":" {
+		providerAddr = "localhost:50053"
+	}
+	appService, err := application.NewService(ruleRepo, redisCache, providerAddr)
+	if err != nil {
+		log.Fatalf("Failed to create application service: %v", err)
+	}
 
 	// Initialize gRPC handler
 	grpcHandler := handler.NewHandler(appService)

@@ -72,7 +72,7 @@ func (h *Handler) GetProvider(ctx context.Context, req *providerv1.GetProviderRe
 func (h *Handler) CreateProvider(ctx context.Context, req *providerv1.CreateProviderRequest) (*providerv1.Provider, error) {
 	log.Printf("[CreateProvider] Received: Name=%s, Type=%s, BaseUrl=%s, Status=%s", req.Name, req.Type, req.BaseUrl, req.Status)
 	provider := toEntity(&providerv1.Provider{
-		Id:         req.Name, // Use Name as ID for MVP (e.g., "Ollama", "OpenCode Zen")
+		Id:         req.Name,
 		Name:       req.Name,
 		Type:       req.Type,
 		BaseUrl:    req.BaseUrl,
@@ -157,6 +157,22 @@ func (h *Handler) HealthCheck(ctx context.Context, req *providerv1.HealthCheckRe
 		return &providerv1.HealthCheckResponse{Healthy: false, Error: err.Error()}, nil
 	}
 	return &providerv1.HealthCheckResponse{Healthy: healthy}, nil
+}
+
+func (h *Handler) FindProvidersByModel(ctx context.Context, req *providerv1.FindProvidersByModelRequest) (*providerv1.FindProvidersByModelResponse, error) {
+	providers, err := h.service.FindProvidersByModel(req.Model)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to find providers: %v", err)
+	}
+
+	protoProviders := make([]*providerv1.Provider, 0, len(providers))
+	for _, p := range providers {
+		proto := toProto(p)
+		maskCredentials(proto)
+		protoProviders = append(protoProviders, proto)
+	}
+
+	return &providerv1.FindProvidersByModelResponse{Providers: protoProviders}, nil
 }
 
 func (h *Handler) ForwardRequest(ctx context.Context, req *providerv1.ForwardRequestRequest) (*providerv1.ForwardRequestResponse, error) {

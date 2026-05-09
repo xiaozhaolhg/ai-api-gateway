@@ -294,3 +294,102 @@ func TestProviderRepository_StatusFiltering(t *testing.T) {
 		t.Errorf("Expected 1 inactive provider, got %d", inactiveCount)
 	}
 }
+
+func TestProviderRepository_FindByModel(t *testing.T) {
+	db := setupTestDBForProvider(t)
+	repo := NewProviderRepository(db)
+
+	// Create providers with various models
+	provider1 := &entity.Provider{
+		ID:          "provider-ollama",
+		Name:        "Ollama",
+		Type:        "ollama",
+		BaseURL:     "http://localhost:11434",
+		Credentials: "",
+		Models:      []string{"llama2", "mistral"},
+		Status:      "active",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	repo.Create(provider1)
+
+	provider2 := &entity.Provider{
+		ID:          "provider-openai",
+		Name:        "OpenAI",
+		Type:        "openai",
+		BaseURL:     "https://api.openai.com",
+		Credentials: "encrypted-key",
+		Models:      []string{"gpt-4", "gpt-3.5-turbo"},
+		Status:      "active",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	repo.Create(provider2)
+
+	provider3 := &entity.Provider{
+		ID:          "provider-anthropic",
+		Name:        "Anthropic",
+		Type:        "anthropic",
+		BaseURL:     "https://api.anthropic.com",
+		Credentials: "encrypted-key",
+		Models:      []string{"claude-3", "llama2"}, // Also supports llama2
+		Status:      "active",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	repo.Create(provider3)
+
+	provider4 := &entity.Provider{
+		ID:          "provider-no-models",
+		Name:        "No Models Provider",
+		Type:        "custom",
+		BaseURL:     "https://api.example.com",
+		Credentials: "",
+		Models:      []string{}, // Empty models
+		Status:      "active",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	repo.Create(provider4)
+
+	// Test 1: Model exists in one provider
+	providers, err := repo.FindByModel("gpt-4")
+	if err != nil {
+		t.Errorf("FindByModel(gpt-4) error = %v", err)
+	}
+	if len(providers) != 1 {
+		t.Errorf("Expected 1 provider for gpt-4, got %d", len(providers))
+	}
+	if len(providers) > 0 && providers[0].ID != "provider-openai" {
+		t.Errorf("Expected provider-openai, got %s", providers[0].ID)
+	}
+
+	// Test 2: Model exists in multiple providers
+	providers, err = repo.FindByModel("llama2")
+	if err != nil {
+		t.Errorf("FindByModel(llama2) error = %v", err)
+	}
+	if len(providers) != 2 {
+		t.Errorf("Expected 2 providers for llama2, got %d", len(providers))
+	}
+
+	// Test 3: Model doesn't exist
+	providers, err = repo.FindByModel("non-existent-model")
+	if err != nil {
+		t.Errorf("FindByModel(non-existent-model) error = %v", err)
+	}
+	if len(providers) != 0 {
+		t.Errorf("Expected 0 providers for non-existent-model, got %d", len(providers))
+	}
+
+	// Test 4: Provider with empty Models field should not be returned
+	providers, err = repo.FindByModel("any-model")
+	if err != nil {
+		t.Errorf("FindByModel(any-model) error = %v", err)
+	}
+	for _, p := range providers {
+		if p.ID == "provider-no-models" {
+			t.Error("Provider with empty Models should not be returned")
+		}
+	}
+}

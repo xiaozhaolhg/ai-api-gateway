@@ -468,6 +468,10 @@ func (s *Service) GetProviderByType(providerType string) (*entity.Provider, erro
 	return s.providerRepo.GetByType(providerType)
 }
 
+func (s *Service) FindProvidersByModel(model string) ([]*entity.Provider, error) {
+	return s.providerRepo.FindByModel(model)
+}
+
 func (s *Service) HealthCheck(providerID string) (bool, error) {
 	provider, err := s.providerRepo.GetByID(providerID)
 	if err != nil {

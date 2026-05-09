@@ -30,6 +30,7 @@ const (
 	ProviderService_ListModels_FullMethodName           = "/provider.v1.ProviderService/ListModels"
 	ProviderService_GetProviderByType_FullMethodName    = "/provider.v1.ProviderService/GetProviderByType"
 	ProviderService_HealthCheck_FullMethodName          = "/provider.v1.ProviderService/HealthCheck"
+	ProviderService_FindProvidersByModel_FullMethodName = "/provider.v1.ProviderService/FindProvidersByModel"
 	ProviderService_RegisterSubscriber_FullMethodName   = "/provider.v1.ProviderService/RegisterSubscriber"
 	ProviderService_UnregisterSubscriber_FullMethodName = "/provider.v1.ProviderService/UnregisterSubscriber"
 )
@@ -52,6 +53,8 @@ type ProviderServiceClient interface {
 	GetProviderByType(ctx context.Context, in *GetProviderByTypeRequest, opts ...grpc.CallOption) (*Provider, error)
 	// Health Check (commented out due to build issues)
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+	// Model to Provider Resolution
+	FindProvidersByModel(ctx context.Context, in *FindProvidersByModelRequest, opts ...grpc.CallOption) (*FindProvidersByModelResponse, error)
 	// Callback Subscription
 	RegisterSubscriber(ctx context.Context, in *RegisterSubscriberRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 	UnregisterSubscriber(ctx context.Context, in *UnregisterSubscriberRequest, opts ...grpc.CallOption) (*v1.Empty, error)
@@ -174,6 +177,16 @@ func (c *providerServiceClient) HealthCheck(ctx context.Context, in *HealthCheck
 	return out, nil
 }
 
+func (c *providerServiceClient) FindProvidersByModel(ctx context.Context, in *FindProvidersByModelRequest, opts ...grpc.CallOption) (*FindProvidersByModelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FindProvidersByModelResponse)
+	err := c.cc.Invoke(ctx, ProviderService_FindProvidersByModel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *providerServiceClient) RegisterSubscriber(ctx context.Context, in *RegisterSubscriberRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.Empty)
@@ -212,6 +225,8 @@ type ProviderServiceServer interface {
 	GetProviderByType(context.Context, *GetProviderByTypeRequest) (*Provider, error)
 	// Health Check (commented out due to build issues)
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
+	// Model to Provider Resolution
+	FindProvidersByModel(context.Context, *FindProvidersByModelRequest) (*FindProvidersByModelResponse, error)
 	// Callback Subscription
 	RegisterSubscriber(context.Context, *RegisterSubscriberRequest) (*v1.Empty, error)
 	UnregisterSubscriber(context.Context, *UnregisterSubscriberRequest) (*v1.Empty, error)
@@ -254,6 +269,9 @@ func (UnimplementedProviderServiceServer) GetProviderByType(context.Context, *Ge
 }
 func (UnimplementedProviderServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedProviderServiceServer) FindProvidersByModel(context.Context, *FindProvidersByModelRequest) (*FindProvidersByModelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FindProvidersByModel not implemented")
 }
 func (UnimplementedProviderServiceServer) RegisterSubscriber(context.Context, *RegisterSubscriberRequest) (*v1.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterSubscriber not implemented")
@@ -455,6 +473,24 @@ func _ProviderService_HealthCheck_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProviderService_FindProvidersByModel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindProvidersByModelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProviderServiceServer).FindProvidersByModel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProviderService_FindProvidersByModel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProviderServiceServer).FindProvidersByModel(ctx, req.(*FindProvidersByModelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ProviderService_RegisterSubscriber_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterSubscriberRequest)
 	if err := dec(in); err != nil {
@@ -533,6 +569,10 @@ var ProviderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HealthCheck",
 			Handler:    _ProviderService_HealthCheck_Handler,
+		},
+		{
+			MethodName: "FindProvidersByModel",
+			Handler:    _ProviderService_FindProvidersByModel_Handler,
 		},
 		{
 			MethodName: "RegisterSubscriber",

@@ -3,11 +3,12 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
+	"github.com/gin-gonic/gin"
 )
 
 type AuthzMiddleware struct {
@@ -22,12 +23,15 @@ func NewAuthzMiddleware(authClient *client.AuthClient) *AuthzMiddleware {
 
 func (m *AuthzMiddleware) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		fmt.Printf("[DEBUG] Authz middleware called\n")
 		userID, _ := c.Get("userId")
 		if userID == nil {
+			fmt.Printf("[DEBUG] User not authenticated\n")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			c.Abort()
 			return
 		}
+		fmt.Printf("[DEBUG] User authenticated: %s\n", userID.(string))
 
 		groupIDs, _ := c.Get("groupIds")
 		groups := []string{}

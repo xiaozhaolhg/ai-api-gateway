@@ -3,15 +3,18 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/ai-api-gateway/api/gen/auth/v1"
+	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 	"github.com/ai-api-gateway/gateway-service/internal/handler"
 	"github.com/ai-api-gateway/gateway-service/internal/infrastructure/config"
@@ -212,14 +215,92 @@ func main() {
 	r.GET("/admin/alerts", adminAlertsHandler.ListAlerts)
 	r.PUT("/admin/alerts/:id/acknowledge", adminAlertsHandler.AcknowledgeAlert)
 
+	// Simple test endpoint without middleware
+	r.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "Test endpoint working"})
+	})
+
 	// Static file serving with SPA fallback
 	setupStaticFiles(r)
 
 	// Add error handling middleware (must be after logging to capture status codes)
-	r.Use(middleware.NewErrorMiddleware().Middleware())
+	// r.Use(middleware.NewErrorMiddleware().Middleware())
 
 	v1 := r.Group("/v1")
 	{
+		// Test endpoint with auth middleware
+		v1.POST("/test-auth", authMiddleware.Middleware(), func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "Auth test successful", "userId": c.GetString("userId")})
+		})
+
+		// Direct test endpoint to test end-to-end flow
+		v1.POST("/test-direct", authMiddleware.Middleware(), func(c *gin.Context) {
+			// Test direct provider call to Ollama
+
+			// Make direct call to Ollama service
+			client := &http.Client{Timeout: 30 * time.Second}
+			reqBody := `{"model": "tinyllama", "messages": [{"role": "user", "content": "Hello, how are you?"}], "stream": false}`
+
+			resp, err := client.Post("http://ollama:11434/api/chat", "application/json", strings.NewReader(reqBody))
+			if err != nil {
+				c.JSON(500, gin.H{"error": "Failed to call Ollama: " + err.Error()})
+				return
+			}
+			defer resp.Body.Close()
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "Failed to read response: " + err.Error()})
+				return
+			}
+
+			// Parse Ollama response and transform to OpenAI format
+			var ollamaResp struct {
+				Model   string `json:"model"`
+				Message struct {
+					Role    string `json:"role"`
+					Content string `json:"content"`
+				} `json:"message"`
+				Done       bool   `json:"done"`
+				DoneReason string `json:"done_reason"`
+			}
+
+			if err := json.Unmarshal(body, &ollamaResp); err != nil {
+				c.JSON(500, gin.H{"error": "Failed to parse Ollama response: " + err.Error()})
+				return
+			}
+
+			// Transform to OpenAI format
+			openAIResp := map[string]interface{}{
+				"id":      "ollama-" + ollamaResp.Model,
+				"object":  "chat.completion",
+				"created": time.Now().Unix(),
+				"model":   ollamaResp.Model,
+				"choices": []map[string]interface{}{
+					{
+						"index": 0,
+						"message": map[string]interface{}{
+							"role":    ollamaResp.Message.Role,
+							"content": ollamaResp.Message.Content,
+						},
+						"finish_reason": func() string {
+							if ollamaResp.DoneReason == "stop" {
+								return "stop"
+							}
+							return "length"
+						}(),
+					},
+				},
+				"usage": map[string]interface{}{
+					"prompt_tokens":     0,
+					"completion_tokens": 0,
+					"total_tokens":      0,
+				},
+			}
+
+			c.JSON(200, openAIResp)
+		})
+
 		chat := v1.Group("/chat/completions")
 		chat.Use(
 			authMiddleware.Middleware(),
@@ -227,7 +308,10 @@ func main() {
 			routeMiddleware.Middleware(),
 			proxyMiddleware.Middleware(),
 		)
-		chat.POST("", func(c *gin.Context) {})
+		chat.POST("", func(c *gin.Context) {
+			// This should not be reached if proxy middleware works correctly
+			c.JSON(200, gin.H{"message": "Handler reached unexpectedly"})
+		})
 
 		models := v1.Group("/models")
 		models.Use(authMiddleware.Middleware())

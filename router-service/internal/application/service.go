@@ -4,27 +4,64 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
+	"time"
 
+	providerv1 "github.com/ai-api-gateway/api/gen/provider/v1"
 	"github.com/ai-api-gateway/router-service/internal/domain/entity"
 	"github.com/ai-api-gateway/router-service/internal/domain/port"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Service struct {
-	ruleRepo port.RoutingRuleRepository
-	cache    port.Cache
-	ttl      int
+	ruleRepo      port.RoutingRuleRepository
+	cache         port.Cache
+	ttl           int
+	providerClient providerv1.ProviderServiceClient
 }
 
-func NewService(ruleRepo port.RoutingRuleRepository, cache port.Cache) *Service {
+func NewService(ruleRepo port.RoutingRuleRepository, cache port.Cache, providerAddr string) (*Service, error) {
+	conn, err := grpc.NewClient(providerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to provider-service: %w", err)
+	}
+	client := providerv1.NewProviderServiceClient(conn)
+
 	return &Service{
-		ruleRepo: ruleRepo,
-		cache:    cache,
-		ttl:      300,
+		ruleRepo:      ruleRepo,
+		cache:         cache,
+		ttl:           300,
+		providerClient: client,
+	}, nil
+}
+
+func NewServiceWithClient(ruleRepo port.RoutingRuleRepository, cache port.Cache, providerClient providerv1.ProviderServiceClient) *Service {
+	return &Service{
+		ruleRepo:      ruleRepo,
+		cache:         cache,
+		ttl:           300,
+		providerClient: providerClient,
 	}
 }
 
 func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedModels []string, userID string) (*entity.RouteResult, error) {
+	log.Printf("[ResolveRoute] Called with model=%s, userID=%s, authorizedModels=%v", model, userID, authorizedModels)
+	isBareModel := true
+	for _, c := range model {
+		if c == ':' {
+			isBareModel = false
+			break
+		}
+	}
+	log.Printf("[ResolveRoute] isBareModel=%v", isBareModel)
+
+	if isBareModel {
+		log.Printf("[ResolveRoute] Calling resolveBareModel")
+		return s.resolveBareModel(ctx, model)
+	}
+
 	if s.cache != nil {
 		cacheKey := fmt.Sprintf("router:route:%s:%s", model, userID)
 		cached, err := s.cache.Get(ctx, cacheKey)
@@ -46,7 +83,7 @@ func (s *Service) ResolveRoute(ctx context.Context, model string, authorizedMode
 	} else {
 		rule, err = s.ruleRepo.FindByModel(model, nil)
 	}
-	if err != nil {
+	if err != nil || rule == nil {
 		for i, c := range model {
 			if c == ':' {
 				providerType := model[:i]
@@ -175,4 +212,105 @@ func (s *Service) RefreshRoutingTable(ctx context.Context) error {
 		return s.cache.ClearPrefix(ctx, "router:")
 	}
 	return nil
+}
+
+func (s *Service) FindProvidersByModel(model string) ([]*entity.Provider, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := s.providerClient.FindProvidersByModel(ctx, &providerv1.FindProvidersByModelRequest{
+		Model: model,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to call FindProvidersByModel: %w", err)
+	}
+
+	providers := make([]*entity.Provider, 0, len(resp.Providers))
+	for _, p := range resp.Providers {
+		providers = append(providers, &entity.Provider{
+			ID:       p.Id,
+			Name:     p.Name,
+			Type:     p.Type,
+			BaseURL:  p.BaseUrl,
+			Models:   p.Models,
+			Status:   p.Status,
+			CreatedAt: time.Unix(p.CreatedAt, 0),
+			UpdatedAt: time.Unix(p.UpdatedAt, 0),
+		})
+	}
+	return providers, nil
+}
+
+func (s *Service) resolveBareModel(ctx context.Context, bareModel string) (*entity.RouteResult, error) {
+	log.Printf("[resolveBareModel] Called with bareModel=%s", bareModel)
+	providers, err := s.FindProvidersByModel(bareModel)
+	if err != nil {
+		log.Printf("[resolveBareModel] FindProvidersByModel error: %v", err)
+		return nil, fmt.Errorf("failed to find providers for model %s: %w", bareModel, err)
+	}
+	log.Printf("[resolveBareModel] Found %d providers for model %s", len(providers), bareModel)
+	for i, p := range providers {
+		log.Printf("[resolveBareModel] Provider %d: ID=%s, Type=%s, Models=%v", i, p.ID, p.Type, p.Models)
+	}
+	if len(providers) == 0 {
+		return nil, fmt.Errorf("no provider found for model: %s", bareModel)
+	}
+
+	type result struct {
+		provider *entity.Provider
+		healthy   bool
+	}
+
+	resultsChan := make(chan result, len(providers))
+	for _, p := range providers {
+		go func(prov *entity.Provider) {
+			log.Printf("[resolveBareModel] Checking health for provider ID=%s", prov.ID)
+			healthy, err := s.CheckHealth(ctx, prov.ID)
+			log.Printf("[resolveBareModel] Provider %s health: healthy=%v, err=%v", prov.ID, healthy, err)
+			resultsChan <- result{prov, healthy}
+		}(p)
+	}
+
+	var healthyProviders []*entity.Provider
+	for i := 0; i < len(providers); i++ {
+		r := <-resultsChan
+		if r.healthy {
+			healthyProviders = append(healthyProviders, r.provider)
+		}
+	}
+
+	log.Printf("[resolveBareModel] Total healthy providers: %d", len(healthyProviders))
+	if len(healthyProviders) == 0 {
+		return nil, fmt.Errorf("no healthy provider found for model: %s", bareModel)
+	}
+
+	primary := healthyProviders[0]
+	var fallbackIDs []string
+	var fallbackModels []string
+	for i := 1; i < len(healthyProviders); i++ {
+		fallbackIDs = append(fallbackIDs, healthyProviders[i].ID)
+		fallbackModels = append(fallbackModels, bareModel)
+	}
+
+	adapterType := s.inferAdapterType(primary.Type)
+	log.Printf("[resolveBareModel] primary.ID=%s, primary.Type=%s, bareModel=%s", primary.ID, primary.Type, bareModel)
+	return &entity.RouteResult{
+		ProviderID:          primary.ID,
+		AdapterType:         adapterType,
+		FallbackProviderIDs: fallbackIDs,
+		FallbackModels:      fallbackModels,
+	}, nil
+}
+
+func (s *Service) CheckHealth(ctx context.Context, providerID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resp, err := s.providerClient.HealthCheck(ctx, &providerv1.HealthCheckRequest{
+		ProviderId: providerID,
+	})
+	if err != nil {
+		return false, nil
+	}
+	return resp.Healthy, nil
 }

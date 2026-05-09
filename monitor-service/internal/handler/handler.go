@@ -4,7 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ai-api-gateway/api/gen/monitor/v1"
+	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
+	monitorv1 "github.com/ai-api-gateway/api/gen/monitor/v1"
 	"github.com/ai-api-gateway/monitor-service/internal/application"
 	"github.com/ai-api-gateway/monitor-service/internal/domain/entity"
 )
@@ -23,16 +24,13 @@ func NewHandler(service *application.Service) *Handler {
 }
 
 // OnProviderResponse handles provider response callback
-func (h *Handler) OnProviderResponse(ctx context.Context, req *monitorv1.OnProviderResponseRequest) (*monitorv1.Empty, error) {
-	// Extract callback data and record metric
-	callback := req.Callback
-
+func (h *Handler) OnProviderResponse(ctx context.Context, req *commonv1.ProviderResponseCallback) (*commonv1.Empty, error) {
 	// Record latency metric
 	metric := &entity.Metric{
-		ProviderID: callback.ProviderId,
-		Model:      callback.Model,
+		ProviderID: req.ProviderId,
+		Model:      req.Model,
 		MetricType: "latency",
-		Value:      float64(callback.LatencyMs),
+		Value:      float64(req.LatencyMs),
 		Timestamp:  time.Now(),
 	}
 
@@ -41,17 +39,17 @@ func (h *Handler) OnProviderResponse(ctx context.Context, req *monitorv1.OnProvi
 		return nil, err
 	}
 
-	return &monitorv1.Empty{}, nil
+	return &commonv1.Empty{}, nil
 }
 
 // RecordMetric records a metric
-func (h *Handler) RecordMetric(ctx context.Context, req *monitorv1.RecordMetricRequest) (*monitorv1.Empty, error) {
+func (h *Handler) RecordMetric(ctx context.Context, req *monitorv1.RecordMetricRequest) (*commonv1.Empty, error) {
 	metric := &entity.Metric{
-		ProviderID: req.Metric.ProviderId,
-		Model:      req.Metric.Model,
-		MetricType: req.Metric.MetricType,
-		Value:      req.Metric.Value,
-		Timestamp:  time.Unix(req.Metric.Timestamp, 0),
+		ProviderID: req.Labels["provider"],
+		Model:      req.Labels["model"],
+		MetricType: req.MetricType,
+		Value:      req.Value,
+		Timestamp:  time.Unix(req.Timestamp, 0),
 	}
 
 	err := h.service.RecordMetric(metric)
@@ -59,12 +57,20 @@ func (h *Handler) RecordMetric(ctx context.Context, req *monitorv1.RecordMetricR
 		return nil, err
 	}
 
-	return &monitorv1.Empty{}, nil
+	return &commonv1.Empty{}, nil
 }
 
 // GetMetrics retrieves metrics for a provider
 func (h *Handler) GetMetrics(ctx context.Context, req *monitorv1.GetMetricsRequest) (*monitorv1.ListMetricsResponse, error) {
-	metrics, total, err := h.service.GetMetrics(req.ProviderId, int(req.Page), int(req.PageSize))
+	providerID := req.Labels["provider"]
+	if providerID == "" {
+		return &monitorv1.ListMetricsResponse{
+			Metrics: []*monitorv1.Metric{},
+			Total:   0,
+		}, nil
+	}
+
+	metrics, total, err := h.service.GetMetrics(providerID, int(req.Page), int(req.PageSize))
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +79,11 @@ func (h *Handler) GetMetrics(ctx context.Context, req *monitorv1.GetMetricsReque
 	protoMetrics := make([]*monitorv1.Metric, len(metrics))
 	for i, metric := range metrics {
 		protoMetrics[i] = &monitorv1.Metric{
-			Id:         metric.ID,
-			ProviderId: metric.ProviderID,
-			Model:      metric.Model,
-			MetricType: metric.MetricType,
-			Value:      metric.Value,
-			Timestamp:  metric.Timestamp.Unix(),
+			Id:        metric.ID,
+			Type:      metric.MetricType,
+			Labels:    map[string]string{"provider": metric.ProviderID, "model": metric.Model},
+			Value:     metric.Value,
+			Timestamp: metric.Timestamp.Unix(),
 		}
 	}
 
@@ -90,22 +95,30 @@ func (h *Handler) GetMetrics(ctx context.Context, req *monitorv1.GetMetricsReque
 
 // GetMetricAggregation retrieves aggregated metrics
 func (h *Handler) GetMetricAggregation(ctx context.Context, req *monitorv1.GetMetricAggregationRequest) (*monitorv1.MetricAggregationResponse, error) {
-	agg, err := h.service.GetMetricAggregation(req.ProviderId, req.MetricType, req.StartDate, req.EndDate)
+	providerID := req.Labels["provider"]
+	if providerID == "" {
+		return &monitorv1.MetricAggregationResponse{
+			Aggregation: &monitorv1.MetricAggregation{},
+		}, nil
+	}
+
+	agg, err := h.service.GetMetricAggregation(providerID, req.MetricType, req.StartTime, req.EndTime)
 	if err != nil {
 		return nil, err
 	}
 
 	return &monitorv1.MetricAggregationResponse{
-		ProviderId:   agg.ProviderID,
-		Model:        agg.Model,
-		MetricType:   agg.MetricType,
-		AvgValue:     agg.AvgValue,
-		MinValue:     agg.MinValue,
-		MaxValue:     agg.MaxValue,
-		SumValue:     agg.SumValue,
-		Count:        agg.Count,
-		StartDate:    agg.StartDate,
-		EndDate:      agg.EndDate,
+		Aggregation: &monitorv1.MetricAggregation{
+			MetricType: agg.MetricType,
+			Labels:     map[string]string{"provider": agg.ProviderID, "model": agg.Model},
+			Avg:        agg.Avg,
+			Min:        agg.Min,
+			Max:        agg.Max,
+			P50:        agg.P50,
+			P95:        agg.P95,
+			P99:        agg.P99,
+			Count:      agg.Count,
+		},
 	}, nil
 }
 
@@ -127,13 +140,13 @@ func (h *Handler) GetProviderHealth(ctx context.Context, req *monitorv1.GetProvi
 }
 
 // ReportProviderHealth reports provider health status
-func (h *Handler) ReportProviderHealth(ctx context.Context, req *monitorv1.ReportProviderHealthRequest) (*monitorv1.Empty, error) {
-	err := h.service.ReportProviderHealth(req.ProviderId, req.Status, req.LatencyMs)
+func (h *Handler) ReportProviderHealth(ctx context.Context, req *monitorv1.ReportProviderHealthRequest) (*commonv1.Empty, error) {
+	err := h.service.ReportProviderHealth(req.ProviderId, req.Status, int64(req.Latency))
 	if err != nil {
 		return nil, err
 	}
 
-	return &monitorv1.Empty{}, nil
+	return &commonv1.Empty{}, nil
 }
 
 // CreateAlertRule creates a new alert rule
@@ -157,13 +170,13 @@ func (h *Handler) UpdateAlertRule(ctx context.Context, req *monitorv1.UpdateAler
 }
 
 // DeleteAlertRule deletes an alert rule
-func (h *Handler) DeleteAlertRule(ctx context.Context, req *monitorv1.DeleteAlertRuleRequest) (*monitorv1.Empty, error) {
+func (h *Handler) DeleteAlertRule(ctx context.Context, req *monitorv1.DeleteAlertRuleRequest) (*commonv1.Empty, error) {
 	err := h.service.DeleteAlertRule(req.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &monitorv1.Empty{}, nil
+	return &commonv1.Empty{}, nil
 }
 
 // GetAlerts retrieves alerts for a provider
@@ -182,22 +195,22 @@ func (h *Handler) GetAlerts(ctx context.Context, req *monitorv1.GetAlertsRequest
 		}
 
 		protoAlerts[i] = &monitorv1.Alert{
-			Id:              alert.ID,
-			AlertRuleId:     alert.AlertRuleID,
-			ProviderId:      alert.ProviderID,
-			Severity:        alert.Severity,
-			Message:         alert.Message,
-			Value:           alert.Value,
-			Threshold:       alert.Threshold,
-			Timestamp:       alert.Timestamp.Unix(),
-			Acknowledged:    alert.Acknowledged,
-			AcknowledgedAt:  acknowledgedAt,
+			Id:             alert.ID,
+			AlertRuleId:    alert.AlertRuleID,
+			ProviderId:     alert.ProviderID,
+			Severity:       alert.Severity,
+			Message:        alert.Message,
+			Value:          alert.Value,
+			Threshold:      alert.Threshold,
+			Timestamp:      alert.Timestamp.Unix(),
+			Acknowledged:   alert.Acknowledged,
+			AcknowledgedAt: acknowledgedAt,
 		}
 	}
 
 	return &monitorv1.ListAlertsResponse{
 		Alerts: protoAlerts,
-		Total:   int32(total),
+		Total:  int32(total),
 	}, nil
 }
 

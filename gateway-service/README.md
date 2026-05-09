@@ -174,6 +174,23 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   }'
 ```
 
+**Bare Model Name (New):**
+You can also use bare model names without the provider prefix:
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "llama2",
+    "messages": [
+      {"role": "user", "content": "Hello, how are you?"}
+    ],
+    "max_tokens": 150,
+    "temperature": 0.7
+  }'
+```
+The gateway will automatically resolve the bare model name to an available provider.
+
 **Response:**
 ```json
 {

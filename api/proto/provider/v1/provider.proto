@@ -25,6 +25,9 @@ service ProviderService {
   // Health Check (commented out due to build issues)
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 
+  // Model to Provider Resolution
+  rpc FindProvidersByModel(FindProvidersByModelRequest) returns (FindProvidersByModelResponse);
+
   // Callback Subscription
   rpc RegisterSubscriber(RegisterSubscriberRequest) returns (common.v1.Empty);
   rpc UnregisterSubscriber(UnregisterSubscriberRequest) returns (common.v1.Empty);
@@ -128,6 +131,14 @@ message HealthCheckRequest {
 message HealthCheckResponse {
   bool healthy = 1;
   string error = 2;
+}
+
+message FindProvidersByModelRequest {
+  string model = 1;  // bare model name, e.g., "llama2"
+}
+
+message FindProvidersByModelResponse {
+  repeated Provider providers = 1;  // providers supporting this model
 }
 
 // Callback Subscription
