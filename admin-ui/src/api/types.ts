@@ -148,7 +148,7 @@ export interface Group {
   name: string;
   description: string;
   member_count: number;
-  model_patterns?: string[];
+  tier_id?: string;
   parent_group_id?: string;
   created_at: string;
   updated_at: string;
@@ -221,6 +221,17 @@ export interface ProviderHealth {
   last_check: string;
 }
 
+export interface Tier {
+  id: string;
+  name: string;
+  description: string;
+  is_default: boolean;
+  allowed_models: string[];
+  allowed_providers: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 // Mock Data Store Interface
 export interface MockDataStore {
   users: User[];
@@ -235,6 +246,7 @@ export interface MockDataStore {
   alertRules: AlertRule[];
   alerts: Alert[];
   providerHealth: ProviderHealth[];
+  tiers: Tier[];
 }
 
 // API Configuration

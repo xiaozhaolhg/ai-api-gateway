@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -322,26 +323,30 @@ func (c *AuthClient) Register(ctx context.Context, username, email, name, passwo
 // Group management methods
 
 // CreateGroup creates a new group
-func (c *AuthClient) CreateGroup(ctx context.Context, name, parentGroupID string) (*authv1.Group, error) {
+func (c *AuthClient) CreateGroup(ctx context.Context, name, parentGroupID, tierID string) (*authv1.Group, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
 	}
 
+	log.Printf("[DEBUG] CreateGroup gRPC: name=%s, parentGroupID=%s, tierID=%s", name, parentGroupID, tierID)
+
 	req := &authv1.CreateGroupRequest{
 		Name:          name,
 		ParentGroupId: parentGroupID,
+		TierId:        tierID,
 	}
 
 	resp, err := client.CreateGroup(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create group: %w", err)
 	}
+	log.Printf("[DEBUG] CreateGroup gRPC response: tierId=%s", resp.TierId)
 	return resp, nil
 }
 
 // UpdateGroup updates an existing group
-func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, parentGroupID string) (*authv1.Group, error) {
+func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, parentGroupID, tierID string) (*authv1.Group, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -351,6 +356,7 @@ func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, parentGroupID st
 		Id:            id,
 		Name:          name,
 		ParentGroupId: parentGroupID,
+		TierId:        tierID,
 	}
 
 	resp, err := client.UpdateGroup(ctx, req)
@@ -505,4 +511,132 @@ func (c *AuthClient) ListPermissions(ctx context.Context, groupID string, page, 
 		return nil, fmt.Errorf("failed to list permissions: %w", err)
 	}
 	return resp, nil
+}
+
+// Tier management methods
+
+// CreateTier creates a new tier
+func (c *AuthClient) CreateTier(ctx context.Context, name, description string, isDefault bool, allowedModels, allowedProviders []string) (*authv1.Tier, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &authv1.CreateTierRequest{
+		Name:              name,
+		Description:       description,
+		IsDefault:         isDefault,
+		AllowedModels:     allowedModels,
+		AllowedProviders: allowedProviders,
+	}
+
+	resp, err := client.CreateTier(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tier: %w", err)
+	}
+	return resp, nil
+}
+
+// GetTier retrieves a tier by ID
+func (c *AuthClient) GetTier(ctx context.Context, id string) (*authv1.Tier, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &authv1.GetTierRequest{Id: id}
+	resp, err := client.GetTier(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tier: %w", err)
+	}
+	return resp, nil
+}
+
+// UpdateTier updates an existing tier
+func (c *AuthClient) UpdateTier(ctx context.Context, id, name, description string, allowedModels, allowedProviders []string) (*authv1.Tier, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &authv1.UpdateTierRequest{
+		Id:                id,
+		Name:              name,
+		Description:       description,
+		AllowedModels:     allowedModels,
+		AllowedProviders:  allowedProviders,
+	}
+
+	resp, err := client.UpdateTier(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update tier: %w", err)
+	}
+	return resp, nil
+}
+
+// DeleteTier deletes a tier
+func (c *AuthClient) DeleteTier(ctx context.Context, id string) error {
+	client, err := c.getClient()
+	if err != nil {
+		return err
+	}
+
+	req := &authv1.DeleteTierRequest{Id: id}
+	_, err = client.DeleteTier(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to delete tier: %w", err)
+	}
+	return nil
+}
+
+// ListTiers lists tiers with pagination
+func (c *AuthClient) ListTiers(ctx context.Context, page, pageSize int32) (*authv1.ListTiersResponse, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &authv1.ListTiersRequest{
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	resp, err := client.ListTiers(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tiers: %w", err)
+	}
+	return resp, nil
+}
+
+// AssignTierToGroup assigns a tier to a group
+func (c *AuthClient) AssignTierToGroup(ctx context.Context, groupID, tierID string) error {
+	client, err := c.getClient()
+	if err != nil {
+		return err
+	}
+
+	req := &authv1.AssignTierToGroupRequest{
+		GroupId: groupID,
+		TierId:  tierID,
+	}
+	_, err = client.AssignTierToGroup(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to assign tier to group: %w", err)
+	}
+	return nil
+}
+
+// RemoveTierFromGroup removes a tier from a group
+func (c *AuthClient) RemoveTierFromGroup(ctx context.Context, groupID string) error {
+	client, err := c.getClient()
+	if err != nil {
+		return err
+	}
+
+	req := &authv1.RemoveTierFromGroupRequest{GroupId: groupID}
+	_, err = client.RemoveTierFromGroup(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to remove tier from group: %w", err)
+	}
+	return nil
 }

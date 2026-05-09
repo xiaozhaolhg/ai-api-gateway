@@ -30,11 +30,14 @@ func setupLoginTestDB(t *testing.T) *gorm.DB {
 func makeTestHandler(db *gorm.DB) (*Handler, port.UserRepository) {
 	userRepo := repository.NewUserRepository(db)
 	userGroupRepo := repository.NewUserGroupRepository(db)
-	authService := application.NewAuthService(userRepo, nil, userGroupRepo)
-	groupService := application.NewGroupService(repository.NewGroupRepository(db))
+	tierRepo := repository.NewTierRepository(db)
+	groupRepo := repository.NewGroupRepository(db)
+	authService := application.NewAuthService(userRepo, nil, userGroupRepo, tierRepo, groupRepo)
+	groupService := application.NewGroupService(groupRepo)
 	permissionService := application.NewPermissionService(repository.NewPermissionRepository(db), userGroupRepo)
 	ugService := application.NewUserGroupService(userGroupRepo)
-	return NewHandler(authService, groupService, permissionService, ugService, userRepo, nil), userRepo
+	tierService := application.NewTierService(tierRepo, groupRepo)
+	return NewHandler(authService, groupService, permissionService, ugService, tierService, userRepo, nil), userRepo
 }
 
 func TestLogin_E2E(t *testing.T) {

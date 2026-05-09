@@ -78,6 +78,14 @@
 
 ### Week 4 — Usage Dashboard & Advanced Features (API + UI)
 - [ ] **Enhanced Usage API**: `GET /admin/usage/users/:id`, `GET /admin/usage/groups/:id`, export endpoints (CSV/JSON)
+- [ ] **Tiered Permission System Design**: redesign group permissions to use tier-based access control
+  - Define permission tiers (e.g., Basic, Standard, Premium, Enterprise)
+  - Each tier has predefined provider and model access patterns
+  - Groups assign to tiers instead of individual model/provider permissions
+  - Update permission assignment UI to show tier selection with preview of allowed models/providers
+  - Add admin interface to create custom tiers with configurable provider/model access
+  - Migrate existing granular permissions to tier-based system
+  - **Rationale**: Simplify permission management, reduce admin overhead, provide clear access levels
 - [ ] **Group-based Access Control**: enforce group permissions in auth middleware, model-level authorization
 - [ ] **API Key Lifecycle**: expiration handling, scope validation, usage limits per key, rotation
 - [ ] **Usage Dashboard Page**: token consumption charts, per-user/per-group breakdown, date range filter, export

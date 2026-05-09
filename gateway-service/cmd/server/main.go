@@ -159,6 +159,14 @@ func main() {
 		admin.POST("/permissions", handleGrantPermission)
 		admin.DELETE("/permissions/:id", handleRevokePermission)
 
+		// Tier management
+		admin.GET("/tiers", handleListTiers)
+		admin.POST("/tiers", handleCreateTier)
+		admin.PUT("/tiers/:id", handleUpdateTier)
+		admin.DELETE("/tiers/:id", handleDeleteTier)
+		admin.POST("/groups/:id/tier", handleAssignTierToGroup)
+		admin.DELETE("/groups/:id/tier", handleRemoveTierFromGroup)
+
 		// Usage (billing) - using adminUsageHandler from main branch
 		admin.GET("/usage", func(c *gin.Context) {
 			handleGetUsage(c, adminUsageHandler)
@@ -747,31 +755,55 @@ func handleListGroups(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"groups": resp.Groups, "total": resp.Total})
+	groups := make([]gin.H, len(resp.Groups))
+	for i, g := range resp.Groups {
+		groups[i] = gin.H{
+			"id":              g.Id,
+			"name":            g.Name,
+			"description":     g.Description,
+			"parent_group_id": g.ParentGroupId,
+			"tier_id":         g.TierId,
+			"created_at":      time.Unix(g.CreatedAt, 0).Format(time.RFC3339),
+			"updated_at":      time.Unix(g.UpdatedAt, 0).Format(time.RFC3339),
+		}
+	}
+
+	c.JSON(200, gin.H{"groups": groups, "total": resp.Total})
 }
 
 func handleCreateGroup(c *gin.Context) {
 	var req struct {
 		Name          string `json:"name" binding:"required"`
 		ParentGroupID string `json:"parent_group_id"`
+		TierID        string `json:"tier_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid request"})
 		return
 	}
 
+	log.Printf("[DEBUG] handleCreateGroup: name=%s, tier_id=%s", req.Name, req.TierID)
+
 	if authClient == nil {
 		c.JSON(503, gin.H{"error": "auth service unavailable"})
 		return
 	}
 
-	group, err := authClient.CreateGroup(context.Background(), req.Name, req.ParentGroupID)
+	group, err := authClient.CreateGroup(context.Background(), req.Name, req.ParentGroupID, req.TierID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(201, group)
+	c.JSON(201, gin.H{
+		"id":              group.Id,
+		"name":            group.Name,
+		"description":     group.Description,
+		"parent_group_id": group.ParentGroupId,
+		"tier_id":         group.TierId,
+		"created_at":      time.Unix(group.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":      time.Unix(group.UpdatedAt, 0).Format(time.RFC3339),
+	})
 }
 
 func handleUpdateGroup(c *gin.Context) {
@@ -779,6 +811,7 @@ func handleUpdateGroup(c *gin.Context) {
 	var req struct {
 		Name          string `json:"name"`
 		ParentGroupID string `json:"parent_group_id"`
+		TierID        string `json:"tier_id"`
 	}
 	c.ShouldBindJSON(&req)
 
@@ -787,13 +820,21 @@ func handleUpdateGroup(c *gin.Context) {
 		return
 	}
 
-	group, err := authClient.UpdateGroup(context.Background(), id, req.Name, req.ParentGroupID)
+	group, err := authClient.UpdateGroup(context.Background(), id, req.Name, req.ParentGroupID, req.TierID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, group)
+	c.JSON(200, gin.H{
+		"id":             group.Id,
+		"name":           group.Name,
+		"description":    group.Description,
+		"parent_group_id": group.ParentGroupId,
+		"tier_id":        group.TierId,
+		"created_at":     time.Unix(group.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":     time.Unix(group.UpdatedAt, 0).Format(time.RFC3339),
+	})
 }
 
 func handleDeleteGroup(c *gin.Context) {
@@ -1094,4 +1135,171 @@ func handleListProviders(c *gin.Context) {
 		{"id": "ollama", "name": "Ollama", "enabled": true},
 		{"id": "opencode_zen", "name": "OpenCode Zen", "enabled": true},
 	}})
+}
+
+// Tier management handlers
+
+func handleListTiers(c *gin.Context) {
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	page := int32(1)
+	pageSize := int32(100)
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
+		page = int32(p)
+	}
+	if ps, err := strconv.Atoi(c.Query("page_size")); err == nil && ps > 0 {
+		pageSize = int32(ps)
+	}
+
+	resp, err := authClient.ListTiers(context.Background(), page, pageSize)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	tiers := make([]gin.H, len(resp.Tiers))
+	for i, t := range resp.Tiers {
+		tiers[i] = gin.H{
+			"id":                 t.Id,
+			"name":               t.Name,
+			"description":        t.Description,
+			"is_default":         t.IsDefault,
+			"allowed_models":     t.AllowedModels,
+			"allowed_providers":  t.AllowedProviders,
+			"created_at":         time.Unix(t.CreatedAt, 0).Format(time.RFC3339),
+			"updated_at":         time.Unix(t.UpdatedAt, 0).Format(time.RFC3339),
+		}
+	}
+
+	c.JSON(200, gin.H{"tiers": tiers, "total": resp.Total})
+}
+
+func handleCreateTier(c *gin.Context) {
+	var req struct {
+		Name              string   `json:"name" binding:"required"`
+		Description      string   `json:"description"`
+		IsDefault        bool     `json:"is_default"`
+		AllowedModels    []string `json:"allowed_models"`
+		AllowedProviders []string `json:"allowed_providers"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	tier, err := authClient.CreateTier(context.Background(), req.Name, req.Description, req.IsDefault, req.AllowedModels, req.AllowedProviders)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{
+		"id":                 tier.Id,
+		"name":               tier.Name,
+		"description":        tier.Description,
+		"is_default":         tier.IsDefault,
+		"allowed_models":     tier.AllowedModels,
+		"allowed_providers":  tier.AllowedProviders,
+		"created_at":         time.Unix(tier.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":         time.Unix(tier.UpdatedAt, 0).Format(time.RFC3339),
+	})
+}
+
+func handleUpdateTier(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Name              string   `json:"name"`
+		Description      string   `json:"description"`
+		AllowedModels    []string `json:"allowed_models"`
+		AllowedProviders []string `json:"allowed_providers"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	tier, err := authClient.UpdateTier(context.Background(), id, req.Name, req.Description, req.AllowedModels, req.AllowedProviders)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"id":                 tier.Id,
+		"name":               tier.Name,
+		"description":        tier.Description,
+		"is_default":         tier.IsDefault,
+		"allowed_models":     tier.AllowedModels,
+		"allowed_providers":  tier.AllowedProviders,
+		"created_at":         time.Unix(tier.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":         time.Unix(tier.UpdatedAt, 0).Format(time.RFC3339),
+	})
+}
+
+func handleDeleteTier(c *gin.Context) {
+	id := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.DeleteTier(context.Background(), id); err != nil {
+		c.JSON(500, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "tier deleted"})
+}
+
+func handleAssignTierToGroup(c *gin.Context) {
+	groupID := c.Param("id")
+	var req struct {
+		TierID string `json:"tier_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "tier_id required"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.AssignTierToGroup(context.Background(), groupID, req.TierID); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "tier assigned to group"})
+}
+
+func handleRemoveTierFromGroup(c *gin.Context) {
+	groupID := c.Param("id")
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	if err := authClient.RemoveTierFromGroup(context.Background(), groupID); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "tier removed from group"})
 }

@@ -11,6 +11,7 @@ type Group struct {
 	ModelPatterns Strings     `json:"model_patterns" gorm:"serializer:json"`
 	TokenLimit    *TokenLimit `json:"token_limit,omitempty" gorm:"serializer:json"`
 	RateLimit     *RateLimit  `json:"rate_limit,omitempty" gorm:"serializer:json"`
+	TierID        string      `json:"tier_id,omitempty" gorm:"column:tier_id"`
 	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time   `json:"updated_at"`
 }

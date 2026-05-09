@@ -1279,6 +1279,7 @@ type Group struct {
 	ParentGroupId string                 `protobuf:"bytes,4,opt,name=parent_group_id,json=parentGroupId,proto3" json:"parent_group_id,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     int64                  `protobuf:"varint,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	TierId        string                 `protobuf:"bytes,7,opt,name=tier_id,json=tierId,proto3" json:"tier_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1355,10 +1356,18 @@ func (x *Group) GetUpdatedAt() int64 {
 	return 0
 }
 
+func (x *Group) GetTierId() string {
+	if x != nil {
+		return x.TierId
+	}
+	return ""
+}
+
 type CreateGroupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	ParentGroupId string                 `protobuf:"bytes,2,opt,name=parent_group_id,json=parentGroupId,proto3" json:"parent_group_id,omitempty"`
+	TierId        string                 `protobuf:"bytes,3,opt,name=tier_id,json=tierId,proto3" json:"tier_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1407,11 +1416,19 @@ func (x *CreateGroupRequest) GetParentGroupId() string {
 	return ""
 }
 
+func (x *CreateGroupRequest) GetTierId() string {
+	if x != nil {
+		return x.TierId
+	}
+	return ""
+}
+
 type UpdateGroupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	ParentGroupId string                 `protobuf:"bytes,3,opt,name=parent_group_id,json=parentGroupId,proto3" json:"parent_group_id,omitempty"`
+	TierId        string                 `protobuf:"bytes,4,opt,name=tier_id,json=tierId,proto3" json:"tier_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1463,6 +1480,13 @@ func (x *UpdateGroupRequest) GetName() string {
 func (x *UpdateGroupRequest) GetParentGroupId() string {
 	if x != nil {
 		return x.ParentGroupId
+	}
+	return ""
+}
+
+func (x *UpdateGroupRequest) GetTierId() string {
+	if x != nil {
+		return x.TierId
 	}
 	return ""
 }
@@ -2276,6 +2300,546 @@ func (x *CheckPermissionResponse) GetAllowed() bool {
 	return false
 }
 
+type Tier struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	IsDefault        bool                   `protobuf:"varint,4,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
+	AllowedModels    []string               `protobuf:"bytes,5,rep,name=allowed_models,json=allowedModels,proto3" json:"allowed_models,omitempty"`
+	AllowedProviders []string               `protobuf:"bytes,6,rep,name=allowed_providers,json=allowedProviders,proto3" json:"allowed_providers,omitempty"`
+	CreatedAt        int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        int64                  `protobuf:"varint,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Tier) Reset() {
+	*x = Tier{}
+	mi := &file_auth_v1_auth_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Tier) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Tier) ProtoMessage() {}
+
+func (x *Tier) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Tier.ProtoReflect.Descriptor instead.
+func (*Tier) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *Tier) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Tier) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Tier) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Tier) GetIsDefault() bool {
+	if x != nil {
+		return x.IsDefault
+	}
+	return false
+}
+
+func (x *Tier) GetAllowedModels() []string {
+	if x != nil {
+		return x.AllowedModels
+	}
+	return nil
+}
+
+func (x *Tier) GetAllowedProviders() []string {
+	if x != nil {
+		return x.AllowedProviders
+	}
+	return nil
+}
+
+func (x *Tier) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *Tier) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
+type CreateTierRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description      string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	IsDefault        bool                   `protobuf:"varint,3,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
+	AllowedModels    []string               `protobuf:"bytes,4,rep,name=allowed_models,json=allowedModels,proto3" json:"allowed_models,omitempty"`
+	AllowedProviders []string               `protobuf:"bytes,5,rep,name=allowed_providers,json=allowedProviders,proto3" json:"allowed_providers,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CreateTierRequest) Reset() {
+	*x = CreateTierRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTierRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTierRequest) ProtoMessage() {}
+
+func (x *CreateTierRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTierRequest.ProtoReflect.Descriptor instead.
+func (*CreateTierRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *CreateTierRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateTierRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateTierRequest) GetIsDefault() bool {
+	if x != nil {
+		return x.IsDefault
+	}
+	return false
+}
+
+func (x *CreateTierRequest) GetAllowedModels() []string {
+	if x != nil {
+		return x.AllowedModels
+	}
+	return nil
+}
+
+func (x *CreateTierRequest) GetAllowedProviders() []string {
+	if x != nil {
+		return x.AllowedProviders
+	}
+	return nil
+}
+
+type GetTierRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTierRequest) Reset() {
+	*x = GetTierRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTierRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTierRequest) ProtoMessage() {}
+
+func (x *GetTierRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTierRequest.ProtoReflect.Descriptor instead.
+func (*GetTierRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *GetTierRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UpdateTierRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	AllowedModels    []string               `protobuf:"bytes,4,rep,name=allowed_models,json=allowedModels,proto3" json:"allowed_models,omitempty"`
+	AllowedProviders []string               `protobuf:"bytes,5,rep,name=allowed_providers,json=allowedProviders,proto3" json:"allowed_providers,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UpdateTierRequest) Reset() {
+	*x = UpdateTierRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTierRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTierRequest) ProtoMessage() {}
+
+func (x *UpdateTierRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTierRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTierRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *UpdateTierRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateTierRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateTierRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *UpdateTierRequest) GetAllowedModels() []string {
+	if x != nil {
+		return x.AllowedModels
+	}
+	return nil
+}
+
+func (x *UpdateTierRequest) GetAllowedProviders() []string {
+	if x != nil {
+		return x.AllowedProviders
+	}
+	return nil
+}
+
+type DeleteTierRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTierRequest) Reset() {
+	*x = DeleteTierRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTierRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTierRequest) ProtoMessage() {}
+
+func (x *DeleteTierRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTierRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTierRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *DeleteTierRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListTiersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          int32                  `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTiersRequest) Reset() {
+	*x = ListTiersRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTiersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTiersRequest) ProtoMessage() {}
+
+func (x *ListTiersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTiersRequest.ProtoReflect.Descriptor instead.
+func (*ListTiersRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *ListTiersRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListTiersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ListTiersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tiers         []*Tier                `protobuf:"bytes,1,rep,name=tiers,proto3" json:"tiers,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTiersResponse) Reset() {
+	*x = ListTiersResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTiersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTiersResponse) ProtoMessage() {}
+
+func (x *ListTiersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTiersResponse.ProtoReflect.Descriptor instead.
+func (*ListTiersResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ListTiersResponse) GetTiers() []*Tier {
+	if x != nil {
+		return x.Tiers
+	}
+	return nil
+}
+
+func (x *ListTiersResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type AssignTierToGroupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	TierId        string                 `protobuf:"bytes,2,opt,name=tier_id,json=tierId,proto3" json:"tier_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssignTierToGroupRequest) Reset() {
+	*x = AssignTierToGroupRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignTierToGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignTierToGroupRequest) ProtoMessage() {}
+
+func (x *AssignTierToGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignTierToGroupRequest.ProtoReflect.Descriptor instead.
+func (*AssignTierToGroupRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *AssignTierToGroupRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *AssignTierToGroupRequest) GetTierId() string {
+	if x != nil {
+		return x.TierId
+	}
+	return ""
+}
+
+type RemoveTierFromGroupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveTierFromGroupRequest) Reset() {
+	*x = RemoveTierFromGroupRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveTierFromGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveTierFromGroupRequest) ProtoMessage() {}
+
+func (x *RemoveTierFromGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveTierFromGroupRequest.ProtoReflect.Descriptor instead.
+func (*RemoveTierFromGroupRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *RemoveTierFromGroupRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
 var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
@@ -2366,7 +2930,7 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x06 \x01(\x03R\texpiresAt\"\xb3\x01\n" +
+	"expires_at\x18\x06 \x01(\x03R\texpiresAt\"\xcc\x01\n" +
 	"\x05Group\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -2375,14 +2939,17 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\"P\n" +
+	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\x12\x17\n" +
+	"\atier_id\x18\a \x01(\tR\x06tierId\"i\n" +
 	"\x12CreateGroupRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12&\n" +
-	"\x0fparent_group_id\x18\x02 \x01(\tR\rparentGroupId\"`\n" +
+	"\x0fparent_group_id\x18\x02 \x01(\tR\rparentGroupId\x12\x17\n" +
+	"\atier_id\x18\x03 \x01(\tR\x06tierId\"y\n" +
 	"\x12UpdateGroupRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12&\n" +
-	"\x0fparent_group_id\x18\x03 \x01(\tR\rparentGroupId\"$\n" +
+	"\x0fparent_group_id\x18\x03 \x01(\tR\rparentGroupId\x12\x17\n" +
+	"\atier_id\x18\x04 \x01(\tR\x06tierId\"$\n" +
 	"\x12DeleteGroupRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"D\n" +
 	"\x11ListGroupsRequest\x12\x12\n" +
@@ -2440,7 +3007,47 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"resourceId\x12\x16\n" +
 	"\x06action\x18\x04 \x01(\tR\x06action\"3\n" +
 	"\x17CheckPermissionResponse\x12\x18\n" +
-	"\aallowed\x18\x01 \x01(\bR\aallowed2\xd2\f\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed\"\xfd\x01\n" +
+	"\x04Tier\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1d\n" +
+	"\n" +
+	"is_default\x18\x04 \x01(\bR\tisDefault\x12%\n" +
+	"\x0eallowed_models\x18\x05 \x03(\tR\rallowedModels\x12+\n" +
+	"\x11allowed_providers\x18\x06 \x03(\tR\x10allowedProviders\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\a \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\x03R\tupdatedAt\"\xbc\x01\n" +
+	"\x11CreateTierRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1d\n" +
+	"\n" +
+	"is_default\x18\x03 \x01(\bR\tisDefault\x12%\n" +
+	"\x0eallowed_models\x18\x04 \x03(\tR\rallowedModels\x12+\n" +
+	"\x11allowed_providers\x18\x05 \x03(\tR\x10allowedProviders\" \n" +
+	"\x0eGetTierRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xad\x01\n" +
+	"\x11UpdateTierRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12%\n" +
+	"\x0eallowed_models\x18\x04 \x03(\tR\rallowedModels\x12+\n" +
+	"\x11allowed_providers\x18\x05 \x03(\tR\x10allowedProviders\"#\n" +
+	"\x11DeleteTierRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"C\n" +
+	"\x10ListTiersRequest\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"N\n" +
+	"\x11ListTiersResponse\x12#\n" +
+	"\x05tiers\x18\x01 \x03(\v2\r.auth.v1.TierR\x05tiers\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"N\n" +
+	"\x18AssignTierToGroupRequest\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12\x17\n" +
+	"\atier_id\x18\x02 \x01(\tR\x06tierId\"7\n" +
+	"\x1aRemoveTierFromGroupRequest\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId2\x8f\x10\n" +
 	"\vAuthService\x12G\n" +
 	"\x0eValidateAPIKey\x12\x1e.auth.v1.ValidateAPIKeyRequest\x1a\x15.auth.v1.UserIdentity\x126\n" +
 	"\x05Login\x12\x15.auth.v1.LoginRequest\x1a\x16.auth.v1.LoginResponse\x12?\n" +
@@ -2468,7 +3075,17 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x0fGrantPermission\x12\x1f.auth.v1.GrantPermissionRequest\x1a\x13.auth.v1.Permission\x12F\n" +
 	"\x10RevokePermission\x12 .auth.v1.RevokePermissionRequest\x1a\x10.common.v1.Empty\x12T\n" +
 	"\x0fListPermissions\x12\x1f.auth.v1.ListPermissionsRequest\x1a .auth.v1.ListPermissionsResponse\x12T\n" +
-	"\x0fCheckPermission\x12\x1f.auth.v1.CheckPermissionRequest\x1a .auth.v1.CheckPermissionResponseB2Z0github.com/ai-api-gateway/api/gen/auth/v1;authv1b\x06proto3"
+	"\x0fCheckPermission\x12\x1f.auth.v1.CheckPermissionRequest\x1a .auth.v1.CheckPermissionResponse\x127\n" +
+	"\n" +
+	"CreateTier\x12\x1a.auth.v1.CreateTierRequest\x1a\r.auth.v1.Tier\x121\n" +
+	"\aGetTier\x12\x17.auth.v1.GetTierRequest\x1a\r.auth.v1.Tier\x127\n" +
+	"\n" +
+	"UpdateTier\x12\x1a.auth.v1.UpdateTierRequest\x1a\r.auth.v1.Tier\x12:\n" +
+	"\n" +
+	"DeleteTier\x12\x1a.auth.v1.DeleteTierRequest\x1a\x10.common.v1.Empty\x12B\n" +
+	"\tListTiers\x12\x19.auth.v1.ListTiersRequest\x1a\x1a.auth.v1.ListTiersResponse\x12H\n" +
+	"\x11AssignTierToGroup\x12!.auth.v1.AssignTierToGroupRequest\x1a\x10.common.v1.Empty\x12L\n" +
+	"\x13RemoveTierFromGroup\x12#.auth.v1.RemoveTierFromGroupRequest\x1a\x10.common.v1.EmptyB2Z0github.com/ai-api-gateway/api/gen/auth/v1;authv1b\x06proto3"
 
 var (
 	file_auth_v1_auth_proto_rawDescOnce sync.Once
@@ -2482,7 +3099,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(*ValidateAPIKeyRequest)(nil),          // 0: auth.v1.ValidateAPIKeyRequest
 	(*LoginRequest)(nil),                   // 1: auth.v1.LoginRequest
@@ -2522,7 +3139,16 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*ListPermissionsResponse)(nil),        // 35: auth.v1.ListPermissionsResponse
 	(*CheckPermissionRequest)(nil),         // 36: auth.v1.CheckPermissionRequest
 	(*CheckPermissionResponse)(nil),        // 37: auth.v1.CheckPermissionResponse
-	(*v1.Empty)(nil),                       // 38: common.v1.Empty
+	(*Tier)(nil),                           // 38: auth.v1.Tier
+	(*CreateTierRequest)(nil),              // 39: auth.v1.CreateTierRequest
+	(*GetTierRequest)(nil),                 // 40: auth.v1.GetTierRequest
+	(*UpdateTierRequest)(nil),              // 41: auth.v1.UpdateTierRequest
+	(*DeleteTierRequest)(nil),              // 42: auth.v1.DeleteTierRequest
+	(*ListTiersRequest)(nil),               // 43: auth.v1.ListTiersRequest
+	(*ListTiersResponse)(nil),              // 44: auth.v1.ListTiersResponse
+	(*AssignTierToGroupRequest)(nil),       // 45: auth.v1.AssignTierToGroupRequest
+	(*RemoveTierFromGroupRequest)(nil),     // 46: auth.v1.RemoveTierFromGroupRequest
+	(*v1.Empty)(nil),                       // 47: common.v1.Empty
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
 	8,  // 0: auth.v1.LoginResponse.user:type_name -> auth.v1.User
@@ -2532,57 +3158,72 @@ var file_auth_v1_auth_proto_depIdxs = []int32{
 	21, // 4: auth.v1.ListGroupsResponse.groups:type_name -> auth.v1.Group
 	8,  // 5: auth.v1.ListGroupMembersResponse.members:type_name -> auth.v1.User
 	31, // 6: auth.v1.ListPermissionsResponse.permissions:type_name -> auth.v1.Permission
-	0,  // 7: auth.v1.AuthService.ValidateAPIKey:input_type -> auth.v1.ValidateAPIKeyRequest
-	1,  // 8: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
-	3,  // 9: auth.v1.AuthService.Register:input_type -> auth.v1.RegisterRequest
-	6,  // 10: auth.v1.AuthService.CheckModelAuthorization:input_type -> auth.v1.CheckModelAuthorizationRequest
-	9,  // 11: auth.v1.AuthService.GetUser:input_type -> auth.v1.GetUserRequest
-	10, // 12: auth.v1.AuthService.CreateUser:input_type -> auth.v1.CreateUserRequest
-	11, // 13: auth.v1.AuthService.UpdateUser:input_type -> auth.v1.UpdateUserRequest
-	12, // 14: auth.v1.AuthService.DeleteUser:input_type -> auth.v1.DeleteUserRequest
-	13, // 15: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
-	15, // 16: auth.v1.AuthService.CreateAPIKey:input_type -> auth.v1.CreateAPIKeyRequest
-	17, // 17: auth.v1.AuthService.DeleteAPIKey:input_type -> auth.v1.DeleteAPIKeyRequest
-	18, // 18: auth.v1.AuthService.ListAPIKeys:input_type -> auth.v1.ListAPIKeysRequest
-	22, // 19: auth.v1.AuthService.CreateGroup:input_type -> auth.v1.CreateGroupRequest
-	23, // 20: auth.v1.AuthService.UpdateGroup:input_type -> auth.v1.UpdateGroupRequest
-	24, // 21: auth.v1.AuthService.DeleteGroup:input_type -> auth.v1.DeleteGroupRequest
-	25, // 22: auth.v1.AuthService.ListGroups:input_type -> auth.v1.ListGroupsRequest
-	27, // 23: auth.v1.AuthService.ListGroupMembers:input_type -> auth.v1.ListGroupMembersRequest
-	29, // 24: auth.v1.AuthService.AddUserToGroup:input_type -> auth.v1.AddUserToGroupRequest
-	30, // 25: auth.v1.AuthService.RemoveUserFromGroup:input_type -> auth.v1.RemoveUserFromGroupRequest
-	32, // 26: auth.v1.AuthService.GrantPermission:input_type -> auth.v1.GrantPermissionRequest
-	33, // 27: auth.v1.AuthService.RevokePermission:input_type -> auth.v1.RevokePermissionRequest
-	34, // 28: auth.v1.AuthService.ListPermissions:input_type -> auth.v1.ListPermissionsRequest
-	36, // 29: auth.v1.AuthService.CheckPermission:input_type -> auth.v1.CheckPermissionRequest
-	5,  // 30: auth.v1.AuthService.ValidateAPIKey:output_type -> auth.v1.UserIdentity
-	2,  // 31: auth.v1.AuthService.Login:output_type -> auth.v1.LoginResponse
-	4,  // 32: auth.v1.AuthService.Register:output_type -> auth.v1.RegisterResponse
-	7,  // 33: auth.v1.AuthService.CheckModelAuthorization:output_type -> auth.v1.AuthorizationResult
-	8,  // 34: auth.v1.AuthService.GetUser:output_type -> auth.v1.User
-	8,  // 35: auth.v1.AuthService.CreateUser:output_type -> auth.v1.User
-	8,  // 36: auth.v1.AuthService.UpdateUser:output_type -> auth.v1.User
-	38, // 37: auth.v1.AuthService.DeleteUser:output_type -> common.v1.Empty
-	14, // 38: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
-	16, // 39: auth.v1.AuthService.CreateAPIKey:output_type -> auth.v1.CreateAPIKeyResponse
-	38, // 40: auth.v1.AuthService.DeleteAPIKey:output_type -> common.v1.Empty
-	19, // 41: auth.v1.AuthService.ListAPIKeys:output_type -> auth.v1.ListAPIKeysResponse
-	21, // 42: auth.v1.AuthService.CreateGroup:output_type -> auth.v1.Group
-	21, // 43: auth.v1.AuthService.UpdateGroup:output_type -> auth.v1.Group
-	38, // 44: auth.v1.AuthService.DeleteGroup:output_type -> common.v1.Empty
-	26, // 45: auth.v1.AuthService.ListGroups:output_type -> auth.v1.ListGroupsResponse
-	28, // 46: auth.v1.AuthService.ListGroupMembers:output_type -> auth.v1.ListGroupMembersResponse
-	38, // 47: auth.v1.AuthService.AddUserToGroup:output_type -> common.v1.Empty
-	38, // 48: auth.v1.AuthService.RemoveUserFromGroup:output_type -> common.v1.Empty
-	31, // 49: auth.v1.AuthService.GrantPermission:output_type -> auth.v1.Permission
-	38, // 50: auth.v1.AuthService.RevokePermission:output_type -> common.v1.Empty
-	35, // 51: auth.v1.AuthService.ListPermissions:output_type -> auth.v1.ListPermissionsResponse
-	37, // 52: auth.v1.AuthService.CheckPermission:output_type -> auth.v1.CheckPermissionResponse
-	30, // [30:53] is the sub-list for method output_type
-	7,  // [7:30] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	38, // 7: auth.v1.ListTiersResponse.tiers:type_name -> auth.v1.Tier
+	0,  // 8: auth.v1.AuthService.ValidateAPIKey:input_type -> auth.v1.ValidateAPIKeyRequest
+	1,  // 9: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
+	3,  // 10: auth.v1.AuthService.Register:input_type -> auth.v1.RegisterRequest
+	6,  // 11: auth.v1.AuthService.CheckModelAuthorization:input_type -> auth.v1.CheckModelAuthorizationRequest
+	9,  // 12: auth.v1.AuthService.GetUser:input_type -> auth.v1.GetUserRequest
+	10, // 13: auth.v1.AuthService.CreateUser:input_type -> auth.v1.CreateUserRequest
+	11, // 14: auth.v1.AuthService.UpdateUser:input_type -> auth.v1.UpdateUserRequest
+	12, // 15: auth.v1.AuthService.DeleteUser:input_type -> auth.v1.DeleteUserRequest
+	13, // 16: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
+	15, // 17: auth.v1.AuthService.CreateAPIKey:input_type -> auth.v1.CreateAPIKeyRequest
+	17, // 18: auth.v1.AuthService.DeleteAPIKey:input_type -> auth.v1.DeleteAPIKeyRequest
+	18, // 19: auth.v1.AuthService.ListAPIKeys:input_type -> auth.v1.ListAPIKeysRequest
+	22, // 20: auth.v1.AuthService.CreateGroup:input_type -> auth.v1.CreateGroupRequest
+	23, // 21: auth.v1.AuthService.UpdateGroup:input_type -> auth.v1.UpdateGroupRequest
+	24, // 22: auth.v1.AuthService.DeleteGroup:input_type -> auth.v1.DeleteGroupRequest
+	25, // 23: auth.v1.AuthService.ListGroups:input_type -> auth.v1.ListGroupsRequest
+	27, // 24: auth.v1.AuthService.ListGroupMembers:input_type -> auth.v1.ListGroupMembersRequest
+	29, // 25: auth.v1.AuthService.AddUserToGroup:input_type -> auth.v1.AddUserToGroupRequest
+	30, // 26: auth.v1.AuthService.RemoveUserFromGroup:input_type -> auth.v1.RemoveUserFromGroupRequest
+	32, // 27: auth.v1.AuthService.GrantPermission:input_type -> auth.v1.GrantPermissionRequest
+	33, // 28: auth.v1.AuthService.RevokePermission:input_type -> auth.v1.RevokePermissionRequest
+	34, // 29: auth.v1.AuthService.ListPermissions:input_type -> auth.v1.ListPermissionsRequest
+	36, // 30: auth.v1.AuthService.CheckPermission:input_type -> auth.v1.CheckPermissionRequest
+	39, // 31: auth.v1.AuthService.CreateTier:input_type -> auth.v1.CreateTierRequest
+	40, // 32: auth.v1.AuthService.GetTier:input_type -> auth.v1.GetTierRequest
+	41, // 33: auth.v1.AuthService.UpdateTier:input_type -> auth.v1.UpdateTierRequest
+	42, // 34: auth.v1.AuthService.DeleteTier:input_type -> auth.v1.DeleteTierRequest
+	43, // 35: auth.v1.AuthService.ListTiers:input_type -> auth.v1.ListTiersRequest
+	45, // 36: auth.v1.AuthService.AssignTierToGroup:input_type -> auth.v1.AssignTierToGroupRequest
+	46, // 37: auth.v1.AuthService.RemoveTierFromGroup:input_type -> auth.v1.RemoveTierFromGroupRequest
+	5,  // 38: auth.v1.AuthService.ValidateAPIKey:output_type -> auth.v1.UserIdentity
+	2,  // 39: auth.v1.AuthService.Login:output_type -> auth.v1.LoginResponse
+	4,  // 40: auth.v1.AuthService.Register:output_type -> auth.v1.RegisterResponse
+	7,  // 41: auth.v1.AuthService.CheckModelAuthorization:output_type -> auth.v1.AuthorizationResult
+	8,  // 42: auth.v1.AuthService.GetUser:output_type -> auth.v1.User
+	8,  // 43: auth.v1.AuthService.CreateUser:output_type -> auth.v1.User
+	8,  // 44: auth.v1.AuthService.UpdateUser:output_type -> auth.v1.User
+	47, // 45: auth.v1.AuthService.DeleteUser:output_type -> common.v1.Empty
+	14, // 46: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
+	16, // 47: auth.v1.AuthService.CreateAPIKey:output_type -> auth.v1.CreateAPIKeyResponse
+	47, // 48: auth.v1.AuthService.DeleteAPIKey:output_type -> common.v1.Empty
+	19, // 49: auth.v1.AuthService.ListAPIKeys:output_type -> auth.v1.ListAPIKeysResponse
+	21, // 50: auth.v1.AuthService.CreateGroup:output_type -> auth.v1.Group
+	21, // 51: auth.v1.AuthService.UpdateGroup:output_type -> auth.v1.Group
+	47, // 52: auth.v1.AuthService.DeleteGroup:output_type -> common.v1.Empty
+	26, // 53: auth.v1.AuthService.ListGroups:output_type -> auth.v1.ListGroupsResponse
+	28, // 54: auth.v1.AuthService.ListGroupMembers:output_type -> auth.v1.ListGroupMembersResponse
+	47, // 55: auth.v1.AuthService.AddUserToGroup:output_type -> common.v1.Empty
+	47, // 56: auth.v1.AuthService.RemoveUserFromGroup:output_type -> common.v1.Empty
+	31, // 57: auth.v1.AuthService.GrantPermission:output_type -> auth.v1.Permission
+	47, // 58: auth.v1.AuthService.RevokePermission:output_type -> common.v1.Empty
+	35, // 59: auth.v1.AuthService.ListPermissions:output_type -> auth.v1.ListPermissionsResponse
+	37, // 60: auth.v1.AuthService.CheckPermission:output_type -> auth.v1.CheckPermissionResponse
+	38, // 61: auth.v1.AuthService.CreateTier:output_type -> auth.v1.Tier
+	38, // 62: auth.v1.AuthService.GetTier:output_type -> auth.v1.Tier
+	38, // 63: auth.v1.AuthService.UpdateTier:output_type -> auth.v1.Tier
+	47, // 64: auth.v1.AuthService.DeleteTier:output_type -> common.v1.Empty
+	44, // 65: auth.v1.AuthService.ListTiers:output_type -> auth.v1.ListTiersResponse
+	47, // 66: auth.v1.AuthService.AssignTierToGroup:output_type -> common.v1.Empty
+	47, // 67: auth.v1.AuthService.RemoveTierFromGroup:output_type -> common.v1.Empty
+	38, // [38:68] is the sub-list for method output_type
+	8,  // [8:38] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }
@@ -2596,7 +3237,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   38,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

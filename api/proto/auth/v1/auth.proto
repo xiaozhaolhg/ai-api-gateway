@@ -45,6 +45,14 @@ service AuthService {
   rpc RevokePermission(RevokePermissionRequest) returns (common.v1.Empty);
   rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
   rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+
+  rpc CreateTier(CreateTierRequest) returns (Tier);
+  rpc GetTier(GetTierRequest) returns (Tier);
+  rpc UpdateTier(UpdateTierRequest) returns (Tier);
+  rpc DeleteTier(DeleteTierRequest) returns (common.v1.Empty);
+  rpc ListTiers(ListTiersRequest) returns (ListTiersResponse);
+  rpc AssignTierToGroup(AssignTierToGroupRequest) returns (common.v1.Empty);
+  rpc RemoveTierFromGroup(RemoveTierFromGroupRequest) returns (common.v1.Empty);
 }
 
 // Authentication
@@ -183,17 +191,20 @@ message Group {
   string parent_group_id = 4;
   int64 created_at = 5;
   int64 updated_at = 6;
+  string tier_id = 7;
 }
 
 message CreateGroupRequest {
   string name = 1;
   string parent_group_id = 2;
+  string tier_id = 3;
 }
 
 message UpdateGroupRequest {
   string id = 1;
   string name = 2;
   string parent_group_id = 3;
+  string tier_id = 4;
 }
 
 message DeleteGroupRequest {
@@ -275,4 +286,58 @@ message CheckPermissionRequest {
 
 message CheckPermissionResponse {
   bool allowed = 1;
+}
+
+message Tier {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  bool is_default = 4;
+  repeated string allowed_models = 5;
+  repeated string allowed_providers = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+message CreateTierRequest {
+  string name = 1;
+  string description = 2;
+  bool is_default = 3;
+  repeated string allowed_models = 4;
+  repeated string allowed_providers = 5;
+}
+
+message GetTierRequest {
+  string id = 1;
+}
+
+message UpdateTierRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string allowed_models = 4;
+  repeated string allowed_providers = 5;
+}
+
+message DeleteTierRequest {
+  string id = 1;
+}
+
+message ListTiersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListTiersResponse {
+  repeated Tier tiers = 1;
+  int32 total = 2;
+}
+
+message AssignTierToGroupRequest {
+  string group_id = 1;
+  string tier_id = 2;
+}
+
+message RemoveTierFromGroupRequest {
+  string group_id = 1;
 }

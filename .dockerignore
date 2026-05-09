@@ -3,8 +3,6 @@
 .gitignore
 
 # Documentation
-README.md
-AGENTS.md
 openspec/
 
 # IDE
@@ -39,7 +37,6 @@ Thumbs.db
 # Docker
 docker-compose.yml
 docker-compose.override.yml
-.dockerignore
 
 # Temporary files
 tmp/

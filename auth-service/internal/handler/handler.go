@@ -19,6 +19,7 @@ type Handler struct {
 	groupService      *application.GroupService
 	permissionService *application.PermissionService
 	userGroupService  *application.UserGroupService
+	tierService       *application.TierService
 	userRepo          UserRepository
 	apiKeyRepo        APIKeyRepository
 }
@@ -44,12 +45,13 @@ type APIKeyRepository interface {
 }
 
 // NewHandler creates a new Handler
-func NewHandler(authService *application.AuthService, groupService *application.GroupService, permissionService *application.PermissionService, userGroupService *application.UserGroupService, userRepo UserRepository, apiKeyRepo APIKeyRepository) *Handler {
+func NewHandler(authService *application.AuthService, groupService *application.GroupService, permissionService *application.PermissionService, userGroupService *application.UserGroupService, tierService *application.TierService, userRepo UserRepository, apiKeyRepo APIKeyRepository) *Handler {
 	return &Handler{
 		authService:       authService,
 		groupService:      groupService,
 		permissionService: permissionService,
 		userGroupService:  userGroupService,
+		tierService:       tierService,
 		userRepo:          userRepo,
 		apiKeyRepo:        apiKeyRepo,
 	}
@@ -343,9 +345,22 @@ func (h *Handler) ListAPIKeys(ctx context.Context, req *authv1.ListAPIKeysReques
 // Group Management
 
 func (h *Handler) CreateGroup(ctx context.Context, req *authv1.CreateGroupRequest) (*authv1.Group, error) {
+	log.Printf("[DEBUG] CreateGroup: name=%s, parentGroupId=%s, TierId=%s", req.Name, req.ParentGroupId, req.TierId)
+
 	group, err := h.groupService.CreateGroup(req.Name, "", req.ParentGroupId, nil, nil, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	log.Printf("[DEBUG] Group created: id=%s", group.ID)
+
+	if req.TierId != "" {
+		log.Printf("[DEBUG] Attempting to assign tier %s to group %s", req.TierId, group.ID)
+		if err := h.tierService.AssignTierToGroup(group.ID, req.TierId); err != nil {
+			log.Printf("[ERROR] Failed to assign tier: %v", err)
+		}
+		group, _ = h.groupService.GetGroupByID(group.ID)
+		log.Printf("[DEBUG] Group after tier assignment: tierId=%s", group.TierID)
 	}
 
 	return &authv1.Group{
@@ -353,6 +368,7 @@ func (h *Handler) CreateGroup(ctx context.Context, req *authv1.CreateGroupReques
 		Name:          group.Name,
 		Description:   group.Description,
 		ParentGroupId: group.ParentGroupID,
+		TierId:        group.TierID,
 		CreatedAt:     group.CreatedAt.Unix(),
 		UpdatedAt:     group.UpdatedAt.Unix(),
 	}, nil
@@ -364,11 +380,21 @@ func (h *Handler) UpdateGroup(ctx context.Context, req *authv1.UpdateGroupReques
 		return nil, err
 	}
 
+	if req.TierId != "" {
+		if err := h.tierService.AssignTierToGroup(req.Id, req.TierId); err != nil {
+			log.Printf("[ERROR] Failed to assign tier: %v", err)
+		}
+	} else {
+		_ = h.tierService.RemoveTierFromGroup(req.Id)
+	}
+	group, _ = h.groupService.GetGroupByID(req.Id)
+
 	return &authv1.Group{
 		Id:            group.ID,
 		Name:          group.Name,
 		Description:   group.Description,
 		ParentGroupId: group.ParentGroupID,
+		TierId:        group.TierID,
 		CreatedAt:     group.CreatedAt.Unix(),
 		UpdatedAt:     group.UpdatedAt.Unix(),
 	}, nil
@@ -403,6 +429,7 @@ func (h *Handler) ListGroups(ctx context.Context, req *authv1.ListGroupsRequest)
 			Name:          group.Name,
 			Description:   group.Description,
 			ParentGroupId: group.ParentGroupID,
+			TierId:        group.TierID,
 			CreatedAt:     group.CreatedAt.Unix(),
 			UpdatedAt:     group.UpdatedAt.Unix(),
 		}
@@ -538,7 +565,119 @@ func (h *Handler) CheckPermission(ctx context.Context, req *authv1.CheckPermissi
 	}, nil
 }
 
-// Shutdown handles graceful shutdown
+func (h *Handler) CreateTier(ctx context.Context, req *authv1.CreateTierRequest) (*authv1.Tier, error) {
+	tier, err := h.tierService.CreateTier(req.Name, req.Description, req.IsDefault, req.AllowedModels, req.AllowedProviders)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.Tier{
+		Id:                tier.ID,
+		Name:              tier.Name,
+		Description:       tier.Description,
+		IsDefault:         tier.IsDefault,
+		AllowedModels:     tier.AllowedModels,
+		AllowedProviders:  tier.AllowedProviders,
+		CreatedAt:         tier.CreatedAt.Unix(),
+		UpdatedAt:         tier.UpdatedAt.Unix(),
+	}, nil
+}
+
+func (h *Handler) GetTier(ctx context.Context, req *authv1.GetTierRequest) (*authv1.Tier, error) {
+	tier, err := h.tierService.GetTier(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.Tier{
+		Id:                tier.ID,
+		Name:              tier.Name,
+		Description:       tier.Description,
+		IsDefault:         tier.IsDefault,
+		AllowedModels:     tier.AllowedModels,
+		AllowedProviders:  tier.AllowedProviders,
+		CreatedAt:         tier.CreatedAt.Unix(),
+		UpdatedAt:         tier.UpdatedAt.Unix(),
+	}, nil
+}
+
+func (h *Handler) UpdateTier(ctx context.Context, req *authv1.UpdateTierRequest) (*authv1.Tier, error) {
+	tier, err := h.tierService.UpdateTier(req.Id, req.Name, req.Description, req.AllowedModels, req.AllowedProviders)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.Tier{
+		Id:                tier.ID,
+		Name:              tier.Name,
+		Description:       tier.Description,
+		IsDefault:         tier.IsDefault,
+		AllowedModels:     tier.AllowedModels,
+		AllowedProviders:  tier.AllowedProviders,
+		CreatedAt:         tier.CreatedAt.Unix(),
+		UpdatedAt:         tier.UpdatedAt.Unix(),
+	}, nil
+}
+
+func (h *Handler) DeleteTier(ctx context.Context, req *authv1.DeleteTierRequest) (*commonv1.Empty, error) {
+	if err := h.tierService.DeleteTier(req.Id); err != nil {
+		return nil, err
+	}
+
+	return &commonv1.Empty{}, nil
+}
+
+func (h *Handler) ListTiers(ctx context.Context, req *authv1.ListTiersRequest) (*authv1.ListTiersResponse, error) {
+	page := int(req.Page)
+	pageSize := int(req.PageSize)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	tiers, total, err := h.tierService.ListTiers(page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	tierProtos := make([]*authv1.Tier, len(tiers))
+	for i, t := range tiers {
+		tierProtos[i] = &authv1.Tier{
+			Id:                t.ID,
+			Name:              t.Name,
+			Description:       t.Description,
+			IsDefault:         t.IsDefault,
+			AllowedModels:     t.AllowedModels,
+			AllowedProviders:  t.AllowedProviders,
+			CreatedAt:         t.CreatedAt.Unix(),
+			UpdatedAt:         t.UpdatedAt.Unix(),
+		}
+	}
+
+	return &authv1.ListTiersResponse{
+		Tiers: tierProtos,
+		Total: int32(total),
+	}, nil
+}
+
+func (h *Handler) AssignTierToGroup(ctx context.Context, req *authv1.AssignTierToGroupRequest) (*commonv1.Empty, error) {
+	if err := h.tierService.AssignTierToGroup(req.GroupId, req.TierId); err != nil {
+		return nil, err
+	}
+
+	return &commonv1.Empty{}, nil
+}
+
+func (h *Handler) RemoveTierFromGroup(ctx context.Context, req *authv1.RemoveTierFromGroupRequest) (*commonv1.Empty, error) {
+	if err := h.tierService.RemoveTierFromGroup(req.GroupId); err != nil {
+		return nil, err
+	}
+
+	return &commonv1.Empty{}, nil
+}
+
 func (h *Handler) Shutdown(ctx context.Context) error {
 	// Cleanup logic
 	return nil

@@ -16,6 +16,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LogoutOutlined,
+  CrownOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,7 @@ const roleAccess: Record<string, Role[]> = {
   '/routing': ['admin'],
   '/users': ['admin'],
   '/groups': ['admin'],
+  '/tiers': ['admin'],
   '/api-keys': ['admin', 'user'],
   '/permissions': ['admin'],
   '/usage': ['admin', 'user', 'viewer'],
@@ -112,6 +114,11 @@ export const AppShell: React.FC = () => {
           key: '/groups',
           icon: <TeamOutlined />,
           label: t('navigation.groups'),
+        },
+        {
+          key: '/tiers',
+          icon: <CrownOutlined />,
+          label: t('navigation.tiers'),
         },
         {
           key: '/api-keys',

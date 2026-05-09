@@ -43,6 +43,13 @@ const (
 	AuthService_RevokePermission_FullMethodName        = "/auth.v1.AuthService/RevokePermission"
 	AuthService_ListPermissions_FullMethodName         = "/auth.v1.AuthService/ListPermissions"
 	AuthService_CheckPermission_FullMethodName         = "/auth.v1.AuthService/CheckPermission"
+	AuthService_CreateTier_FullMethodName              = "/auth.v1.AuthService/CreateTier"
+	AuthService_GetTier_FullMethodName                 = "/auth.v1.AuthService/GetTier"
+	AuthService_UpdateTier_FullMethodName              = "/auth.v1.AuthService/UpdateTier"
+	AuthService_DeleteTier_FullMethodName              = "/auth.v1.AuthService/DeleteTier"
+	AuthService_ListTiers_FullMethodName               = "/auth.v1.AuthService/ListTiers"
+	AuthService_AssignTierToGroup_FullMethodName       = "/auth.v1.AuthService/AssignTierToGroup"
+	AuthService_RemoveTierFromGroup_FullMethodName     = "/auth.v1.AuthService/RemoveTierFromGroup"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -80,6 +87,13 @@ type AuthServiceClient interface {
 	RevokePermission(ctx context.Context, in *RevokePermissionRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 	ListPermissions(ctx context.Context, in *ListPermissionsRequest, opts ...grpc.CallOption) (*ListPermissionsResponse, error)
 	CheckPermission(ctx context.Context, in *CheckPermissionRequest, opts ...grpc.CallOption) (*CheckPermissionResponse, error)
+	CreateTier(ctx context.Context, in *CreateTierRequest, opts ...grpc.CallOption) (*Tier, error)
+	GetTier(ctx context.Context, in *GetTierRequest, opts ...grpc.CallOption) (*Tier, error)
+	UpdateTier(ctx context.Context, in *UpdateTierRequest, opts ...grpc.CallOption) (*Tier, error)
+	DeleteTier(ctx context.Context, in *DeleteTierRequest, opts ...grpc.CallOption) (*v1.Empty, error)
+	ListTiers(ctx context.Context, in *ListTiersRequest, opts ...grpc.CallOption) (*ListTiersResponse, error)
+	AssignTierToGroup(ctx context.Context, in *AssignTierToGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error)
+	RemoveTierFromGroup(ctx context.Context, in *RemoveTierFromGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 }
 
 type authServiceClient struct {
@@ -320,6 +334,76 @@ func (c *authServiceClient) CheckPermission(ctx context.Context, in *CheckPermis
 	return out, nil
 }
 
+func (c *authServiceClient) CreateTier(ctx context.Context, in *CreateTierRequest, opts ...grpc.CallOption) (*Tier, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Tier)
+	err := c.cc.Invoke(ctx, AuthService_CreateTier_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) GetTier(ctx context.Context, in *GetTierRequest, opts ...grpc.CallOption) (*Tier, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Tier)
+	err := c.cc.Invoke(ctx, AuthService_GetTier_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) UpdateTier(ctx context.Context, in *UpdateTierRequest, opts ...grpc.CallOption) (*Tier, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Tier)
+	err := c.cc.Invoke(ctx, AuthService_UpdateTier_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) DeleteTier(ctx context.Context, in *DeleteTierRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.Empty)
+	err := c.cc.Invoke(ctx, AuthService_DeleteTier_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ListTiers(ctx context.Context, in *ListTiersRequest, opts ...grpc.CallOption) (*ListTiersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTiersResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListTiers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) AssignTierToGroup(ctx context.Context, in *AssignTierToGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.Empty)
+	err := c.cc.Invoke(ctx, AuthService_AssignTierToGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RemoveTierFromGroup(ctx context.Context, in *RemoveTierFromGroupRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.Empty)
+	err := c.cc.Invoke(ctx, AuthService_RemoveTierFromGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -355,6 +439,13 @@ type AuthServiceServer interface {
 	RevokePermission(context.Context, *RevokePermissionRequest) (*v1.Empty, error)
 	ListPermissions(context.Context, *ListPermissionsRequest) (*ListPermissionsResponse, error)
 	CheckPermission(context.Context, *CheckPermissionRequest) (*CheckPermissionResponse, error)
+	CreateTier(context.Context, *CreateTierRequest) (*Tier, error)
+	GetTier(context.Context, *GetTierRequest) (*Tier, error)
+	UpdateTier(context.Context, *UpdateTierRequest) (*Tier, error)
+	DeleteTier(context.Context, *DeleteTierRequest) (*v1.Empty, error)
+	ListTiers(context.Context, *ListTiersRequest) (*ListTiersResponse, error)
+	AssignTierToGroup(context.Context, *AssignTierToGroupRequest) (*v1.Empty, error)
+	RemoveTierFromGroup(context.Context, *RemoveTierFromGroupRequest) (*v1.Empty, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -433,6 +524,27 @@ func (UnimplementedAuthServiceServer) ListPermissions(context.Context, *ListPerm
 }
 func (UnimplementedAuthServiceServer) CheckPermission(context.Context, *CheckPermissionRequest) (*CheckPermissionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckPermission not implemented")
+}
+func (UnimplementedAuthServiceServer) CreateTier(context.Context, *CreateTierRequest) (*Tier, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateTier not implemented")
+}
+func (UnimplementedAuthServiceServer) GetTier(context.Context, *GetTierRequest) (*Tier, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTier not implemented")
+}
+func (UnimplementedAuthServiceServer) UpdateTier(context.Context, *UpdateTierRequest) (*Tier, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateTier not implemented")
+}
+func (UnimplementedAuthServiceServer) DeleteTier(context.Context, *DeleteTierRequest) (*v1.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteTier not implemented")
+}
+func (UnimplementedAuthServiceServer) ListTiers(context.Context, *ListTiersRequest) (*ListTiersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTiers not implemented")
+}
+func (UnimplementedAuthServiceServer) AssignTierToGroup(context.Context, *AssignTierToGroupRequest) (*v1.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AssignTierToGroup not implemented")
+}
+func (UnimplementedAuthServiceServer) RemoveTierFromGroup(context.Context, *RemoveTierFromGroupRequest) (*v1.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveTierFromGroup not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -869,6 +981,132 @@ func _AuthService_CheckPermission_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_CreateTier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateTierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CreateTier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CreateTier_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CreateTier(ctx, req.(*CreateTierRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_GetTier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetTier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetTier_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetTier(ctx, req.(*GetTierRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_UpdateTier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateTierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).UpdateTier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_UpdateTier_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).UpdateTier(ctx, req.(*UpdateTierRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_DeleteTier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).DeleteTier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_DeleteTier_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).DeleteTier(ctx, req.(*DeleteTierRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ListTiers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTiersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListTiers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListTiers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListTiers(ctx, req.(*ListTiersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_AssignTierToGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignTierToGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).AssignTierToGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_AssignTierToGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).AssignTierToGroup(ctx, req.(*AssignTierToGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RemoveTierFromGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTierFromGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RemoveTierFromGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RemoveTierFromGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RemoveTierFromGroup(ctx, req.(*RemoveTierFromGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -967,6 +1205,34 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckPermission",
 			Handler:    _AuthService_CheckPermission_Handler,
+		},
+		{
+			MethodName: "CreateTier",
+			Handler:    _AuthService_CreateTier_Handler,
+		},
+		{
+			MethodName: "GetTier",
+			Handler:    _AuthService_GetTier_Handler,
+		},
+		{
+			MethodName: "UpdateTier",
+			Handler:    _AuthService_UpdateTier_Handler,
+		},
+		{
+			MethodName: "DeleteTier",
+			Handler:    _AuthService_DeleteTier_Handler,
+		},
+		{
+			MethodName: "ListTiers",
+			Handler:    _AuthService_ListTiers_Handler,
+		},
+		{
+			MethodName: "AssignTierToGroup",
+			Handler:    _AuthService_AssignTierToGroup_Handler,
+		},
+		{
+			MethodName: "RemoveTierFromGroup",
+			Handler:    _AuthService_RemoveTierFromGroup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

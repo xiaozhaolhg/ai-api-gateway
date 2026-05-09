@@ -15,6 +15,7 @@ import type {
   AlertRule,
   Alert,
   ProviderHealth,
+  Tier,
 } from './types';
 
 export type {
@@ -30,6 +31,7 @@ export type {
   AlertRule,
   Alert,
   ProviderHealth,
+  Tier,
 } from './types';
 
 import MockAPIClient from './mockClient';
@@ -77,8 +79,6 @@ export class RealAPIClient implements APIClientInterface {
         if (response.status === 401) {
           message.error('Session expired. Please login again.');
           this.onUnauthorized?.();
-        } else {
-          message.error(errorMessage);
         }
 
         throw new Error(errorMessage);
@@ -516,6 +516,49 @@ export class RealAPIClient implements APIClientInterface {
     }
   }
 
+  async getTiers(): Promise<Tier[]> {
+    try {
+      const response = await this.request<{tiers: Tier[]; total: number}>('/admin/auth/tiers');
+      return response.tiers || [];
+    } catch (error) {
+      console.error('Failed to fetch tiers:', error);
+      return [];
+    }
+  }
+
+  async createTier(tier: Omit<Tier, 'id' | 'created_at' | 'updated_at'>): Promise<Tier> {
+    return this.request<Tier>('/admin/auth/tiers', {
+      method: 'POST',
+      body: JSON.stringify(tier),
+    });
+  }
+
+  async updateTier(id: string, tier: Partial<Tier>): Promise<Tier> {
+    return this.request<Tier>(`/admin/auth/tiers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(tier),
+    });
+  }
+
+  async deleteTier(id: string): Promise<void> {
+    await this.request<void>(`/admin/auth/tiers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async assignTierToGroup(groupId: string, tierId: string): Promise<void> {
+    await this.request<void>(`/admin/auth/groups/${groupId}/tier`, {
+      method: 'POST',
+      body: JSON.stringify({ tier_id: tierId }),
+    });
+  }
+
+  async removeTierFromGroup(groupId: string): Promise<void> {
+    await this.request<void>(`/admin/auth/groups/${groupId}/tier`, {
+      method: 'DELETE',
+    });
+  }
+
   setOnUnauthorized(callback?: UnauthorizedCallback) {
     this.onUnauthorized = callback;
   }
@@ -746,7 +789,30 @@ class UnifiedAPIClient implements APIClientInterface {
     return this.getActiveClient().getProviderHealth();
   }
 
-  // Method to switch between mock and real mode
+  async getTiers() {
+    return this.getActiveClient().getTiers();
+  }
+
+  async createTier(tier: Omit<Tier, 'id' | 'created_at' | 'updated_at'>) {
+    return this.getActiveClient().createTier(tier);
+  }
+
+  async updateTier(id: string, tier: Partial<Tier>) {
+    return this.getActiveClient().updateTier(id, tier);
+  }
+
+  async deleteTier(id: string) {
+    return this.getActiveClient().deleteTier(id);
+  }
+
+  async assignTierToGroup(groupId: string, tierId: string) {
+    return this.getActiveClient().assignTierToGroup(groupId, tierId);
+  }
+
+  async removeTierFromGroup(groupId: string) {
+    return this.getActiveClient().removeTierFromGroup(groupId);
+  }
+
   setMockMode(enabled: boolean) {
     this.useMock = enabled;
   }

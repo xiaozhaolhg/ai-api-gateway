@@ -42,6 +42,17 @@ type PermissionRepository interface {
 	FindByUserGroups(groupIDs []string, resourceType, resourceID, action string) ([]*entity.Permission, error)
 }
 
+// TierRepository defines the interface for tier persistence operations
+type TierRepository interface {
+	Create(tier *entity.Tier) error
+	GetByID(id string) (*entity.Tier, error)
+	Update(tier *entity.Tier) error
+	Delete(id string) error
+	List(page, pageSize int) ([]*entity.Tier, int, error)
+	GetByName(name string) (*entity.Tier, error)
+	GetDefaultTiers() ([]*entity.Tier, error)
+}
+
 // UserGroupRepository defines the interface for user-group membership persistence operations
 type UserGroupRepository interface {
 	Create(membership *entity.UserGroupMembership) error
