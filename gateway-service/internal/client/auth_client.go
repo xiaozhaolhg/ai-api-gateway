@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ai-api-gateway/api/gen/auth/v1"
+	authv1 "github.com/ai-api-gateway/api/gen/auth/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -154,7 +154,7 @@ func (c *AuthClient) GetUser(ctx context.Context, id string) (*authv1.User, erro
 }
 
 // CreateUser creates a new user
-func (c *AuthClient) CreateUser(ctx context.Context, name, email, role, password string) (*authv1.User, error) {
+func (c *AuthClient) CreateUser(ctx context.Context, name, email, username, role, password string) (*authv1.User, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -163,6 +163,7 @@ func (c *AuthClient) CreateUser(ctx context.Context, name, email, role, password
 	req := &authv1.CreateUserRequest{
 		Name:     name,
 		Email:    email,
+		Username: username,
 		Role:     role,
 		Password: password,
 	}
@@ -320,19 +321,39 @@ func (c *AuthClient) Register(ctx context.Context, username, email, name, passwo
 	return resp, nil
 }
 
+// CheckUsernameAvailability checks if a username is available
+func (c *AuthClient) CheckUsernameAvailability(ctx context.Context, username string) (bool, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return false, err
+	}
+
+	req := &authv1.CheckUsernameAvailabilityRequest{
+		Username: username,
+	}
+
+	resp, err := client.CheckUsernameAvailability(ctx, req)
+	if err != nil {
+		return false, fmt.Errorf("failed to check username availability: %w", err)
+	}
+
+	return resp.Available, nil
+}
+
 // Group management methods
 
 // CreateGroup creates a new group
-func (c *AuthClient) CreateGroup(ctx context.Context, name, parentGroupID, tierID string) (*authv1.Group, error) {
+func (c *AuthClient) CreateGroup(ctx context.Context, name, description, parentGroupID, tierID string) (*authv1.Group, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("[DEBUG] CreateGroup gRPC: name=%s, parentGroupID=%s, tierID=%s", name, parentGroupID, tierID)
+	log.Printf("[DEBUG] CreateGroup gRPC: name=%s, description=%s, parentGroupID=%s, tierID=%s", name, description, parentGroupID, tierID)
 
 	req := &authv1.CreateGroupRequest{
 		Name:          name,
+		Description:   description,
 		ParentGroupId: parentGroupID,
 		TierId:        tierID,
 	}
@@ -346,7 +367,7 @@ func (c *AuthClient) CreateGroup(ctx context.Context, name, parentGroupID, tierI
 }
 
 // UpdateGroup updates an existing group
-func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, parentGroupID, tierID string) (*authv1.Group, error) {
+func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, description, parentGroupID, tierID string) (*authv1.Group, error) {
 	client, err := c.getClient()
 	if err != nil {
 		return nil, err
@@ -355,6 +376,7 @@ func (c *AuthClient) UpdateGroup(ctx context.Context, id, name, parentGroupID, t
 	req := &authv1.UpdateGroupRequest{
 		Id:            id,
 		Name:          name,
+		Description:   description,
 		ParentGroupId: parentGroupID,
 		TierId:        tierID,
 	}
@@ -523,10 +545,10 @@ func (c *AuthClient) CreateTier(ctx context.Context, name, description string, i
 	}
 
 	req := &authv1.CreateTierRequest{
-		Name:              name,
-		Description:       description,
-		IsDefault:         isDefault,
-		AllowedModels:     allowedModels,
+		Name:             name,
+		Description:      description,
+		IsDefault:        isDefault,
+		AllowedModels:    allowedModels,
 		AllowedProviders: allowedProviders,
 	}
 
@@ -560,11 +582,11 @@ func (c *AuthClient) UpdateTier(ctx context.Context, id, name, description strin
 	}
 
 	req := &authv1.UpdateTierRequest{
-		Id:                id,
-		Name:              name,
-		Description:       description,
-		AllowedModels:     allowedModels,
-		AllowedProviders:  allowedProviders,
+		Id:               id,
+		Name:             name,
+		Description:      description,
+		AllowedModels:    allowedModels,
+		AllowedProviders: allowedProviders,
 	}
 
 	resp, err := client.UpdateTier(ctx, req)

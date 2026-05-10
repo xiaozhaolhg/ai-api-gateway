@@ -97,7 +97,7 @@ func TestGroupService_UpdateGroup(t *testing.T) {
 
 	group, _ := svc.CreateGroup("developers", "", "", nil, nil, nil)
 
-	updated, err := svc.UpdateGroup(group.ID, "senior-devs", "")
+	updated, err := svc.UpdateGroup(group.ID, "senior-devs", "", "")
 	if err != nil {
 		t.Fatalf("UpdateGroup() error = %v", err)
 	}
@@ -142,4 +142,48 @@ func TestGroupService_ListGroups(t *testing.T) {
 	}
 }
 
-// Integration test lives in repository package to access GORM implementations
+func TestGroupService_CreateGroup_WithDescription(t *testing.T) {
+	repo := newMockGroupRepo()
+	svc := NewGroupService(repo)
+
+	group, err := svc.CreateGroup("developers", "Development team for backend services", "", nil, nil, nil)
+	if err != nil {
+		t.Fatalf("CreateGroup() error = %v", err)
+	}
+	if group.Description != "Development team for backend services" {
+		t.Errorf("Expected description 'Development team for backend services', got %s", group.Description)
+	}
+}
+
+func TestGroupService_UpdateGroup_Description(t *testing.T) {
+	repo := newMockGroupRepo()
+	svc := NewGroupService(repo)
+
+	group, _ := svc.CreateGroup("developers", "Old description", "", nil, nil, nil)
+
+	updated, err := svc.UpdateGroup(group.ID, "developers", "New description", "")
+	if err != nil {
+		t.Fatalf("UpdateGroup() error = %v", err)
+	}
+	if updated.Description != "New description" {
+		t.Errorf("Expected description 'New description', got %s", updated.Description)
+	}
+}
+
+func TestGroupService_UpdateGroup_NameAndDescription(t *testing.T) {
+	repo := newMockGroupRepo()
+	svc := NewGroupService(repo)
+
+	group, _ := svc.CreateGroup("old-name", "old-description", "", nil, nil, nil)
+
+	updated, err := svc.UpdateGroup(group.ID, "new-name", "new-description", "")
+	if err != nil {
+		t.Fatalf("UpdateGroup() error = %v", err)
+	}
+	if updated.Name != "new-name" {
+		t.Errorf("Expected name 'new-name', got %s", updated.Name)
+	}
+	if updated.Description != "new-description" {
+		t.Errorf("Expected description 'new-description', got %s", updated.Description)
+	}
+}

@@ -13,7 +13,7 @@ Use `gateway-sync-upstream` skill to ensure branch is up-to-date with upstream/m
 
 ### 2. Run Automated Verification
 ```bash
-opsx-verify <change-name>
+openspec verify <change-name>
 ```
 
 Review the verification report for:
@@ -95,7 +95,7 @@ Address all CRITICAL issues. For WARNING issues, either fix or document deferral
 
 ### 5. Sync Specs
 ```bash
-opsx-sync-specs <change-name>
+openspec sync-specs <change-name>
 ```
 
 ### 6. Final Verification
@@ -127,7 +127,7 @@ Commit changes with clear message.
 
 ### 7. Archive
 ```bash
-opsx-archive <change-name>
+openspec archive <change-name>
 ```
 
 ### 8. Update Work Division

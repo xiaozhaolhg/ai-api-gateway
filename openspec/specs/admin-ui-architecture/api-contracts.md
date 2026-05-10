@@ -271,13 +271,29 @@ export interface APIClientInterface {
 message User {
   string id = 1;
   string email = 2;
-  string name = 3;
-  string role = 4;          // "admin" | "user" | "viewer"
-  string password_hash = 5;  // bcrypt hash
-  int64 created_at = 6;
-  int64 updated_at = 7;
+  string username = 3;      // Mandatory for new users, immutable after creation
+  string name = 4;
+  string role = 5;          // "admin" | "user" | "viewer"
+  string password_hash = 6;  // bcrypt hash
+  int64 created_at = 7;
+  int64 updated_at = 8;
+  repeated string group_ids = 9;  // User's group memberships
 }
 ```
+
+### 5.6.1 User Search (Updated)
+
+Users can be searched by name, email, or username:
+
+- Search input filters users by matching any of: `name`, `email`, or `username`
+
+### 5.6.2 User Groups Display
+
+User list displays group memberships as tags next to each user row.
+
+### 5.6.3 Username Uniqueness Validation
+
+Frontend validates username availability before submission via `GET /admin/auth/check-username?username=...`
 
 ---
 
@@ -291,6 +307,7 @@ For first-time setup, a bootstrap endpoint creates the initial admin:
 ```json
 {
   "email": "admin@example.com",
+  "username": "admin",         // Mandatory username for bootstrap
   "password": "secure_password",
   "name": "Initial Admin"
 }
@@ -303,6 +320,7 @@ For first-time setup, a bootstrap endpoint creates the initial admin:
   "user": {
     "id": "usr_system",
     "email": "admin@example.com",
+    "username": "admin",
     "name": "Initial Admin",
     "role": "admin"
   }
@@ -310,3 +328,33 @@ For first-time setup, a bootstrap endpoint creates the initial admin:
 ```
 
 **Security:** This endpoint should be disabled after first admin is created (via config flag or environment variable).
+
+---
+
+### 5.8 Group Entity (Updated)
+
+```protobuf
+message Group {
+  string id = 1;
+  string name = 2;
+  string description = 3;     // Group description
+  string parent_group_id = 4;
+  int32 member_count = 5;     // Number of members in the group
+  int64 created_at = 6;
+}
+```
+
+### 5.8.1 Group Creation with Description
+
+- Form includes: name, description, parent group (optional)
+- Description field is editable and persisted to backend
+
+### 5.8.2 Group Member Count Display
+
+- Groups list table displays member count in dedicated column
+- Counts update in real-time when members are added/removed
+- Calculated from group membership data
+
+### 5.8.3 Group List Search
+
+- Groups can be searched by name or description

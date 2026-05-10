@@ -18,6 +18,7 @@ export interface APIClientInterface {
   createUser(user: Omit<User, 'id' | 'created_at'>): Promise<User>;
   updateUser(id: string, user: Partial<User>): Promise<User>;
   deleteUser(id: string): Promise<void>;
+  checkUsernameAvailability(username: string): Promise<{ available: boolean }>;
 
   // API Keys
   getAPIKeys(userId: string): Promise<APIKey[]>;
@@ -103,6 +104,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username: string;
   password?: string;
   role: string;
   status: string;

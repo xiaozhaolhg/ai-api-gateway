@@ -4,16 +4,18 @@ import "context"
 
 type UserService interface {
 	ListUsers(ctx context.Context, page, pageSize int) (*ListUsersResp, error)
-	CreateUser(ctx context.Context, name, email, role string) (*User, error)
+	CreateUser(ctx context.Context, name, email, username, role string) (*User, error)
 	UpdateUser(ctx context.Context, id, name, email, role, status string) (*User, error)
 	DeleteUser(ctx context.Context, id string) error
 }
 
 type User struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Email    string   `json:"email"`
+	Username string   `json:"username"`
+	Role     string   `json:"role"`
+	Groups   []string `json:"groups"`
 }
 
 type ListUsersResp struct {
@@ -32,8 +34,8 @@ func (h *AdminUsersHandler) ListUsers(page, pageSize int) (*ListUsersResp, error
 	return h.svc.ListUsers(context.Background(), page, pageSize)
 }
 
-func (h *AdminUsersHandler) CreateUser(name, email, role string) (*User, error) {
-	return h.svc.CreateUser(context.Background(), name, email, role)
+func (h *AdminUsersHandler) CreateUser(name, email, username, role string) (*User, error) {
+	return h.svc.CreateUser(context.Background(), name, email, username, role)
 }
 
 func (h *AdminUsersHandler) UpdateUser(id, name, email, role, status string) (*User, error) {

@@ -20,36 +20,37 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_ValidateAPIKey_FullMethodName          = "/auth.v1.AuthService/ValidateAPIKey"
-	AuthService_Login_FullMethodName                   = "/auth.v1.AuthService/Login"
-	AuthService_Register_FullMethodName                = "/auth.v1.AuthService/Register"
-	AuthService_CheckModelAuthorization_FullMethodName = "/auth.v1.AuthService/CheckModelAuthorization"
-	AuthService_GetUser_FullMethodName                 = "/auth.v1.AuthService/GetUser"
-	AuthService_CreateUser_FullMethodName              = "/auth.v1.AuthService/CreateUser"
-	AuthService_UpdateUser_FullMethodName              = "/auth.v1.AuthService/UpdateUser"
-	AuthService_DeleteUser_FullMethodName              = "/auth.v1.AuthService/DeleteUser"
-	AuthService_ListUsers_FullMethodName               = "/auth.v1.AuthService/ListUsers"
-	AuthService_CreateAPIKey_FullMethodName            = "/auth.v1.AuthService/CreateAPIKey"
-	AuthService_DeleteAPIKey_FullMethodName            = "/auth.v1.AuthService/DeleteAPIKey"
-	AuthService_ListAPIKeys_FullMethodName             = "/auth.v1.AuthService/ListAPIKeys"
-	AuthService_CreateGroup_FullMethodName             = "/auth.v1.AuthService/CreateGroup"
-	AuthService_UpdateGroup_FullMethodName             = "/auth.v1.AuthService/UpdateGroup"
-	AuthService_DeleteGroup_FullMethodName             = "/auth.v1.AuthService/DeleteGroup"
-	AuthService_ListGroups_FullMethodName              = "/auth.v1.AuthService/ListGroups"
-	AuthService_ListGroupMembers_FullMethodName        = "/auth.v1.AuthService/ListGroupMembers"
-	AuthService_AddUserToGroup_FullMethodName          = "/auth.v1.AuthService/AddUserToGroup"
-	AuthService_RemoveUserFromGroup_FullMethodName     = "/auth.v1.AuthService/RemoveUserFromGroup"
-	AuthService_GrantPermission_FullMethodName         = "/auth.v1.AuthService/GrantPermission"
-	AuthService_RevokePermission_FullMethodName        = "/auth.v1.AuthService/RevokePermission"
-	AuthService_ListPermissions_FullMethodName         = "/auth.v1.AuthService/ListPermissions"
-	AuthService_CheckPermission_FullMethodName         = "/auth.v1.AuthService/CheckPermission"
-	AuthService_CreateTier_FullMethodName              = "/auth.v1.AuthService/CreateTier"
-	AuthService_GetTier_FullMethodName                 = "/auth.v1.AuthService/GetTier"
-	AuthService_UpdateTier_FullMethodName              = "/auth.v1.AuthService/UpdateTier"
-	AuthService_DeleteTier_FullMethodName              = "/auth.v1.AuthService/DeleteTier"
-	AuthService_ListTiers_FullMethodName               = "/auth.v1.AuthService/ListTiers"
-	AuthService_AssignTierToGroup_FullMethodName       = "/auth.v1.AuthService/AssignTierToGroup"
-	AuthService_RemoveTierFromGroup_FullMethodName     = "/auth.v1.AuthService/RemoveTierFromGroup"
+	AuthService_ValidateAPIKey_FullMethodName            = "/auth.v1.AuthService/ValidateAPIKey"
+	AuthService_Login_FullMethodName                     = "/auth.v1.AuthService/Login"
+	AuthService_Register_FullMethodName                  = "/auth.v1.AuthService/Register"
+	AuthService_CheckUsernameAvailability_FullMethodName = "/auth.v1.AuthService/CheckUsernameAvailability"
+	AuthService_CheckModelAuthorization_FullMethodName   = "/auth.v1.AuthService/CheckModelAuthorization"
+	AuthService_GetUser_FullMethodName                   = "/auth.v1.AuthService/GetUser"
+	AuthService_CreateUser_FullMethodName                = "/auth.v1.AuthService/CreateUser"
+	AuthService_UpdateUser_FullMethodName                = "/auth.v1.AuthService/UpdateUser"
+	AuthService_DeleteUser_FullMethodName                = "/auth.v1.AuthService/DeleteUser"
+	AuthService_ListUsers_FullMethodName                 = "/auth.v1.AuthService/ListUsers"
+	AuthService_CreateAPIKey_FullMethodName              = "/auth.v1.AuthService/CreateAPIKey"
+	AuthService_DeleteAPIKey_FullMethodName              = "/auth.v1.AuthService/DeleteAPIKey"
+	AuthService_ListAPIKeys_FullMethodName               = "/auth.v1.AuthService/ListAPIKeys"
+	AuthService_CreateGroup_FullMethodName               = "/auth.v1.AuthService/CreateGroup"
+	AuthService_UpdateGroup_FullMethodName               = "/auth.v1.AuthService/UpdateGroup"
+	AuthService_DeleteGroup_FullMethodName               = "/auth.v1.AuthService/DeleteGroup"
+	AuthService_ListGroups_FullMethodName                = "/auth.v1.AuthService/ListGroups"
+	AuthService_ListGroupMembers_FullMethodName          = "/auth.v1.AuthService/ListGroupMembers"
+	AuthService_AddUserToGroup_FullMethodName            = "/auth.v1.AuthService/AddUserToGroup"
+	AuthService_RemoveUserFromGroup_FullMethodName       = "/auth.v1.AuthService/RemoveUserFromGroup"
+	AuthService_GrantPermission_FullMethodName           = "/auth.v1.AuthService/GrantPermission"
+	AuthService_RevokePermission_FullMethodName          = "/auth.v1.AuthService/RevokePermission"
+	AuthService_ListPermissions_FullMethodName           = "/auth.v1.AuthService/ListPermissions"
+	AuthService_CheckPermission_FullMethodName           = "/auth.v1.AuthService/CheckPermission"
+	AuthService_CreateTier_FullMethodName                = "/auth.v1.AuthService/CreateTier"
+	AuthService_GetTier_FullMethodName                   = "/auth.v1.AuthService/GetTier"
+	AuthService_UpdateTier_FullMethodName                = "/auth.v1.AuthService/UpdateTier"
+	AuthService_DeleteTier_FullMethodName                = "/auth.v1.AuthService/DeleteTier"
+	AuthService_ListTiers_FullMethodName                 = "/auth.v1.AuthService/ListTiers"
+	AuthService_AssignTierToGroup_FullMethodName         = "/auth.v1.AuthService/AssignTierToGroup"
+	AuthService_RemoveTierFromGroup_FullMethodName       = "/auth.v1.AuthService/RemoveTierFromGroup"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -62,6 +63,8 @@ type AuthServiceClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	// Register (Username/Email + Password)
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	// Check username availability
+	CheckUsernameAvailability(ctx context.Context, in *CheckUsernameAvailabilityRequest, opts ...grpc.CallOption) (*CheckUsernameAvailabilityResponse, error)
 	// Model Authorization
 	CheckModelAuthorization(ctx context.Context, in *CheckModelAuthorizationRequest, opts ...grpc.CallOption) (*AuthorizationResult, error)
 	// User Management
@@ -128,6 +131,16 @@ func (c *authServiceClient) Register(ctx context.Context, in *RegisterRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterResponse)
 	err := c.cc.Invoke(ctx, AuthService_Register_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) CheckUsernameAvailability(ctx context.Context, in *CheckUsernameAvailabilityRequest, opts ...grpc.CallOption) (*CheckUsernameAvailabilityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckUsernameAvailabilityResponse)
+	err := c.cc.Invoke(ctx, AuthService_CheckUsernameAvailability_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -414,6 +427,8 @@ type AuthServiceServer interface {
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	// Register (Username/Email + Password)
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	// Check username availability
+	CheckUsernameAvailability(context.Context, *CheckUsernameAvailabilityRequest) (*CheckUsernameAvailabilityResponse, error)
 	// Model Authorization
 	CheckModelAuthorization(context.Context, *CheckModelAuthorizationRequest) (*AuthorizationResult, error)
 	// User Management
@@ -464,6 +479,9 @@ func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*Lo
 }
 func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*RegisterResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedAuthServiceServer) CheckUsernameAvailability(context.Context, *CheckUsernameAvailabilityRequest) (*CheckUsernameAvailabilityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CheckUsernameAvailability not implemented")
 }
 func (UnimplementedAuthServiceServer) CheckModelAuthorization(context.Context, *CheckModelAuthorizationRequest) (*AuthorizationResult, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckModelAuthorization not implemented")
@@ -617,6 +635,24 @@ func _AuthService_Register_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServiceServer).Register(ctx, req.(*RegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_CheckUsernameAvailability_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckUsernameAvailabilityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CheckUsernameAvailability(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CheckUsernameAvailability_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CheckUsernameAvailability(ctx, req.(*CheckUsernameAvailabilityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1125,6 +1161,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Register",
 			Handler:    _AuthService_Register_Handler,
+		},
+		{
+			MethodName: "CheckUsernameAvailability",
+			Handler:    _AuthService_CheckUsernameAvailability_Handler,
 		},
 		{
 			MethodName: "CheckModelAuthorization",

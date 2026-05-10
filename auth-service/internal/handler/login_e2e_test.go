@@ -37,7 +37,7 @@ func makeTestHandler(db *gorm.DB) (*Handler, port.UserRepository) {
 	permissionService := application.NewPermissionService(repository.NewPermissionRepository(db), userGroupRepo)
 	ugService := application.NewUserGroupService(userGroupRepo)
 	tierService := application.NewTierService(tierRepo, groupRepo)
-	return NewHandler(authService, groupService, permissionService, ugService, tierService, userRepo, nil), userRepo
+	return NewHandler(authService, groupService, permissionService, ugService, tierService, userRepo, nil, userGroupRepo), userRepo
 }
 
 func TestLogin_E2E(t *testing.T) {

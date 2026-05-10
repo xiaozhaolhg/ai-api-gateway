@@ -75,6 +75,7 @@ class MockAPIClient implements APIClientInterface {
       id: this.generateId(),
       name,
       email: email || `${username}@local.dev`,
+      username: username || 'defaultuser',
       role: 'user',
       status: 'active',
       created_at: this.getCurrentTimestamp()
@@ -176,6 +177,14 @@ class MockAPIClient implements APIClientInterface {
 
     this.dataHandler.deleteUser(id);
     return this.simulateNetworkDelay(undefined);
+  }
+
+  async checkUsernameAvailability(username: string): Promise<{ available: boolean }> {
+    // Mock implementation - always return available for testing
+    console.log(`Checking username availability for: ${username}`);
+    return this.simulateNetworkDelay({
+      available: true
+    });
   }
 
   // ===== API Keys =====

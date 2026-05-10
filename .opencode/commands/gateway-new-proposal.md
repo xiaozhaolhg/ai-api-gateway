@@ -50,7 +50,7 @@ Ask:
 
 If scope unclear:
 ```bash
-opsx-explore "[topic - current implementation, architecture, API contracts]"
+openspec explore "[topic - current implementation, architecture, API contracts]"
 ```
 
 Summarize findings:
@@ -88,12 +88,12 @@ Feed collected context into OpenSpec:
 
 **Option A - Full generation:**
 ```bash
-opsx-propose <change-name>
+openspec propose <change-name>
 ```
 
 **Option B - Step by step:**
 ```bash
-opsx-new <change-name>
+openspec new change <change-name>
 ```
 Then create artifacts guided by collected context.
 

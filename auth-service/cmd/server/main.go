@@ -55,7 +55,7 @@ func main() {
 	groupService := application.NewGroupService(groupRepo)
 	permissionService := application.NewPermissionService(permissionRepo, userGroupRepo)
 	userGroupService := application.NewUserGroupService(userGroupRepo)
-	h := handler.NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
+	h := handler.NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo, userGroupRepo)
 
 	s := grpc.NewServer()
 	authv1.RegisterAuthServiceServer(s, h)

@@ -33,6 +33,16 @@ type GroupRepository interface {
 	List(page, pageSize int) ([]*entity.Group, int, error)
 }
 
+// UserGroupRepository defines the interface for user-group membership operations
+type UserGroupRepository interface {
+	GetGroupIDsByUserID(userID string) ([]string, error)
+	Create(membership *entity.UserGroupMembership) error
+	Delete(userID, groupID string) error
+	GetByUserID(userID string) ([]*entity.UserGroupMembership, error)
+	GetByGroupID(groupID string, page, pageSize int) ([]*entity.UserGroupMembership, int, error)
+	Exists(userID, groupID string) (bool, error)
+}
+
 // PermissionRepository defines the interface for permission persistence operations
 type PermissionRepository interface {
 	Create(permission *entity.Permission) error
@@ -51,13 +61,4 @@ type TierRepository interface {
 	List(page, pageSize int) ([]*entity.Tier, int, error)
 	GetByName(name string) (*entity.Tier, error)
 	GetDefaultTiers() ([]*entity.Tier, error)
-}
-
-// UserGroupRepository defines the interface for user-group membership persistence operations
-type UserGroupRepository interface {
-	Create(membership *entity.UserGroupMembership) error
-	Delete(userID, groupID string) error
-	GetByUserID(userID string) ([]*entity.UserGroupMembership, error)
-	GetByGroupID(groupID string, page, pageSize int) ([]*entity.UserGroupMembership, int, error)
-	Exists(userID, groupID string) (bool, error)
 }

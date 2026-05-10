@@ -16,6 +16,9 @@ service AuthService {
   // Register (Username/Email + Password)
   rpc Register(RegisterRequest) returns (RegisterResponse);
 
+  // Check username availability
+  rpc CheckUsernameAvailability(CheckUsernameAvailabilityRequest) returns (CheckUsernameAvailabilityResponse);
+
   // Model Authorization
   rpc CheckModelAuthorization(CheckModelAuthorizationRequest) returns (AuthorizationResult);
 
@@ -83,6 +86,14 @@ message RegisterResponse {
   User user = 2;
 }
 
+message CheckUsernameAvailabilityRequest {
+  string username = 1;
+}
+
+message CheckUsernameAvailabilityResponse {
+  bool available = 1;
+}
+
 message UserIdentity {
   string user_id = 1;
   string role = 2;              // "admin" | "user" | "viewer"
@@ -108,10 +119,12 @@ message User {
   string id = 1;
   string name = 2;
   string email = 3;
-  string role = 4;         // "admin" | "user" | "viewer"
-  string status = 5;        // "active" | "disabled"
-  int64 created_at = 6;
-  string password_hash = 7;
+  string username = 4;      // Optional username for authentication
+  string role = 5;         // "admin" | "user" | "viewer"
+  string status = 6;        // "active" | "disabled"
+  int64 created_at = 7;
+  string password_hash = 8;
+  repeated string group_ids = 9;
 }
 
 message GetUserRequest {
@@ -130,8 +143,9 @@ message UpdateUserRequest {
   string id = 1;
   string name = 2;
   string email = 3;
-  string role = 4;
-  string status = 5;
+  string username = 4;
+  string role = 5;
+  string status = 6;
 }
 
 message DeleteUserRequest {
@@ -192,19 +206,22 @@ message Group {
   int64 created_at = 5;
   int64 updated_at = 6;
   string tier_id = 7;
+  int32 member_count = 8;
 }
 
 message CreateGroupRequest {
   string name = 1;
-  string parent_group_id = 2;
-  string tier_id = 3;
+  string description = 2;
+  string parent_group_id = 3;
+  string tier_id = 4;
 }
 
 message UpdateGroupRequest {
   string id = 1;
   string name = 2;
-  string parent_group_id = 3;
-  string tier_id = 4;
+  string description = 3;
+  string parent_group_id = 4;
+  string tier_id = 5;
 }
 
 message DeleteGroupRequest {
