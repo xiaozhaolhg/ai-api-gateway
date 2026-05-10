@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ai-api-gateway/provider-service/internal/domain/entity"
@@ -20,7 +21,6 @@ func NewOllamaAdapter() port.ProviderAdapter {
 
 // TransformRequest transforms OpenAI format request to Ollama format
 func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]string) ([]byte, map[string]string, error) {
-	// Parse OpenAI format request
 	var openAIReq struct {
 		Model       string                   `json:"model"`
 		Messages    []map[string]interface{} `json:"messages"`
@@ -33,15 +33,23 @@ func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]stri
 		return nil, nil, fmt.Errorf("invalid OpenAI request format: %w", err)
 	}
 
-	// Transform to Ollama format
-	ollamaReq := map[string]interface{}{
-		"model":  openAIReq.Model,
-		"stream": openAIReq.Stream,
+	modelName := openAIReq.Model
+	if idx := strings.Index(modelName, ":"); idx != -1 {
+		modelName = modelName[idx+1:]
 	}
 
-	// Convert messages to prompt (Ollama uses a single prompt field)
-	prompt := a.convertMessagesToPrompt(openAIReq.Messages)
-	ollamaReq["prompt"] = prompt
+	// Try to match with available Ollama models (check if modelName matches any model name)
+	// For now, if model name contains colon, use it directly; otherwise use name:version
+	if !strings.Contains(modelName, ":") {
+		// Try common version suffixes for common models
+		modelName = modelName + ":0.8b"
+	}
+
+	ollamaReq := map[string]interface{}{
+		"model":   modelName,
+		"stream":  openAIReq.Stream,
+		"messages": openAIReq.Messages,
+	}
 
 	if openAIReq.Temperature > 0 {
 		ollamaReq["temperature"] = openAIReq.Temperature
@@ -56,7 +64,6 @@ func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]stri
 		return nil, nil, fmt.Errorf("failed to marshal Ollama request: %w", err)
 	}
 
-	// Transform headers
 	transformedHeaders := make(map[string]string)
 	for k, v := range headers {
 		transformedHeaders[k] = v

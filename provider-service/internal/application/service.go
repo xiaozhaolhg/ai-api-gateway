@@ -1,11 +1,13 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -103,6 +105,8 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to read response: %w", err)
 	}
+
+	log.Printf("[DEBUG] Response status: %d, body length: %d, body: %s", resp.StatusCode, len(responseBody), string(responseBody[:int(math.Min(200, float64(len(responseBody))))]))
 
 	// Transform response back to OpenAI format (non-streaming)
 	transformedResponse, tokenCounts, _, err := adapter.TransformResponse(responseBody, false, entity.TokenCounts{})
@@ -308,7 +312,7 @@ func (s *Service) sendGRPCCallback(ctx context.Context, endpoint string, callbac
 
 // makeHTTPRequest makes a non-streaming HTTP request
 func (s *Service) makeHTTPRequest(ctx context.Context, url string, body []byte, headers map[string]string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +330,7 @@ func (s *Service) makeHTTPRequest(ctx context.Context, url string, body []byte, 
 
 // makeStreamingHTTPRequest makes a streaming HTTP request
 func (s *Service) makeStreamingHTTPRequest(ctx context.Context, url string, body []byte, headers map[string]string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

@@ -58,6 +58,7 @@ func (m *RouteMiddleware) Middleware() gin.HandlerFunc {
 		ctx = context.WithValue(ctx, "fallbackProviderIds", result.FallbackProviderIDs)
 		ctx = context.WithValue(ctx, "fallbackModels", result.FallbackModels)
 		c.Request = c.Request.WithContext(ctx)
+		c.Set("providerId", result.ProviderID)
 		c.Set("adapterType", result.AdapterType)
 		c.Set("fallbackProviderIds", result.FallbackProviderIDs)
 		c.Set("fallbackModels", result.FallbackModels)
