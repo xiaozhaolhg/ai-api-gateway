@@ -15,6 +15,8 @@ services:
       - AUTH_SERVICE_ADDRESS=auth-service:50051
       - ROUTER_SERVICE_ADDRESS=router-service:50052
       - PROVIDER_SERVICE_ADDRESS=provider-service:50053
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   auth-service:
     build:
@@ -61,8 +63,6 @@ services:
     environment:
       - BILLING_SERVICE_ADDRESS=billing-service:50054
       - MONITOR_SERVICE_ADDRESS=monitor-service:50055
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   billing-service:
     build:
@@ -88,10 +88,8 @@ services:
 
   admin-ui:
     build:
-      context: .
-      dockerfile: ./admin-ui/Dockerfile
-      args:
-        - VITE_API_BASE_URL=
+      context: ./admin-ui
+      dockerfile: Dockerfile
     ports:
       - "3000:80"
     depends_on:

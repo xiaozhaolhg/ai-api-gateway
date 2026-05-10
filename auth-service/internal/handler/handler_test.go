@@ -255,6 +255,16 @@ func (m *mockUserGroupRepositoryForHandler) Exists(userID, groupID string) (bool
 	return false, nil
 }
 
+func (m *mockUserGroupRepositoryForHandler) GetGroupIDsByUserID(userID string) ([]string, error) {
+	var ids []string
+	for _, mg := range m.memberships {
+		if mg.UserID == userID {
+			ids = append(ids, mg.GroupID)
+		}
+	}
+	return ids, nil
+}
+
 // MockTierRepository for testing
 type mockTierRepository struct {
 	tiers map[string]*entity.Tier
@@ -387,7 +397,7 @@ func setupTestHandler(t *testing.T) *Handler {
 	}
 	apiKeyRepo.Create(apiKeyRecord)
 
-	return NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
+	return NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo, userGroupRepo)
 }
 
 func TestHandler_ValidateAPIKey(t *testing.T) {
@@ -441,7 +451,7 @@ func TestHandler_CheckModelAuthorization(t *testing.T) {
 	permissionService := application.NewPermissionService(newMockPermissionRepositoryForHandler(), userGroupRepo)
 	userGroupService := application.NewUserGroupService(userGroupRepo)
 	tierService := application.NewTierService(tierRepo, groupRepo)
-	handler := NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
+	handler := NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo, userGroupRepo)
 
 	user := &entity.User{
 		ID:     "auth-user-1",
@@ -495,7 +505,7 @@ func TestHandler_CheckModelAuthorization_NoTier(t *testing.T) {
 	permissionService := application.NewPermissionService(newMockPermissionRepositoryForHandler(), userGroupRepo)
 	userGroupService := application.NewUserGroupService(userGroupRepo)
 	tierService := application.NewTierService(tierRepo, groupRepo)
-	handler := NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo)
+	handler := NewHandler(authService, groupService, permissionService, userGroupService, tierService, userRepo, apiKeyRepo, userGroupRepo)
 
 	user := &entity.User{
 		ID:     "auth-user-2",

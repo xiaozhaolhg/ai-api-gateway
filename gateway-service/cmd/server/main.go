@@ -128,6 +128,7 @@ func main() {
 	r.POST("/admin/auth/login", handleLogin)
 	r.POST("/admin/auth/register", handleRegister)
 	r.POST("/admin/auth/logout", handleLogout)
+	r.POST("/admin/auth/check-username", handleCheckUsername)
 
 	admin := r.Group("/admin/auth")
 	admin.Use(jwtAuthMiddleware())
@@ -563,6 +564,32 @@ func handleLogout(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "logged out"})
 }
 
+func handleCheckUsername(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if authClient == nil {
+		c.JSON(503, gin.H{"error": "auth service unavailable"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	available, err := authClient.CheckUsernameAvailability(ctx, req.Username)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to check username"})
+		return
+	}
+
+	c.JSON(200, gin.H{"available": available})
+}
+
 func handleGetCurrentUser(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"id":    c.GetString("userId"),
@@ -595,13 +622,27 @@ func handleListUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"users": resp.Users, "total": resp.Total})
+	users := make([]gin.H, len(resp.Users))
+	for i, u := range resp.Users {
+		users[i] = gin.H{
+			"id":         u.Id,
+			"name":       u.Name,
+			"email":      u.Email,
+			"username":   u.Username,
+			"role":       u.Role,
+			"status":     u.Status,
+			"groups":     u.GroupIds,
+			"created_at": time.Unix(u.CreatedAt, 0).Format(time.RFC3339),
+		}
+	}
+	c.JSON(200, gin.H{"users": users, "total": resp.Total})
 }
 
 func handleCreateUser(c *gin.Context) {
 	var req struct {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
+		Username string `json:"username"`
 		Role     string `json:"role"`
 		Password string `json:"password"`
 	}
@@ -615,7 +656,7 @@ func handleCreateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := authClient.CreateUser(context.Background(), req.Name, req.Email, req.Role, req.Password)
+	user, err := authClient.CreateUser(context.Background(), req.Name, req.Email, req.Username, req.Role, req.Password)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -757,12 +798,22 @@ func handleListGroups(c *gin.Context) {
 
 	groups := make([]gin.H, len(resp.Groups))
 	for i, g := range resp.Groups {
+		// Get member count for each group
+		memberCount := 0
+		if authClient != nil {
+			membersResp, err := authClient.ListGroupMembers(context.Background(), g.Id, 1, 1)
+			if err == nil {
+				memberCount = int(membersResp.Total)
+			}
+		}
+
 		groups[i] = gin.H{
 			"id":              g.Id,
 			"name":            g.Name,
 			"description":     g.Description,
 			"parent_group_id": g.ParentGroupId,
 			"tier_id":         g.TierId,
+			"member_count":    memberCount,
 			"created_at":      time.Unix(g.CreatedAt, 0).Format(time.RFC3339),
 			"updated_at":      time.Unix(g.UpdatedAt, 0).Format(time.RFC3339),
 		}
@@ -774,6 +825,7 @@ func handleListGroups(c *gin.Context) {
 func handleCreateGroup(c *gin.Context) {
 	var req struct {
 		Name          string `json:"name" binding:"required"`
+		Description   string `json:"description"`
 		ParentGroupID string `json:"parent_group_id"`
 		TierID        string `json:"tier_id"`
 	}
@@ -782,14 +834,14 @@ func handleCreateGroup(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[DEBUG] handleCreateGroup: name=%s, tier_id=%s", req.Name, req.TierID)
+	log.Printf("[DEBUG] handleCreateGroup: name=%s, description=%s, tier_id=%s", req.Name, req.Description, req.TierID)
 
 	if authClient == nil {
 		c.JSON(503, gin.H{"error": "auth service unavailable"})
 		return
 	}
 
-	group, err := authClient.CreateGroup(context.Background(), req.Name, req.ParentGroupID, req.TierID)
+	group, err := authClient.CreateGroup(context.Background(), req.Name, req.Description, req.ParentGroupID, req.TierID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -810,6 +862,7 @@ func handleUpdateGroup(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
 		Name          string `json:"name"`
+		Description   string `json:"description"`
 		ParentGroupID string `json:"parent_group_id"`
 		TierID        string `json:"tier_id"`
 	}
@@ -820,20 +873,20 @@ func handleUpdateGroup(c *gin.Context) {
 		return
 	}
 
-	group, err := authClient.UpdateGroup(context.Background(), id, req.Name, req.ParentGroupID, req.TierID)
+	group, err := authClient.UpdateGroup(context.Background(), id, req.Name, req.Description, req.ParentGroupID, req.TierID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(200, gin.H{
-		"id":             group.Id,
-		"name":           group.Name,
-		"description":    group.Description,
+		"id":              group.Id,
+		"name":            group.Name,
+		"description":     group.Description,
 		"parent_group_id": group.ParentGroupId,
-		"tier_id":        group.TierId,
-		"created_at":     time.Unix(group.CreatedAt, 0).Format(time.RFC3339),
-		"updated_at":     time.Unix(group.UpdatedAt, 0).Format(time.RFC3339),
+		"tier_id":         group.TierId,
+		"created_at":      time.Unix(group.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":      time.Unix(group.UpdatedAt, 0).Format(time.RFC3339),
 	})
 }
 
@@ -1163,14 +1216,14 @@ func handleListTiers(c *gin.Context) {
 	tiers := make([]gin.H, len(resp.Tiers))
 	for i, t := range resp.Tiers {
 		tiers[i] = gin.H{
-			"id":                 t.Id,
-			"name":               t.Name,
-			"description":        t.Description,
-			"is_default":         t.IsDefault,
-			"allowed_models":     t.AllowedModels,
-			"allowed_providers":  t.AllowedProviders,
-			"created_at":         time.Unix(t.CreatedAt, 0).Format(time.RFC3339),
-			"updated_at":         time.Unix(t.UpdatedAt, 0).Format(time.RFC3339),
+			"id":                t.Id,
+			"name":              t.Name,
+			"description":       t.Description,
+			"is_default":        t.IsDefault,
+			"allowed_models":    t.AllowedModels,
+			"allowed_providers": t.AllowedProviders,
+			"created_at":        time.Unix(t.CreatedAt, 0).Format(time.RFC3339),
+			"updated_at":        time.Unix(t.UpdatedAt, 0).Format(time.RFC3339),
 		}
 	}
 
@@ -1179,7 +1232,7 @@ func handleListTiers(c *gin.Context) {
 
 func handleCreateTier(c *gin.Context) {
 	var req struct {
-		Name              string   `json:"name" binding:"required"`
+		Name             string   `json:"name" binding:"required"`
 		Description      string   `json:"description"`
 		IsDefault        bool     `json:"is_default"`
 		AllowedModels    []string `json:"allowed_models"`
@@ -1202,21 +1255,21 @@ func handleCreateTier(c *gin.Context) {
 	}
 
 	c.JSON(201, gin.H{
-		"id":                 tier.Id,
-		"name":               tier.Name,
-		"description":        tier.Description,
-		"is_default":         tier.IsDefault,
-		"allowed_models":     tier.AllowedModels,
-		"allowed_providers":  tier.AllowedProviders,
-		"created_at":         time.Unix(tier.CreatedAt, 0).Format(time.RFC3339),
-		"updated_at":         time.Unix(tier.UpdatedAt, 0).Format(time.RFC3339),
+		"id":                tier.Id,
+		"name":              tier.Name,
+		"description":       tier.Description,
+		"is_default":        tier.IsDefault,
+		"allowed_models":    tier.AllowedModels,
+		"allowed_providers": tier.AllowedProviders,
+		"created_at":        time.Unix(tier.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":        time.Unix(tier.UpdatedAt, 0).Format(time.RFC3339),
 	})
 }
 
 func handleUpdateTier(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
-		Name              string   `json:"name"`
+		Name             string   `json:"name"`
 		Description      string   `json:"description"`
 		AllowedModels    []string `json:"allowed_models"`
 		AllowedProviders []string `json:"allowed_providers"`
@@ -1238,14 +1291,14 @@ func handleUpdateTier(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"id":                 tier.Id,
-		"name":               tier.Name,
-		"description":        tier.Description,
-		"is_default":         tier.IsDefault,
-		"allowed_models":     tier.AllowedModels,
-		"allowed_providers":  tier.AllowedProviders,
-		"created_at":         time.Unix(tier.CreatedAt, 0).Format(time.RFC3339),
-		"updated_at":         time.Unix(tier.UpdatedAt, 0).Format(time.RFC3339),
+		"id":                tier.Id,
+		"name":              tier.Name,
+		"description":       tier.Description,
+		"is_default":        tier.IsDefault,
+		"allowed_models":    tier.AllowedModels,
+		"allowed_providers": tier.AllowedProviders,
+		"created_at":        time.Unix(tier.CreatedAt, 0).Format(time.RFC3339),
+		"updated_at":        time.Unix(tier.UpdatedAt, 0).Format(time.RFC3339),
 	})
 }
 

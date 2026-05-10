@@ -225,6 +225,14 @@ func (s *AuthService) CreateUser(name, username, email, role, passwordHash strin
 		return nil, fmt.Errorf("user with email %s already exists", email)
 	}
 
+	// Check if username already exists (if provided)
+	if username != "" {
+		existingByUsername, _ := s.userRepo.GetByUsername(username)
+		if existingByUsername != nil {
+			return nil, fmt.Errorf("username %s already exists", username)
+		}
+	}
+
 	user := &entity.User{
 		ID:           generateID(),
 		Name:         name,
@@ -242,6 +250,7 @@ func (s *AuthService) CreateUser(name, username, email, role, passwordHash strin
 
 	return user, nil
 }
+
 // UpdatePassword updates a user's password
 func (s *AuthService) UpdatePassword(userID, newPasswordHash string) error {
 	user, err := s.userRepo.GetByID(userID)

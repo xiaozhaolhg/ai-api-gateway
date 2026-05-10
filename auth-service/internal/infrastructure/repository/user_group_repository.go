@@ -61,3 +61,16 @@ func (r *UserGroupRepository) Exists(userID, groupID string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+func (r *UserGroupRepository) GetGroupIDsByUserID(userID string) ([]string, error) {
+	var memberships []entity.UserGroupMembership
+	err := r.db.Where("user_id = ?", userID).Find(&memberships).Error
+	if err != nil {
+		return nil, err
+	}
+	groupIDs := make([]string, len(memberships))
+	for i, m := range memberships {
+		groupIDs[i] = m.GroupID
+	}
+	return groupIDs, nil
+}

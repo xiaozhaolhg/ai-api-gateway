@@ -78,7 +78,12 @@
 
 ### Week 4 — Usage Dashboard & Advanced Features (API + UI)
 - [ ] **Enhanced Usage API**: `GET /admin/usage/users/:id`, `GET /admin/usage/groups/:id`, export endpoints (CSV/JSON)
-- [ ] **Tiered Permission System Design**: redesign group permissions to use tier-based access control
+- [x] **Username Support**: Add username field to user creation (used for login) - update user creation API, UI form, and authentication logic to handle username alongside name (completed: dev-b-week4-enhancements)
+- [x] **User Group Display**: Show assigned groups for each user in the user management page - add group membership display to user list/detail views (completed: dev-b-week4-enhancements)
+- [x] **Group Description Fix**: Ensure group description is correctly passed from frontend to backend service during group creation - fix data flow and validation (completed: dev-b-week4-enhancements)
+- [x] **Group Member Count**: Display member count for each group in the groups management page - add member count calculation and UI display (completed: dev-b-week4-enhancements)
+- [ ] **Model-based Access Control**: Implement authorization check for /v1/chat/completions requests - validate user's group permissions for requested model, block requests if model not in allowed list (user provides model only, backend resolves provider:model)
+- [x] **Tiered Permission System Design**: redesign group permissions to use tier-based access control (completed: tiered-permission-system)
   - Define permission tiers (e.g., Basic, Standard, Premium, Enterprise)
   - Each tier has predefined provider and model access patterns
   - Groups assign to tiers instead of individual model/provider permissions

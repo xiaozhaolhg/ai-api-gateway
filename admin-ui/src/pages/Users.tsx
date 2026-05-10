@@ -24,7 +24,8 @@ export default function Users() {
   const filteredUsers = users.filter((u: User) => {
     const matchesSearch = !searchText ||
       u.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchText.toLowerCase());
+      u.email.toLowerCase().includes(searchText.toLowerCase()) ||
+      (u.username && u.username.toLowerCase().includes(searchText.toLowerCase()));
     const matchesRole = !roleFilter || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -120,11 +121,25 @@ export default function Users() {
     const values = await form.validateFields();
     const { password, ...userData } = values;
 
+    // Validate username uniqueness for new users
+    if (!editingUser && userData.username) {
+      try {
+        const response = await apiClient.checkUsernameAvailability(userData.username);
+        if (!response.available) {
+          message.error('Username already taken');
+          return;
+        }
+      } catch (error) {
+        message.error('Failed to check username availability');
+        return;
+      }
+    }
+
     if (editingUser) {
       updateMutation.mutate({ id: editingUser.id, data: userData });
     } else {
       const payload = { ...userData, password };
-      createMutation.mutate(payload as any);
+      createMutation.mutate(payload);
     }
     setModalVisible(false);
   };
@@ -264,6 +279,17 @@ export default function Users() {
             label={t('users:fields.name')}
             name="name"
             rules={[{ required: true, message: 'Please input user name' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            label={t('users:fields.username')}
+            name="username"
+            rules={[
+              { required: true, message: 'Please input username' },
+              { pattern: /^[a-zA-Z0-9_]+$/, message: 'Username can only contain letters, numbers, and underscores' },
+            ]}
           >
             <Input />
           </Form.Item>

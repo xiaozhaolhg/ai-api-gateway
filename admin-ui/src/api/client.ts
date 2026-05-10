@@ -141,6 +141,13 @@ export class RealAPIClient implements APIClientInterface {
     });
   }
 
+  async checkUsernameAvailability(username: string): Promise<{ available: boolean }> {
+    return this.request<{ available: boolean }>('/admin/auth/check-username', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    });
+  }
+
   async updateUser(id: string, user: Partial<User>): Promise<User> {
     return this.request<User>(`/admin/auth/users/${id}`, {
       method: 'PUT',
@@ -599,6 +606,10 @@ class UnifiedAPIClient implements APIClientInterface {
 
   async getCurrentUser() {
     return this.getActiveClient().getCurrentUser();
+  }
+
+  async checkUsernameAvailability(username: string) {
+    return this.getActiveClient().checkUsernameAvailability(username);
   }
 
   // Providers

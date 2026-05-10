@@ -134,6 +134,16 @@ func (m *mockUserGroupRepo) Exists(userID, groupID string) (bool, error) {
 	return false, nil
 }
 
+func (m *mockUserGroupRepo) GetGroupIDsByUserID(userID string) ([]string, error) {
+	var ids []string
+	for _, mg := range m.memberships {
+		if mg.UserID == userID {
+			ids = append(ids, mg.GroupID)
+		}
+	}
+	return ids, nil
+}
+
 func TestPermissionService_GrantPermission(t *testing.T) {
 	permRepo := newMockPermissionRepo()
 	ugRepo := newMockUserGroupRepo()

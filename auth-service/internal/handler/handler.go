@@ -22,6 +22,7 @@ type Handler struct {
 	tierService       *application.TierService
 	userRepo          UserRepository
 	apiKeyRepo        APIKeyRepository
+	userGroupRepo     UserGroupRepository
 }
 
 // UserRepository interface for handler
@@ -44,8 +45,13 @@ type APIKeyRepository interface {
 	Delete(id string) error
 }
 
+// UserGroupRepository interface for handler
+type UserGroupRepository interface {
+	GetGroupIDsByUserID(userID string) ([]string, error)
+}
+
 // NewHandler creates a new Handler
-func NewHandler(authService *application.AuthService, groupService *application.GroupService, permissionService *application.PermissionService, userGroupService *application.UserGroupService, tierService *application.TierService, userRepo UserRepository, apiKeyRepo APIKeyRepository) *Handler {
+func NewHandler(authService *application.AuthService, groupService *application.GroupService, permissionService *application.PermissionService, userGroupService *application.UserGroupService, tierService *application.TierService, userRepo UserRepository, apiKeyRepo APIKeyRepository, userGroupRepo UserGroupRepository) *Handler {
 	return &Handler{
 		authService:       authService,
 		groupService:      groupService,
@@ -53,6 +59,7 @@ func NewHandler(authService *application.AuthService, groupService *application.
 		userGroupService:  userGroupService,
 		tierService:       tierService,
 		userRepo:          userRepo,
+		userGroupRepo:     userGroupRepo,
 		apiKeyRepo:        apiKeyRepo,
 	}
 }
@@ -85,6 +92,7 @@ func (h *Handler) Login(ctx context.Context, req *authv1.LoginRequest) (*authv1.
 			Id:        user.ID,
 			Name:      user.Name,
 			Email:     user.Email,
+			Username:  user.Username,
 			Role:      user.Role,
 			Status:    user.Status,
 			CreatedAt: user.CreatedAt.Unix(),
@@ -144,6 +152,7 @@ func (h *Handler) Register(ctx context.Context, req *authv1.RegisterRequest) (*a
 			Id:        user.ID,
 			Name:      user.Name,
 			Email:     user.Email,
+			Username:  user.Username,
 			Role:      user.Role,
 			Status:    user.Status,
 			CreatedAt: user.CreatedAt.Unix(),
@@ -151,14 +160,28 @@ func (h *Handler) Register(ctx context.Context, req *authv1.RegisterRequest) (*a
 	}, nil
 }
 
+// CheckUsernameAvailability checks if a username is available
+func (h *Handler) CheckUsernameAvailability(ctx context.Context, req *authv1.CheckUsernameAvailabilityRequest) (*authv1.CheckUsernameAvailabilityResponse, error) {
+	if req.Username == "" {
+		return &authv1.CheckUsernameAvailabilityResponse{Available: false}, nil
+	}
+
+	existing, err := h.userRepo.GetByUsername(req.Username)
+	if err != nil {
+		return &authv1.CheckUsernameAvailabilityResponse{Available: true}, nil
+	}
+
+	return &authv1.CheckUsernameAvailabilityResponse{Available: existing == nil}, nil
+}
+
 // CheckModelAuthorization checks if a user is authorized to access a model
 func (h *Handler) CheckModelAuthorization(ctx context.Context, req *authv1.CheckModelAuthorizationRequest) (*authv1.AuthorizationResult, error) {
 	allowed, models, reason := h.authService.CheckModelAuthorization(req.UserId, req.GroupIds, req.Model)
 
 	return &authv1.AuthorizationResult{
-		Allowed:           allowed,
-		Reason:            reason,
-		AuthorizedModels:  models,
+		Allowed:          allowed,
+		Reason:           reason,
+		AuthorizedModels: models,
 	}, nil
 }
 
@@ -169,13 +192,20 @@ func (h *Handler) GetUser(ctx context.Context, req *authv1.GetUserRequest) (*aut
 		return nil, err
 	}
 
+	groupIDs, _ := h.userGroupRepo.GetGroupIDsByUserID(user.ID)
+	if groupIDs == nil {
+		groupIDs = []string{}
+	}
+
 	return &authv1.User{
 		Id:        user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
+		Username:  user.Username,
 		Role:      user.Role,
 		Status:    user.Status,
 		CreatedAt: user.CreatedAt.Unix(),
+		GroupIds:  groupIDs,
 	}, nil
 }
 
@@ -201,6 +231,7 @@ func (h *Handler) CreateUser(ctx context.Context, req *authv1.CreateUserRequest)
 		Id:        user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
+		Username:  user.Username,
 		Role:      user.Role,
 		Status:    user.Status,
 		CreatedAt: user.CreatedAt.Unix(),
@@ -223,6 +254,9 @@ func (h *Handler) UpdateUser(ctx context.Context, req *authv1.UpdateUserRequest)
 	if req.Role != "" {
 		user.Role = req.Role
 	}
+	if req.Username != "" {
+		return nil, fmt.Errorf("username cannot be changed after creation")
+	}
 	if req.Status != "" {
 		user.Status = req.Status
 	}
@@ -235,6 +269,7 @@ func (h *Handler) UpdateUser(ctx context.Context, req *authv1.UpdateUserRequest)
 		Id:        user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
+		Username:  user.Username,
 		Role:      user.Role,
 		Status:    user.Status,
 		CreatedAt: user.CreatedAt.Unix(),
@@ -267,13 +302,20 @@ func (h *Handler) ListUsers(ctx context.Context, req *authv1.ListUsersRequest) (
 
 	userProtos := make([]*authv1.User, len(users))
 	for i, user := range users {
+		groupIDs, _ := h.userGroupRepo.GetGroupIDsByUserID(user.ID)
+		if groupIDs == nil {
+			groupIDs = []string{}
+		}
+
 		userProtos[i] = &authv1.User{
 			Id:        user.ID,
 			Name:      user.Name,
 			Email:     user.Email,
+			Username:  user.Username,
 			Role:      user.Role,
 			Status:    user.Status,
 			CreatedAt: user.CreatedAt.Unix(),
+			GroupIds:  groupIDs,
 		}
 	}
 
@@ -345,9 +387,9 @@ func (h *Handler) ListAPIKeys(ctx context.Context, req *authv1.ListAPIKeysReques
 // Group Management
 
 func (h *Handler) CreateGroup(ctx context.Context, req *authv1.CreateGroupRequest) (*authv1.Group, error) {
-	log.Printf("[DEBUG] CreateGroup: name=%s, parentGroupId=%s, TierId=%s", req.Name, req.ParentGroupId, req.TierId)
+	log.Printf("[DEBUG] CreateGroup: name=%s, description=%s, parentGroupId=%s, TierId=%s", req.Name, req.Description, req.ParentGroupId, req.TierId)
 
-	group, err := h.groupService.CreateGroup(req.Name, "", req.ParentGroupId, nil, nil, nil)
+	group, err := h.groupService.CreateGroup(req.Name, req.Description, req.ParentGroupId, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +417,7 @@ func (h *Handler) CreateGroup(ctx context.Context, req *authv1.CreateGroupReques
 }
 
 func (h *Handler) UpdateGroup(ctx context.Context, req *authv1.UpdateGroupRequest) (*authv1.Group, error) {
-	group, err := h.groupService.UpdateGroup(req.Id, req.Name, req.ParentGroupId)
+	group, err := h.groupService.UpdateGroup(req.Id, req.Name, req.Description, req.ParentGroupId)
 	if err != nil {
 		return nil, err
 	}
@@ -424,6 +466,8 @@ func (h *Handler) ListGroups(ctx context.Context, req *authv1.ListGroupsRequest)
 
 	groupProtos := make([]*authv1.Group, len(groups))
 	for i, group := range groups {
+		_, totalMembers, _ := h.userGroupService.GetGroupMembers(group.ID, 1, 1)
+		
 		groupProtos[i] = &authv1.Group{
 			Id:            group.ID,
 			Name:          group.Name,
@@ -432,6 +476,7 @@ func (h *Handler) ListGroups(ctx context.Context, req *authv1.ListGroupsRequest)
 			TierId:        group.TierID,
 			CreatedAt:     group.CreatedAt.Unix(),
 			UpdatedAt:     group.UpdatedAt.Unix(),
+			MemberCount:   int32(totalMembers),
 		}
 	}
 
@@ -500,7 +545,7 @@ func (h *Handler) GrantPermission(ctx context.Context, req *authv1.GrantPermissi
 		return nil, err
 	}
 
-return &authv1.Permission{
+	return &authv1.Permission{
 		Id:           permission.ID,
 		GroupId:      permission.GroupID,
 		ResourceType: permission.ResourceType,
@@ -572,14 +617,14 @@ func (h *Handler) CreateTier(ctx context.Context, req *authv1.CreateTierRequest)
 	}
 
 	return &authv1.Tier{
-		Id:                tier.ID,
-		Name:              tier.Name,
-		Description:       tier.Description,
-		IsDefault:         tier.IsDefault,
-		AllowedModels:     tier.AllowedModels,
-		AllowedProviders:  tier.AllowedProviders,
-		CreatedAt:         tier.CreatedAt.Unix(),
-		UpdatedAt:         tier.UpdatedAt.Unix(),
+		Id:               tier.ID,
+		Name:             tier.Name,
+		Description:      tier.Description,
+		IsDefault:        tier.IsDefault,
+		AllowedModels:    tier.AllowedModels,
+		AllowedProviders: tier.AllowedProviders,
+		CreatedAt:        tier.CreatedAt.Unix(),
+		UpdatedAt:        tier.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -590,14 +635,14 @@ func (h *Handler) GetTier(ctx context.Context, req *authv1.GetTierRequest) (*aut
 	}
 
 	return &authv1.Tier{
-		Id:                tier.ID,
-		Name:              tier.Name,
-		Description:       tier.Description,
-		IsDefault:         tier.IsDefault,
-		AllowedModels:     tier.AllowedModels,
-		AllowedProviders:  tier.AllowedProviders,
-		CreatedAt:         tier.CreatedAt.Unix(),
-		UpdatedAt:         tier.UpdatedAt.Unix(),
+		Id:               tier.ID,
+		Name:             tier.Name,
+		Description:      tier.Description,
+		IsDefault:        tier.IsDefault,
+		AllowedModels:    tier.AllowedModels,
+		AllowedProviders: tier.AllowedProviders,
+		CreatedAt:        tier.CreatedAt.Unix(),
+		UpdatedAt:        tier.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -608,14 +653,14 @@ func (h *Handler) UpdateTier(ctx context.Context, req *authv1.UpdateTierRequest)
 	}
 
 	return &authv1.Tier{
-		Id:                tier.ID,
-		Name:              tier.Name,
-		Description:       tier.Description,
-		IsDefault:         tier.IsDefault,
-		AllowedModels:     tier.AllowedModels,
-		AllowedProviders:  tier.AllowedProviders,
-		CreatedAt:         tier.CreatedAt.Unix(),
-		UpdatedAt:         tier.UpdatedAt.Unix(),
+		Id:               tier.ID,
+		Name:             tier.Name,
+		Description:      tier.Description,
+		IsDefault:        tier.IsDefault,
+		AllowedModels:    tier.AllowedModels,
+		AllowedProviders: tier.AllowedProviders,
+		CreatedAt:        tier.CreatedAt.Unix(),
+		UpdatedAt:        tier.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -645,14 +690,14 @@ func (h *Handler) ListTiers(ctx context.Context, req *authv1.ListTiersRequest) (
 	tierProtos := make([]*authv1.Tier, len(tiers))
 	for i, t := range tiers {
 		tierProtos[i] = &authv1.Tier{
-			Id:                t.ID,
-			Name:              t.Name,
-			Description:       t.Description,
-			IsDefault:         t.IsDefault,
-			AllowedModels:     t.AllowedModels,
-			AllowedProviders:  t.AllowedProviders,
-			CreatedAt:         t.CreatedAt.Unix(),
-			UpdatedAt:         t.UpdatedAt.Unix(),
+			Id:               t.ID,
+			Name:             t.Name,
+			Description:      t.Description,
+			IsDefault:        t.IsDefault,
+			AllowedModels:    t.AllowedModels,
+			AllowedProviders: t.AllowedProviders,
+			CreatedAt:        t.CreatedAt.Unix(),
+			UpdatedAt:        t.UpdatedAt.Unix(),
 		}
 	}
 

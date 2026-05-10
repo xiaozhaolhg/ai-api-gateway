@@ -8,16 +8,19 @@
 service AuthService {
   // Authentication
   rpc ValidateAPIKey(ValidateAPIKeyRequest) returns (UserIdentity);
-  
+  rpc Login(LoginRequest) returns (LoginResponse);  // Supports email or username
+  rpc Register(RegisterRequest) returns (User);     // Creates user with mandatory username
+
   // Model Authorization
   rpc CheckModelAuthorization(CheckModelAuthorizationRequest) returns (AuthorizationResult);
-  
+
   // User Management
   rpc GetUser(GetUserRequest) returns (User);
   rpc CreateUser(CreateUserRequest) returns (User);
   rpc UpdateUser(UpdateUserRequest) returns (User);
   rpc DeleteUser(DeleteUserRequest) returns (Empty);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc CheckUsernameAvailability(CheckUsernameAvailabilityRequest) returns (CheckUsernameAvailabilityResponse);
   
   // API Key Management
   rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
@@ -80,9 +83,50 @@ message User {
   string id = 1;
   string name = 2;
   string email = 3;
-  string role = 4;
-  string status = 5;    // "active" | "disabled"
-  int64 created_at = 6;
+  string username = 4;  // Mandatory for new users, immutable after creation
+  string role = 5;
+  string status = 6;    // "active" | "disabled"
+  int64 created_at = 7;
+  repeated string group_ids = 8;  // User's group memberships
+}
+```
+
+### Login (New)
+
+```protobuf
+message LoginRequest {
+  string email = 1;      // Optional: used if username not provided
+  string username = 2;  // Optional: used if email not provided
+  string password = 3;
+}
+
+message LoginResponse {
+  string token = 1;     // JWT token
+  User user = 2;
+}
+```
+
+### Register (New)
+
+```protobuf
+message RegisterRequest {
+  string username = 1;  // Mandatory, unique, immutable after creation
+  string email = 2;
+  string name = 3;
+  string password = 4;
+  string role = 5;      // Optional: defaults to "user"
+}
+```
+
+### CheckUsernameAvailability (New)
+
+```protobuf
+message CheckUsernameAvailabilityRequest {
+  string username = 1;
+}
+
+message CheckUsernameAvailabilityResponse {
+  bool available = 1;
 }
 ```
 
@@ -106,8 +150,30 @@ message CreateAPIKeyResponse {
 message Group {
   string id = 1;
   string name = 2;
+  string description = 3;    // Group description
+  string parent_group_id = 4;
+  int64 created_at = 5;
+  int32 member_count = 6;    // Number of members in the group
+}
+```
+
+### CreateGroupRequest
+
+```protobuf
+message CreateGroupRequest {
+  string name = 1;
+  string description = 2;   // Optional group description
   string parent_group_id = 3;
-  int64 created_at = 4;
+}
+```
+
+### UpdateGroupRequest
+
+```protobuf
+message UpdateGroupRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;   // Optional group description
 }
 ```
 

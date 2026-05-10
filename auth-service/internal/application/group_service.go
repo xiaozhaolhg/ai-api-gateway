@@ -40,7 +40,7 @@ func (s *GroupService) CreateGroup(name, description, parentGroupID string, mode
 }
 
 // UpdateGroup updates an existing group
-func (s *GroupService) UpdateGroup(id, name, parentGroupID string) (*entity.Group, error) {
+func (s *GroupService) UpdateGroup(id, name, description, parentGroupID string) (*entity.Group, error) {
 	group, err := s.groupRepo.GetByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("group not found: %w", err)
@@ -48,6 +48,9 @@ func (s *GroupService) UpdateGroup(id, name, parentGroupID string) (*entity.Grou
 
 	if name != "" {
 		group.Name = name
+	}
+	if description != "" {
+		group.Description = description
 	}
 	if parentGroupID != "" {
 		group.ParentGroupID = parentGroupID

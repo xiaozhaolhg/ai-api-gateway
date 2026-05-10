@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -105,8 +104,6 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to read response: %w", err)
 	}
-
-	log.Printf("[DEBUG] Response status: %d, body length: %d, body: %s", resp.StatusCode, len(responseBody), string(responseBody[:int(math.Min(200, float64(len(responseBody))))]))
 
 	// Transform response back to OpenAI format (non-streaming)
 	transformedResponse, tokenCounts, _, err := adapter.TransformResponse(responseBody, false, entity.TokenCounts{})
