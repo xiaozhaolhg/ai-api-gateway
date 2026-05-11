@@ -194,13 +194,13 @@ func (h *AdminAlertsHandler) ListAlerts(c *gin.Context) {
 	}
 
 	if h.monitorClient == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "monitor service unavailable"})
+		c.JSON(http.StatusOK, gin.H{"alerts": []gin.H{}, "total": 0})
 		return
 	}
 
 	resp, err := h.monitorClient.GetAlerts(c.Request.Context(), ruleID, status, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"alerts": []gin.H{}, "total": 0})
 		return
 	}
 

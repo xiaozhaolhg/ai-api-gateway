@@ -158,6 +158,10 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 	r := c.Request
 	w := c.Writer
 
+	// Get user ID from context
+	userID, _ := c.Get("userId")
+	userIDStr, _ := userID.(string)
+
 	// Get fallback info from context
 	fallbackProviderIDs, _ := r.Context().Value("fallbackProviderIds").([]string)
 	fallbackModels, _ := r.Context().Value("fallbackModels").([]string)
@@ -176,7 +180,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 	}
 
 	// Try primary provider first
-	err := m.tryStreamingProvider(w, r, providerID, requestBody, headers, model, true)
+	err := m.tryStreamingProvider(w, r, userIDStr, providerID, requestBody, headers, model, true)
 	if err == nil {
 		return
 	}
@@ -203,7 +207,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 			bodyToSend = requestBody
 		}
 
-		err := m.tryStreamingProvider(w, r, fallbackID, bodyToSend, headers, fallbackModel, false)
+		err := m.tryStreamingProvider(w, r, userIDStr, fallbackID, bodyToSend, headers, fallbackModel, false)
 		if err != nil {
 			log.Printf("[Fallback] Fallback streaming provider %s failed: %v", fallbackID, err)
 			continue
@@ -217,7 +221,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 	m.writeFallbackError(c, "all_providers_failed", "All streaming providers failed")
 }
 
-func (m *ProxyMiddleware) tryStreamingProvider(w http.ResponseWriter, r *http.Request, providerID string, requestBody []byte, headers map[string]string, model string, isPrimary bool) error {
+func (m *ProxyMiddleware) tryStreamingProvider(w http.ResponseWriter, r *http.Request, userID string, providerID string, requestBody []byte, headers map[string]string, model string, isPrimary bool) error {
 	stream, err := m.providerClient.StreamRequest(r.Context(), providerID, model, requestBody, headers)
 	if err != nil {
 		return err
@@ -287,7 +291,8 @@ func (m *ProxyMiddleware) tryStreamingProvider(w http.ResponseWriter, r *http.Re
 		if m.streamingTokenInterval > 0 && totalCompletionTokens-lastRecordedCompletionTokens >= m.streamingTokenInterval {
 			deltaPrompt := totalPromptTokens - lastRecordedPromptTokens
 			deltaCompletion := totalCompletionTokens - lastRecordedCompletionTokens
-			go m.recordUsage(r.Context(), providerID, model, deltaPrompt, deltaCompletion)
+			userID, _ := r.Context().Value("userId").(string)
+			go m.recordUsage(userID, "", providerID, model, deltaPrompt, deltaCompletion)
 			lastRecordedPromptTokens = totalPromptTokens
 			lastRecordedCompletionTokens = totalCompletionTokens
 		}
@@ -312,7 +317,8 @@ func (m *ProxyMiddleware) tryStreamingProvider(w http.ResponseWriter, r *http.Re
 	finalDeltaPrompt := totalPromptTokens - lastRecordedPromptTokens
 	finalDeltaCompletion := totalCompletionTokens - lastRecordedCompletionTokens
 	if finalDeltaCompletion > 0 {
-		go m.recordUsage(r.Context(), providerID, model, finalDeltaPrompt, finalDeltaCompletion)
+		userID, _ := r.Context().Value("userId").(string)
+	go m.recordUsage(userID, "", providerID, model, finalDeltaPrompt, finalDeltaCompletion)
 	}
 	return nil
 }
@@ -359,16 +365,24 @@ func (m *ProxyMiddleware) writeNonStreamingResponse(c *gin.Context, providerID s
 		model = "unknown"
 	}
 
-	go m.recordUsage(c.Request.Context(), providerID, model, resp.TokenCounts.PromptTokens, resp.TokenCounts.CompletionTokens)
-}
+	userID, _ := c.Get("userId")
+	groupIDs, _ := c.Get("groupIds")
 
-func (m *ProxyMiddleware) recordUsage(ctx context.Context, providerID, model string, promptTokens, completionTokens int64) {
-	userID, _ := ctx.Value("userId").(string)
-	if userID == "" {
-		return
+	userIDStr, _ := userID.(string)
+	var groupIDStr string
+	if groupIDsSlice, ok := groupIDs.([]string); ok && len(groupIDsSlice) > 0 {
+		groupIDStr = groupIDsSlice[0]
 	}
 
-	groupID, _ := ctx.Value("groupId").(string)
+	go m.recordUsage(userIDStr, groupIDStr, providerID, model, resp.TokenCounts.PromptTokens, resp.TokenCounts.CompletionTokens)
+}
+
+func (m *ProxyMiddleware) recordUsage(userID, groupID, providerID, model string, promptTokens, completionTokens int64) {
+	log.Printf("[DEBUG] recordUsage called: userID=%s, groupID=%s, providerID=%s, model=%s, promptTokens=%d, completionTokens=%d", userID, groupID, providerID, model, promptTokens, completionTokens)
+	if userID == "" {
+		log.Printf("[DEBUG] recordUsage: userID is empty, returning early")
+		return
+	}
 
 	err := m.billingClient.RecordUsage(context.Background(), userID, groupID, providerID, model, promptTokens, completionTokens)
 	if err != nil {

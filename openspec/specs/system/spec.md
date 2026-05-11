@@ -77,6 +77,7 @@ flowchart TD
 
 - **Responsibility**: Usage recording, cost estimation, budget enforcement
 - **Owned Entities**: UsageRecord, PricingRule, Budget
+- **Data Schema**: UsageRecord includes user_id and group_id fields for proper attribution
 
 ### monitor-service
 
@@ -95,3 +96,23 @@ The system SHALL use gRPC for inter-service communication with gateway-service a
 #### Scenario: Service-to-service communication
 - **WHEN** services need to communicate internally
 - **THEN** they SHALL use gRPC APIs defined in the api/proto definitions
+
+### Requirement: Docker Network Configuration
+
+All services SHALL be configured to use a shared Docker network for proper inter-service communication.
+
+#### Scenario: Docker Compose deployment
+- **WHEN** services are deployed via docker-compose
+- **THEN** all services SHALL include `networks: [ai-gateway]` configuration
+- **AND** SHALL be able to communicate via service names over the shared network
+- **AND** external providers like Ollama SHALL be accessible via host.docker.internal
+
+### Requirement: Group-based Usage Attribution
+
+The system SHALL properly attribute usage records to both users and their groups for accurate billing and budgeting.
+
+#### Scenario: Usage recording with group context
+- **WHEN** a request is processed through the gateway
+- **THEN** the gateway SHALL extract group IDs from the authorization context
+- **AND** SHALL record usage with both user_id and group_id in the billing service
+- **AND** SHALL use the first group ID from the groupIds array when multiple groups are present

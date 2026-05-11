@@ -20,19 +20,23 @@ func matchGlob(pattern, text string) bool {
 	}
 	patternParts := strings.Split(pattern, ":")
 	textParts := strings.Split(text, ":")
-	if len(patternParts) != 2 || len(textParts) != 2 {
-		return pattern == text
+	// Handle patterns with single colon (e.g., "ollama:*")
+	if len(patternParts) == 2 {
+		// Match provider prefix
+		if patternParts[0] != "*" && patternParts[0] != textParts[0] {
+			return false
+		}
+		modelPattern := patternParts[1]
+		// For text with multiple parts (e.g., "ollama:qwen3.5:0.8b"), join remaining parts
+		modelText := strings.Join(textParts[1:], ":")
+		if strings.HasSuffix(modelPattern, "*") {
+			prefix := strings.TrimSuffix(modelPattern, "*")
+			return strings.HasPrefix(modelText, prefix)
+		}
+		return modelPattern == modelText
 	}
-	if patternParts[0] != "*" && patternParts[0] != textParts[0] {
-		return false
-	}
-	modelPattern := patternParts[1]
-	modelText := textParts[1]
-	if strings.HasSuffix(modelPattern, "*") {
-		prefix := strings.TrimSuffix(modelPattern, "*")
-		return strings.HasPrefix(modelText, prefix)
-	}
-	return modelPattern == modelText
+	// For other cases, require exact match
+	return pattern == text
 }
 
 // AuthService provides authentication and authorization logic

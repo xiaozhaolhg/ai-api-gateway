@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	commonv1 "github.com/ai-api-gateway/api/gen/common/v1"
@@ -102,7 +103,7 @@ func (h *Handler) GetMetricAggregation(ctx context.Context, req *monitorv1.GetMe
 		}, nil
 	}
 
-	agg, err := h.service.GetMetricAggregation(providerID, req.MetricType, req.StartTime, req.EndTime)
+	agg, err := h.service.GetMetricAggregation(providerID, req.MetricType, fmt.Sprintf("%d", req.GetStartTime()), fmt.Sprintf("%d", req.GetEndTime()))
 	if err != nil {
 		return nil, err
 	}
@@ -111,12 +112,9 @@ func (h *Handler) GetMetricAggregation(ctx context.Context, req *monitorv1.GetMe
 		Aggregation: &monitorv1.MetricAggregation{
 			MetricType: agg.MetricType,
 			Labels:     map[string]string{"provider": agg.ProviderID, "model": agg.Model},
-			Avg:        agg.Avg,
-			Min:        agg.Min,
-			Max:        agg.Max,
-			P50:        agg.P50,
-			P95:        agg.P95,
-			P99:        agg.P99,
+			Avg:        agg.AvgValue,
+			Min:        agg.MinValue,
+			Max:        agg.MaxValue,
 			Count:      agg.Count,
 		},
 	}, nil
@@ -130,18 +128,27 @@ func (h *Handler) GetProviderHealth(ctx context.Context, req *monitorv1.GetProvi
 	}
 
 	return &monitorv1.ProviderHealthStatus{
-		ProviderId:    status.ProviderID,
-		Status:        status.Status,
-		LatencyMs:     status.LatencyMs,
-		ErrorRate:     status.ErrorRate,
-		LastCheckTime: status.LastCheckTime.Unix(),
-		UptimeSeconds: status.UptimeSeconds,
+		ProviderId: status.ProviderID,
+		Status:     status.Status,
+		LatencyP50: status.LatencyP50,
+		LatencyP95: status.LatencyP95,
+		LatencyP99: status.LatencyP99,
+		ErrorRate:  status.ErrorRate,
+		UptimePct:  status.UptimePct,
+		LastCheck:  status.LastCheck,
 	}, nil
 }
 
 // ReportProviderHealth reports provider health status
 func (h *Handler) ReportProviderHealth(ctx context.Context, req *monitorv1.ReportProviderHealthRequest) (*commonv1.Empty, error) {
-	err := h.service.ReportProviderHealth(req.ProviderId, req.Status, int64(req.Latency))
+	status := "healthy"
+	if req.ErrorRate > 5 {
+		status = "degraded"
+	}
+	if req.Latency > 5000 || req.ErrorRate > 20 {
+		status = "down"
+	}
+	err := h.service.ReportProviderHealth(req.GetProviderId(), status, int64(req.GetLatency()))
 	if err != nil {
 		return nil, err
 	}
@@ -151,22 +158,46 @@ func (h *Handler) ReportProviderHealth(ctx context.Context, req *monitorv1.Repor
 
 // CreateAlertRule creates a new alert rule
 func (h *Handler) CreateAlertRule(ctx context.Context, req *monitorv1.CreateAlertRuleRequest) (*monitorv1.AlertRule, error) {
-	err := h.service.CreateAlertRule(req.Rule)
+	rule := &entity.AlertRule{
+		MetricType: req.GetMetricType(),
+		Operator:   req.GetCondition(),
+		Threshold:  req.GetThreshold(),
+		Enabled:    true,
+	}
+	err := h.service.CreateAlertRule(rule)
 	if err != nil {
 		return nil, err
 	}
 
-	return req.Rule, nil
+	return &monitorv1.AlertRule{
+		Id:          rule.ID,
+		MetricType:  rule.MetricType,
+		Condition:   rule.Operator,
+		Threshold:   rule.Threshold,
+		Status:      "active",
+	}, nil
 }
 
 // UpdateAlertRule updates an existing alert rule
 func (h *Handler) UpdateAlertRule(ctx context.Context, req *monitorv1.UpdateAlertRuleRequest) (*monitorv1.AlertRule, error) {
-	err := h.service.UpdateAlertRule(req.Rule)
+	rule := &entity.AlertRule{
+		ID:         req.GetId(),
+		MetricType: req.GetMetricType(),
+		Operator:   req.GetCondition(),
+		Threshold:  req.GetThreshold(),
+	}
+	err := h.service.UpdateAlertRule(rule)
 	if err != nil {
 		return nil, err
 	}
 
-	return req.Rule, nil
+	return &monitorv1.AlertRule{
+		Id:         rule.ID,
+		MetricType: rule.MetricType,
+		Condition:  rule.Operator,
+		Threshold:  rule.Threshold,
+		Status:     "active",
+	}, nil
 }
 
 // DeleteAlertRule deletes an alert rule
@@ -181,30 +212,18 @@ func (h *Handler) DeleteAlertRule(ctx context.Context, req *monitorv1.DeleteAler
 
 // GetAlerts retrieves alerts for a provider
 func (h *Handler) GetAlerts(ctx context.Context, req *monitorv1.GetAlertsRequest) (*monitorv1.ListAlertsResponse, error) {
-	alerts, total, err := h.service.GetAlerts(req.ProviderId, int(req.Page), int(req.PageSize))
+	alerts, total, err := h.service.GetAlerts("", int(req.GetPage()), int(req.GetPageSize()))
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert domain entities to proto messages
 	protoAlerts := make([]*monitorv1.Alert, len(alerts))
 	for i, alert := range alerts {
-		var acknowledgedAt int64
-		if alert.AcknowledgedAt != nil {
-			acknowledgedAt = alert.AcknowledgedAt.Unix()
-		}
-
 		protoAlerts[i] = &monitorv1.Alert{
-			Id:             alert.ID,
-			AlertRuleId:    alert.AlertRuleID,
-			ProviderId:     alert.ProviderID,
-			Severity:       alert.Severity,
-			Message:        alert.Message,
-			Value:          alert.Value,
-			Threshold:      alert.Threshold,
-			Timestamp:      alert.Timestamp.Unix(),
-			Acknowledged:   alert.Acknowledged,
-			AcknowledgedAt: acknowledgedAt,
+			Id:          alert.ID,
+			RuleId:      alert.AlertRuleID,
+			TriggeredAt: alert.Timestamp.Unix(),
+			Status:      "firing",
 		}
 	}
 
@@ -216,12 +235,13 @@ func (h *Handler) GetAlerts(ctx context.Context, req *monitorv1.GetAlertsRequest
 
 // AcknowledgeAlert acknowledges an alert
 func (h *Handler) AcknowledgeAlert(ctx context.Context, req *monitorv1.AcknowledgeAlertRequest) (*monitorv1.Alert, error) {
-	err := h.service.AcknowledgeAlert(req.AlertId)
+	err := h.service.AcknowledgeAlert(req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
-	// Return the acknowledged alert
-	// For MVP, we'll return a placeholder
-	return &monitorv1.Alert{}, nil
+	return &monitorv1.Alert{
+		Id:         req.GetId(),
+		Status:     "acknowledged",
+	}, nil
 }

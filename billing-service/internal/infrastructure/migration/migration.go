@@ -9,6 +9,7 @@ import (
 func RunMigrations(db *sql.DB) error {
 	migrations := []string{
 		createUsageRecordsTable(),
+		addGroupIDColumn(),
 		createPricingRulesTable(),
 		createBillingAccountsTable(),
 		createBudgetsTable(),
@@ -29,6 +30,7 @@ func createUsageRecordsTable() string {
 	CREATE TABLE IF NOT EXISTS usage_records (
 		id TEXT PRIMARY KEY,
 		user_id TEXT NOT NULL,
+		group_id TEXT,
 		provider_id TEXT NOT NULL,
 		model TEXT NOT NULL,
 		prompt_tokens INTEGER NOT NULL,
@@ -40,6 +42,10 @@ func createUsageRecordsTable() string {
 	CREATE INDEX IF NOT EXISTS idx_usage_records_user_id ON usage_records(user_id);
 	CREATE INDEX IF NOT EXISTS idx_usage_records_timestamp ON usage_records(timestamp);
 	`
+}
+
+func addGroupIDColumn() string {
+	return `ALTER TABLE usage_records ADD COLUMN group_id TEXT;`
 }
 
 func createPricingRulesTable() string {
@@ -83,7 +89,7 @@ func createBudgetsTable() string {
 	CREATE TABLE IF NOT EXISTS budgets (
 		id TEXT PRIMARY KEY,
 		user_id TEXT NOT NULL,
-		limit REAL NOT NULL,
+		"limit" REAL NOT NULL,
 		period TEXT NOT NULL,
 		soft_cap REAL NOT NULL,
 		hard_cap REAL NOT NULL,

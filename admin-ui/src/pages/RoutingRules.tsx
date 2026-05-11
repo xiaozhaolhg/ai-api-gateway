@@ -3,7 +3,7 @@ import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, mess
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type RoutingRule } from '../api/client';
+import { apiClient, type RoutingRule, type Provider } from '../api/client';
 
 export const RoutingRules: React.FC = () => {
   const { t } = useTranslation(['routing', 'common']);
@@ -15,6 +15,11 @@ export const RoutingRules: React.FC = () => {
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['routingRules'],
     queryFn: () => apiClient.getRoutingRules(),
+  });
+
+  const { data: providers = [] } = useQuery({
+    queryKey: ['providers'],
+    queryFn: () => apiClient.getProviders(),
   });
 
   const createMutation = useMutation({
@@ -82,7 +87,7 @@ export const RoutingRules: React.FC = () => {
     setEditingRule(rule);
     form.setFieldsValue({
       ...rule,
-      fallback_chain: rule.fallback_chain.join(', '),
+      fallback_provider_ids: rule.fallback_provider_ids?.join(', ') || '',
     });
     setModalVisible(true);
   };
@@ -90,8 +95,12 @@ export const RoutingRules: React.FC = () => {
   const handleModalOk = async () => {
     const values = await form.validateFields();
     const ruleData = {
-      ...values,
-      fallback_chain: values.fallback_chain.split(',').map((m: string) => m.trim()),
+      model_pattern: values.model_pattern,
+      provider_id: values.provider_id,
+      priority: Number(values.priority) || 1,
+      fallback_provider_ids: values.fallback_provider_ids ? values.fallback_provider_ids.split(',').map((m: string) => m.trim()).filter(Boolean) : [],
+      fallback_models: [],
+      is_system_default: values.is_system_default ?? true,
     };
 
     if (editingRule) {
@@ -115,13 +124,8 @@ export const RoutingRules: React.FC = () => {
     },
     {
       title: t('routing:fields.provider'),
-      dataIndex: 'provider',
-      key: 'provider',
-    },
-    {
-      title: t('routing:fields.adapterType'),
-      dataIndex: 'adapter_type',
-      key: 'adapter_type',
+      dataIndex: 'provider_id',
+      key: 'provider_id',
     },
     {
       title: t('routing:fields.priority'),
@@ -130,16 +134,16 @@ export const RoutingRules: React.FC = () => {
     },
     {
       title: t('routing:fields.fallbackChain'),
-      dataIndex: 'fallback_chain',
-      key: 'fallback_chain',
-      render: (chain: string[]) => chain.join(', '),
+      dataIndex: 'fallback_provider_ids',
+      key: 'fallback_provider_ids',
+      render: (chain: string[]) => chain?.join(', ') || '-',
     },
     {
       title: t('routing:fields.status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
+      dataIndex: 'is_system_default',
+      key: 'is_system_default',
+      render: (isDefault: boolean) => (
+        <Tag color={isDefault ? 'green' : 'red'}>{isDefault ? 'active' : 'inactive'}</Tag>
       ),
     },
     {
@@ -204,59 +208,50 @@ export const RoutingRules: React.FC = () => {
             name="model_pattern"
             rules={[{ required: true, message: 'Please input model pattern' }]}
           >
-            <Input placeholder="gpt-*" />
+            <Input placeholder="llama2, gpt-4, *" />
           </Form.Item>
 
           <Form.Item
             label={t('routing:fields.provider')}
-            name="provider"
+            name="provider_id"
             rules={[{ required: true, message: 'Please select provider' }]}
           >
             <Select>
-              <Select.Option value="openai">OpenAI</Select.Option>
-              <Select.Option value="anthropic">Anthropic</Select.Option>
-              <Select.Option value="gemini">Gemini</Select.Option>
-              <Select.Option value="ollama">Ollama</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            label={t('routing:fields.adapterType')}
-            name="adapter_type"
-            rules={[{ required: true, message: 'Please select adapter type' }]}
-          >
-            <Select>
-              <Select.Option value="openai">OpenAI</Select.Option>
-              <Select.Option value="anthropic">Anthropic</Select.Option>
-              <Select.Option value="gemini">Gemini</Select.Option>
-              <Select.Option value="ollama">Ollama</Select.Option>
+              {providers
+                .filter((p: Provider) => p.status === 'active')
+                .map((p: Provider) => (
+                  <Select.Option key={p.id} value={p.id}>
+                    {p.name} ({p.type})
+                  </Select.Option>
+                ))}
             </Select>
           </Form.Item>
 
           <Form.Item
             label={t('routing:fields.priority')}
             name="priority"
+            initialValue={1}
             rules={[{ required: true, message: 'Please input priority' }]}
           >
-            <Input type="number" />
+            <Input type="number" placeholder="1" />
           </Form.Item>
 
           <Form.Item
             label={t('routing:fields.fallbackChain')}
-            name="fallback_chain"
-            rules={[{ required: true, message: 'Please input fallback chain' }]}
+            name="fallback_provider_ids"
+            rules={[{ required: false, message: 'Please input fallback chain' }]}
           >
-            <Input placeholder="provider1, provider2" />
+            <Input placeholder="ollama_1_211, another_provider" />
           </Form.Item>
 
           <Form.Item
             label={t('routing:fields.status')}
-            name="status"
-            initialValue="active"
+            name="is_system_default"
+            initialValue={true}
           >
             <Select>
-              <Select.Option value="active">Active</Select.Option>
-              <Select.Option value="inactive">Inactive</Select.Option>
+              <Select.Option value={true}>Active</Select.Option>
+              <Select.Option value={false}>Inactive</Select.Option>
             </Select>
           </Form.Item>
         </Form>

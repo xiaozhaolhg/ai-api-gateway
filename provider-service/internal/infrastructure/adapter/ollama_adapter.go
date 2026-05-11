@@ -3,6 +3,7 @@ package adapter
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -35,15 +36,9 @@ func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]stri
 	}
 
 	// Transform model name: strip provider prefix (e.g., "ollama:llama2" -> "llama2")
-	// and add version suffix for common models
 	modelName := openAIReq.Model
 	if idx := strings.Index(modelName, ":"); idx != -1 {
 		modelName = modelName[idx+1:]
-	}
-
-	// Add version suffix for common models if not present
-	if !strings.Contains(modelName, ":") {
-		modelName = modelName + ":0.8b"
 	}
 
 	// Transform to Ollama format
@@ -52,10 +47,6 @@ func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]stri
 		"stream":   openAIReq.Stream,
 		"messages": openAIReq.Messages,
 	}
-
-	// Convert messages to prompt (Ollama uses a single prompt field)
-	prompt := a.convertMessagesToPrompt(openAIReq.Messages)
-	ollamaReq["prompt"] = prompt
 
 	if openAIReq.Temperature > 0 {
 		ollamaReq["temperature"] = openAIReq.Temperature
@@ -72,6 +63,9 @@ func (a *OllamaAdapter) TransformRequest(request []byte, headers map[string]stri
 
 	transformedHeaders := make(map[string]string)
 	for k, v := range headers {
+		if strings.ToLower(k) == "authorization" {
+			continue
+		}
 		transformedHeaders[k] = v
 	}
 	transformedHeaders["Content-Type"] = "application/json"
@@ -95,35 +89,45 @@ func (a *OllamaAdapter) TransformResponse(response []byte, isStreaming bool, acc
 
 // transformNonStreamingResponse handles non-streaming response transformation
 func (a *OllamaAdapter) transformNonStreamingResponse(response []byte, accumulatedTokens entity.TokenCounts) ([]byte, entity.TokenCounts, bool, error) {
+	log.Printf("[DEBUG] transformNonStreamingResponse: response length=%d, first 100 chars: %s", len(response), func() string { if len(response) > 100 { return string(response[:100]) }; return string(response) }())
+
 	// Parse Ollama format response
 	var ollamaResp struct {
-		Model   string `json:"model"`
-		Message struct {
+		Model      string `json:"model"`
+		CreatedAt  string `json:"created_at"`
+		Message    struct {
 			Role    string `json:"role"`
 			Content string `json:"content"`
+			Thinking string `json:"thinking"`
 		} `json:"message"`
 		Done            bool   `json:"done"`
 		DoneReason      string `json:"done_reason"`
 		PromptEvalCount int64  `json:"prompt_eval_count"`
 		EvalCount       int64  `json:"eval_count"`
+		TotalDuration   int64  `json:"total_duration"`
 	}
 
 	if err := json.Unmarshal(response, &ollamaResp); err != nil {
 		return nil, accumulatedTokens, false, fmt.Errorf("invalid Ollama response format: %w", err)
 	}
 
+	content := ollamaResp.Message.Content
+	if ollamaResp.Message.Thinking != "" {
+		content = ollamaResp.Message.Thinking + "\n\n" + content
+	}
+
 	// Transform to OpenAI format
 	openAIResp := map[string]interface{}{
 		"id":      "ollama-" + ollamaResp.Model,
 		"object":  "chat.completion",
-		"created": 0, // Ollama doesn't provide timestamp
+		"created": 0,
 		"model":   ollamaResp.Model,
 		"choices": []map[string]interface{}{
 			{
 				"index": 0,
 				"message": map[string]interface{}{
 					"role":    ollamaResp.Message.Role,
-					"content": ollamaResp.Message.Content,
+					"content": content,
 				},
 				"finish_reason": a.convertDoneReasonToFinishReason(ollamaResp.DoneReason),
 			},

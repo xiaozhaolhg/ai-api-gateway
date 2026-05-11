@@ -81,10 +81,7 @@ func (h *AdminBudgetsHandler) ListBudgets(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"budgets": budgets,
-		"total":    resp.GetTotal(),
-	})
+	c.JSON(http.StatusOK, budgets)
 }
 
 // CreateBudget creates a new budget

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ import (
 type Service struct {
 	providerRepo   port.ProviderRepository
 	adapterFactory *AdapterFactory
-	cryptoKey      string // Encryption key for credential decryption
+	cryptoKey      string            // Encryption key for credential decryption
 	subscribers    map[string]string // service_name -> gRPC endpoint
 	subscribersMu  sync.RWMutex
 }
@@ -42,6 +43,7 @@ func NewService(
 
 // ForwardRequest forwards a non-streaming request to the provider
 func (s *Service) ForwardRequest(ctx context.Context, providerID string, requestBody []byte, headers map[string]string) ([]byte, int64, int64, int32, error) {
+	log.Printf("[DEBUG] ForwardRequest: providerID=%s", providerID)
 	// Get provider configuration
 	provider, err := s.providerRepo.GetByID(providerID)
 	if err != nil {
@@ -60,17 +62,6 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 		return nil, 0, 0, 0, fmt.Errorf("provider is not active")
 	}
 
-	var decryptedCreds string
-	if provider.Credentials == "dummy" {
-		decryptedCreds = "dummy"
-	} else {
-		var err error
-		decryptedCreds, err = crypto.Decrypt(provider.Credentials, s.cryptoKey)
-		if err != nil {
-			return nil, 0, 0, 0, fmt.Errorf("failed to decrypt credentials: %w", err)
-		}
-	}
-
 	// Get adapter for provider type
 	adapter, err := s.adapterFactory.GetAdapter(provider.Type)
 	if err != nil {
@@ -83,15 +74,33 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 		return nil, 0, 0, 0, fmt.Errorf("failed to transform request: %w", err)
 	}
 
-	// Add credentials to headers
 	if transformedHeaders == nil {
 		transformedHeaders = make(map[string]string)
 	}
-	transformedHeaders["Authorization"] = "Bearer " + decryptedCreds
+	// Use provider credentials for Authorization header, not the target URL
+	if provider.Credentials != "" && provider.Credentials != "dummy" {
+		transformedHeaders["Authorization"] = "Bearer " + provider.Credentials
+	}
 
 	// Make HTTP request to provider
 	startTime := time.Now()
-	resp, err := s.makeHTTPRequest(ctx, provider.BaseURL, transformedBody, transformedHeaders)
+	requestURL := provider.BaseURL
+	log.Printf("[DEBUG] ForwardRequest: provider.BaseURL=%s, provider.Credentials=%q, transformedHeaders=%v", provider.BaseURL, provider.Credentials, transformedHeaders)
+	if requestURL == "" {
+		requestURL = os.Getenv("OLLAMA_BASE_URL")
+		log.Printf("[DEBUG] ForwardRequest: using OLLAMA_BASE_URL=%s", requestURL)
+	}
+	// Append /api/chat for Ollama chat endpoint
+	if !strings.HasSuffix(requestURL, "/api/chat") {
+		if strings.HasSuffix(requestURL, "/") {
+			requestURL = requestURL + "api/chat"
+		} else {
+			requestURL = requestURL + "/api/chat"
+		}
+	}
+	log.Printf("[DEBUG] ForwardRequest: final requestURL=%s, body=%s", requestURL, string(transformedBody))
+	resp, err := s.makeHTTPRequest(ctx, requestURL, transformedBody, transformedHeaders)
+	log.Printf("[DEBUG] HTTP response status: %d %s", resp.StatusCode, resp.Status)
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to make request: %w", err)
 	}
@@ -114,7 +123,7 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 	// Use token counts from TransformResponse if available, otherwise fall back to CountTokens
 	promptTokens := tokenCounts.PromptTokens
 	completionTokens := tokenCounts.CompletionTokens
-	
+
 	if promptTokens == 0 && completionTokens == 0 {
 		// Fall back to explicit counting if TransformResponse didn't extract tokens
 		var err error
@@ -158,32 +167,34 @@ func (s *Service) StreamRequest(ctx context.Context, providerID string, requestB
 			return
 		}
 
-		// Decrypt credentials
-		decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
-		if err != nil {
-			errChan <- fmt.Errorf("failed to decrypt credentials: %w", err)
-			return
+		targetURL := provider.BaseURL
+		if targetURL == "" {
+			targetURL = "http://localhost:11434"
 		}
 
-		// Get adapter for provider type
 		adapter, err := s.adapterFactory.GetAdapter(provider.Type)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to get adapter: %w", err)
 			return
 		}
 
-		// Transform request to provider-specific format
 		transformedBody, transformedHeaders, err := adapter.TransformRequest(requestBody, headers)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to transform request: %w", err)
 			return
 		}
 
-		// Add credentials to headers
 		if transformedHeaders == nil {
 			transformedHeaders = make(map[string]string)
 		}
-		transformedHeaders["Authorization"] = "Bearer " + decryptedCreds
+		if provider.Credentials != "" {
+			decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
+			if err != nil {
+				errChan <- fmt.Errorf("failed to decrypt credentials: %w", err)
+				return
+			}
+			transformedHeaders["Authorization"] = "Bearer " + decryptedCreds
+		}
 
 		// Make streaming HTTP request
 		startTime := time.Now()
@@ -259,7 +270,7 @@ func (s *Service) dispatchCallbacks(ctx context.Context, requestID, userID, grou
 	s.subscribersMu.RUnlock()
 
 	callback := map[string]interface{}{
-		"request_id":         requestID,
+		"request_id":        requestID,
 		"user_id":           userID,
 		"group_id":          groupID,
 		"provider_id":       providerID,
@@ -484,12 +495,12 @@ func (s *Service) HealthCheck(providerID string) (bool, error) {
 		return false, fmt.Errorf("failed to get adapter: %w", err)
 	}
 
-	decryptedCreds, err := crypto.Decrypt(provider.Credentials, s.cryptoKey)
-	if err != nil {
-		return false, fmt.Errorf("failed to decrypt credentials: %w", err)
+	testURL := provider.BaseURL
+	if testURL == "" {
+		testURL = "http://localhost:11434"
 	}
 
-	if err := adapter.TestConnection(decryptedCreds); err != nil {
+	if err := adapter.TestConnection(testURL); err != nil {
 		return false, nil
 	}
 

@@ -34,22 +34,17 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk --no-cache add ca-certificates sqlite-libs
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the binary from builder
-COPY --from=builder /bin/billing-service .
+COPY --from=builder /bin/billing-service /app/billing-service
 
 # Copy config
-COPY --from=builder /app/billing-service/configs ./configs
+COPY --from=builder /app/billing-service/configs /app/configs
 
 # Create data directory
-RUN mkdir -p /root/data
-
-# Run as non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
-USER appuser
+RUN mkdir -p /data
 
 EXPOSE 50054
 
-CMD ["./billing-service"]
+CMD ["/app/billing-service"]

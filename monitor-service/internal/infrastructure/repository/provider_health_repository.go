@@ -24,14 +24,16 @@ func (r *ProviderHealthRepository) Upsert(status *entity.ProviderHealthStatus) e
 		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(provider_id) DO UPDATE SET
 			status = excluded.status,
-			latency_ms = excluded.latency_ms,
+			latency_p50 = excluded.latency_p50,
+			latency_p95 = excluded.latency_p95,
+			latency_p99 = excluded.latency_p99,
 			error_rate = excluded.error_rate,
-			last_check_time = excluded.last_check_time,
-			uptime_seconds = excluded.uptime_seconds
+			uptime_pct = excluded.uptime_pct,
+			last_check = excluded.last_check
 	`
 
 	_, err := r.db.Exec(query, status.ProviderID, status.Status,
-		status.LatencyMs, status.ErrorRate, status.LastCheckTime, status.UptimeSeconds)
+		status.LatencyP50, status.LatencyP95, status.LatencyP99, status.ErrorRate, status.UptimePct, status.LastCheck)
 	if err != nil {
 		return fmt.Errorf("failed to upsert provider health: %w", err)
 	}
@@ -42,15 +44,16 @@ func (r *ProviderHealthRepository) Upsert(status *entity.ProviderHealthStatus) e
 // GetByProviderID retrieves a provider's health status
 func (r *ProviderHealthRepository) GetByProviderID(providerID string) (*entity.ProviderHealthStatus, error) {
 	query := `
-		SELECT provider_id, status, latency_ms, error_rate, last_check_time, uptime_seconds
+		SELECT provider_id, status, latency_p50, latency_p95, latency_p99, error_rate, uptime_pct, last_check
 		FROM provider_health
 		WHERE provider_id = ?
 	`
 
 	var status entity.ProviderHealthStatus
 	err := r.db.QueryRow(query, providerID).Scan(
-		&status.ProviderID, &status.Status, &status.LatencyMs,
-		&status.ErrorRate, &status.LastCheckTime, &status.UptimeSeconds,
+		&status.ProviderID, &status.Status,
+		&status.LatencyP50, &status.LatencyP95, &status.LatencyP99,
+		&status.ErrorRate, &status.UptimePct, &status.LastCheck,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -75,9 +78,9 @@ func (r *ProviderHealthRepository) List(page, pageSize int) ([]*entity.ProviderH
 
 	// Get statuses
 	query := `
-		SELECT provider_id, status, latency_ms, error_rate, last_check_time, uptime_seconds
+		SELECT provider_id, status, latency_p50, latency_p95, latency_p99, error_rate, uptime_pct, last_check
 		FROM provider_health
-		ORDER BY last_check_time DESC
+		ORDER BY last_check DESC
 		LIMIT ? OFFSET ?
 	`
 
@@ -91,8 +94,9 @@ func (r *ProviderHealthRepository) List(page, pageSize int) ([]*entity.ProviderH
 	for rows.Next() {
 		var status entity.ProviderHealthStatus
 		err := rows.Scan(
-			&status.ProviderID, &status.Status, &status.LatencyMs,
-			&status.ErrorRate, &status.LastCheckTime, &status.UptimeSeconds,
+			&status.ProviderID, &status.Status,
+			&status.LatencyP50, &status.LatencyP95, &status.LatencyP99,
+			&status.ErrorRate, &status.UptimePct, &status.LastCheck,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan provider health status: %w", err)

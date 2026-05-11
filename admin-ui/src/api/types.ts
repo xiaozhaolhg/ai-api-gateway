@@ -135,14 +135,16 @@ export interface UsageRecord {
 
 export interface RoutingRule {
   id: string;
+  user_id: string;
   model_pattern: string;
-  provider: string;
+  provider_id: string;
   adapter_type: string;
   priority: number;
-  fallback_chain: string[];
-  status: string;
-  created_at: string;
-  updated_at: string;
+  fallback_provider_ids: string[];
+  fallback_models: string[];
+  is_system_default: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Group {

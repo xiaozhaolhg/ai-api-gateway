@@ -12,9 +12,11 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
+    networks:
+      - default
 
   auth-service:
     build:
@@ -31,6 +33,8 @@ services:
       REDIS_ADDR: "redis:6379"
     volumes:
       - auth_data:/data
+    networks:
+      - ai-gateway
 
   provider-service:
     build:
@@ -44,9 +48,13 @@ services:
     environment:
       PORT: "50053"
       HOST: "0.0.0.0"
-      OLLAMA_BASE_URL: "http://ollama:11434"
+      OLLAMA_BASE_URL: "http://172.17.0.1:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - provider_data:/data
+    networks:
+      - ai-gateway
 
   router-service:
     build:
@@ -64,6 +72,8 @@ services:
       HOST: "0.0.0.0"
       PROVIDER_ADDR: "172.20.0.2:50053"
       REDIS_ADDR: "redis:6379"
+    networks:
+      - ai-gateway
 
   gateway-service:
     build:
@@ -76,10 +86,45 @@ services:
         condition: service_started
       router-service:
         condition: service_started
+      provider-service:
+        condition: service_started
     environment:
       AUTH_SERVICE_ADDRESS: "auth-service:50051"
       ROUTER_SERVICE_ADDRESS: "router-service:50052"
+      PROVIDER_SERVICE_ADDRESS: "provider-service:50053"
+      BILLING_SERVICE_ADDRESS: "billing-service:50054"
+      MONITOR_SERVICE_ADDRESS: "monitor-service:50055"
       REDIS_ADDR: "redis:6379"
+    networks:
+      - ai-gateway
+
+  billing-service:
+    build:
+      context: .
+      dockerfile: billing-service/Dockerfile
+    ports:
+      - "50054:50054"
+    environment:
+      PORT: "50054"
+      HOST: "0.0.0.0"
+    volumes:
+      - billing_data:/data
+    networks:
+      - ai-gateway
+
+  monitor-service:
+    build:
+      context: .
+      dockerfile: monitor-service/Dockerfile
+    ports:
+      - "50055:50055"
+    environment:
+      PORT: "50055"
+      HOST: "0.0.0.0"
+    volumes:
+      - monitor_data:/data
+    networks:
+      - ai-gateway
 
   admin-ui:
     build:
@@ -93,7 +138,14 @@ services:
     environment:
       VITE_API_URL: "http://localhost:8080"
 
+networks:
+  ai-gateway:
+    name: ai-api-gateway_ai-gateway
+    external: true
+
 volumes:
   ollama_data:
   provider_data:
   auth_data:
+  billing_data:
+  monitor_data:

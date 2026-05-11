@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"log"
 
 	billingv1 "github.com/ai-api-gateway/api/gen/billing/v1"
 	"google.golang.org/grpc"
@@ -50,6 +51,7 @@ func (c *BillingClient) GetUsage(ctx context.Context, userID string, page, pageS
 }
 
 func (c *BillingClient) RecordUsage(ctx context.Context, userID, groupID, providerID, model string, promptTokens, completionTokens int64) error {
+	log.Printf("[DEBUG] BillingClient.RecordUsage: calling billing service for userID=%s", userID)
 	req := &billingv1.RecordUsageRequest{
 		UserId:           userID,
 		GroupId:          groupID,
@@ -61,9 +63,11 @@ func (c *BillingClient) RecordUsage(ctx context.Context, userID, groupID, provid
 
 	_, err := c.client.RecordUsage(ctx, req)
 	if err != nil {
+		log.Printf("[DEBUG] BillingClient.RecordUsage: error=%v", err)
 		return fmt.Errorf("failed to record usage: %w", err)
 	}
 
+	log.Printf("[DEBUG] BillingClient.RecordUsage: success")
 	return nil
 }
 

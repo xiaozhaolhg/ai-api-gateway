@@ -98,10 +98,10 @@ func (s *Service) GetMetricAggregation(providerID, metricType, startDate, endDat
 // ReportProviderHealth reports provider health status
 func (s *Service) ReportProviderHealth(providerID string, status string, latencyMs int64) error {
 	healthStatus := &entity.ProviderHealthStatus{
-		ProviderID:    providerID,
-		Status:        status,
-		LatencyMs:     latencyMs,
-		LastCheckTime: time.Now(),
+		ProviderID: providerID,
+		Status:     status,
+		LatencyP50: float64(latencyMs),
+		LastCheck:  time.Now().Unix(),
 	}
 
 	return s.healthRepo.Upsert(healthStatus)

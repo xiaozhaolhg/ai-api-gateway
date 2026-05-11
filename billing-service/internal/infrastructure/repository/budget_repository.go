@@ -23,7 +23,7 @@ func (r *BudgetRepository) Create(budget *entity.Budget) error {
 	budget.ID = uuid.New().String()
 
 	query := `
-		INSERT INTO budgets (id, user_id, limit, period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at)
+		INSERT INTO budgets (id, user_id, "limit", period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
@@ -41,7 +41,7 @@ func (r *BudgetRepository) Create(budget *entity.Budget) error {
 // GetByID retrieves a budget by ID
 func (r *BudgetRepository) GetByID(id string) (*entity.Budget, error) {
 	query := `
-		SELECT id, user_id, limit, period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at
+		SELECT id, user_id, "limit", period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at
 		FROM budgets
 		WHERE id = ?
 	`
@@ -66,7 +66,7 @@ func (r *BudgetRepository) GetByID(id string) (*entity.Budget, error) {
 // GetByUserID retrieves a budget by user ID
 func (r *BudgetRepository) GetByUserID(userID string) (*entity.Budget, error) {
 	query := `
-		SELECT id, user_id, limit, period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at
+		SELECT id, user_id, "limit", period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at
 		FROM budgets
 		WHERE user_id = ?
 		ORDER BY created_at DESC
@@ -134,7 +134,7 @@ func (r *BudgetRepository) List(page, pageSize int) ([]*entity.Budget, int, erro
 
 	// Get budgets
 	query := `
-		SELECT id, user_id, limit, period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at
+		SELECT id, user_id, "limit", period, soft_cap, hard_cap, start_date, end_date, alert_threshold, created_at, updated_at
 		FROM budgets
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?

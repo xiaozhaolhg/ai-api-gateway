@@ -63,6 +63,9 @@ services:
     environment:
       - BILLING_SERVICE_ADDRESS=billing-service:50054
       - MONITOR_SERVICE_ADDRESS=monitor-service:50055
+      - OLLAMA_BASE_URL=http://172.17.0.1:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   billing-service:
     build:

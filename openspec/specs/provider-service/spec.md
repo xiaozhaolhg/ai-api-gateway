@@ -39,6 +39,7 @@ Provider domain — provider CRUD, adapters, response callback dispatch.
 - **OpenAI Adapter**: Transform to OpenAI format, parse response
 - **Anthropic Adapter**: Transform to Anthropic format, parse response  
 - **Gemini Adapter**: Transform to Gemini format, parse response
+- **Ollama Adapter**: Transform to Ollama format, filter Authorization headers, handle token counting
 
 ### Callback Dispatch (Observer Pattern)
 
@@ -108,3 +109,26 @@ The provider-service SHALL expose a `FindProvidersByModel` RPC that returns all 
 #### Scenario: Provider with empty Models field
 - **WHEN** a provider has empty `Models` field
 - **THEN** that provider SHALL NOT be included in results (even if name matches)
+
+### Requirement: Ollama Provider Integration
+
+The provider-service SHALL support Ollama as a first-class provider with proper request/response transformation and credential handling.
+
+#### Scenario: Ollama request transformation
+- **WHEN** a request is forwarded to an Ollama provider
+- **THEN** the Ollama adapter SHALL transform OpenAI format to Ollama format
+- **AND** SHALL strip provider prefix from model names (e.g., "ollama:llama2" → "llama2")
+- **AND** SHALL append "/api/chat" to the base URL if not present
+- **AND** SHALL filter out user Authorization headers to prevent credential conflicts
+
+#### Scenario: Ollama response transformation
+- **WHEN** an Ollama response is received
+- **THEN** the adapter SHALL transform Ollama format back to OpenAI format
+- **AND** SHALL extract token counts from prompt_eval_count and eval_count fields
+- **AND** SHALL handle thinking field by concatenating with content if present
+
+#### Scenario: Ollama credential handling
+- **WHEN** making requests to Ollama provider
+- **THEN** the service SHALL use provider credentials for Authorization header
+- **AND** SHALL NOT use the target URL as Bearer token
+- **AND** SHALL support OLLAMA_BASE_URL environment variable as fallback

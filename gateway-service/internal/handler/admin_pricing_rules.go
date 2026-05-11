@@ -75,10 +75,7 @@ func (h *AdminPricingRulesHandler) ListPricingRules(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"pricing_rules": pricingRules,
-		"total":         resp.GetTotal(),
-	})
+	c.JSON(http.StatusOK, pricingRules)
 }
 
 // CreatePricingRule creates a new pricing rule
