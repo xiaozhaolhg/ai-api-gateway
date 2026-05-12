@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, Tag, Empty, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, DollarOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type User, type Group, type BillingAccount } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Users() {
   const { t } = useTranslation(['users', 'common']);
   const queryClient = useQueryClient();
+  const { user: authUser } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
@@ -15,11 +17,6 @@ export default function Users() {
   const [rechargeModalVisible, setRechargeModalVisible] = useState(false);
   const [rechargeUser, setRechargeUser] = useState<User | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState<number>(0);
-  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
-
-  useEffect(() => {
-    apiClient.getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
-  }, []);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -47,11 +44,17 @@ export default function Users() {
     queryKey: ['billingAccounts', users.map(u => u.id)],
     queryFn: async () => {
       const accounts: Record<string, BillingAccount> = {};
+      const token = localStorage.getItem('auth_token');
       for (const user of users) {
         try {
-          accounts[user.id] = await apiClient.getBillingAccount(user.id);
+          const res = await fetch(`/admin/billing/accounts/${user.id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (res.ok) {
+            accounts[user.id] = await res.json();
+          }
         } catch {
-          // No billing account for this user
+          // Silently ignore - no billing account for this user
         }
       }
       return accounts;
@@ -199,7 +202,7 @@ export default function Users() {
     rechargeMutation.mutate({ userId: rechargeUser.id, amount: rechargeAmount });
   };
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = authUser?.role === 'admin';
 
   const columns = [
     {

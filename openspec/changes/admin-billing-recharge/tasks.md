@@ -40,6 +40,9 @@
 
 - [x] 6.1 Fix admin middleware: was checking `c.Get("role")` but JWT sets `c.Get("userRole")`
 - [x] 6.2 Fix admin-ui Dockerfile: nginx.conf path missing `admin-ui/` prefix
+- [x] 6.3 Fix Users page: replace `apiClient.getBillingAccount()` with raw `fetch()` to avoid 404 error toasts
+- [x] 6.4 Fix Users page: replace `useEffect`+`getCurrentUser()` with `useAuth()` from AuthContext
+- [x] 6.5 Fix admin-ui Dockerfile: add `Cache-Control: no-cache` to index.html to ensure new JS loads on refresh
 
 ## 7. Integration Tests (Manual)
 
@@ -47,3 +50,4 @@
 - [x] 7.2 Test: Admin recharges user balance +$100 → balance=$600
 - [x] 7.3 Test: Non-admin gets 403 on billing endpoints
 - [x] 7.4 Test: View billing account returns correct balance
+- [x] 7.5 Test: Users page loads without 404 error toasts
