@@ -11,7 +11,6 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import Providers from './pages/Providers';
-import { RoutingRules } from './pages/RoutingRules';
 import Users from './pages/Users';
 import { Groups } from './pages/Groups';
 import { Tiers } from './pages/Tiers';
@@ -44,7 +43,6 @@ function AppContent() {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="providers" element={<ProtectedRoute requiredRole="admin"><Providers /></ProtectedRoute>} />
-                <Route path="routing" element={<ProtectedRoute requiredRole="admin"><RoutingRules /></ProtectedRoute>} />
                 <Route path="users" element={<ProtectedRoute requiredRole="admin"><Users /></ProtectedRoute>} />
                 <Route path="groups" element={<ProtectedRoute requiredRole="admin"><Groups /></ProtectedRoute>} />
                 <Route path="tiers" element={<ProtectedRoute requiredRole="admin"><Tiers /></ProtectedRoute>} />

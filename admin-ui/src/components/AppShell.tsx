@@ -3,7 +3,6 @@ import { Layout, Menu, Breadcrumb, Button, Dropdown, Avatar } from 'antd';
 import {
   DashboardOutlined,
   CloudServerOutlined,
-  BranchesOutlined,
   UserOutlined,
   TeamOutlined,
   KeyOutlined,
@@ -28,7 +27,6 @@ type Role = 'admin' | 'user' | 'viewer';
 const roleAccess: Record<string, Role[]> = {
   '/': ['admin', 'user', 'viewer'],
   '/providers': ['admin'],
-  '/routing': ['admin'],
   '/users': ['admin'],
   '/groups': ['admin'],
   '/tiers': ['admin'],
@@ -89,11 +87,6 @@ export const AppShell: React.FC = () => {
           key: '/providers',
           icon: <CloudServerOutlined />,
           label: t('navigation.providers'),
-        },
-        {
-          key: '/routing',
-          icon: <BranchesOutlined />,
-          label: t('navigation.routingRules'),
         },
       ],
     },
