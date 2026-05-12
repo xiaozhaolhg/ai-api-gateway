@@ -8,15 +8,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - ai-gateway
 
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11435:11434"
+      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
-      - default
+      - ai-gateway
 
   auth-service:
     build:
@@ -142,8 +144,7 @@ services:
 
 networks:
   ai-gateway:
-    name: ai-api-gateway_ai-gateway
-    external: true
+    driver: bridge
 
 volumes:
   ollama_data:
