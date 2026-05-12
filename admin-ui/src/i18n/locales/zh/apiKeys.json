@@ -5,7 +5,9 @@
   "deleteKey": "删除API密钥",
   "fields": {
     "key": "API密钥",
+    "name": "密钥名称",
     "user": "用户",
+    "scopes": "范围",
     "status": "状态",
     "expiresAt": "过期时间"
   },

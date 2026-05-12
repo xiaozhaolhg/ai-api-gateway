@@ -263,7 +263,7 @@ export default function Users() {
       key: 'created_at',
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: any, record: User) => (
         <div>

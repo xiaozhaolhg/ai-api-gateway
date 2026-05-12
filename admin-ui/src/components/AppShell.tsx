@@ -71,7 +71,7 @@ export const AppShell: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['common']);
 
   const userRole = (user?.role || 'viewer') as Role;
 

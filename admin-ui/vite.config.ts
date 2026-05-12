@@ -20,4 +20,25 @@ export default defineConfig({
       },
     },
   },
+  // Ensure JSON files are properly imported
+  json: {
+    stringify: true,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'vendor';
+          }
+          if (id.includes('antd')) {
+            return 'antd';
+          }
+          if (id.includes('i18next') || id.includes('react-i18next')) {
+            return 'i18n';
+          }
+        },
+      },
+    },
+  },
 })

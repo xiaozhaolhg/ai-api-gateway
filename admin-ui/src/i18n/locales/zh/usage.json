@@ -2,6 +2,7 @@
   "title": "使用情况",
   "fields": {
     "userId": "用户ID",
+    "user": "用户",
     "model": "模型",
     "provider": "提供商",
     "promptTokens": "提示令牌",

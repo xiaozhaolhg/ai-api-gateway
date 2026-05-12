@@ -4,6 +4,7 @@
   "editUser": "Edit User",
   "deleteUser": "Delete User",
   "fields": {
+    "name": "Name",
     "username": "Username",
     "email": "Email",
     "role": "Role",

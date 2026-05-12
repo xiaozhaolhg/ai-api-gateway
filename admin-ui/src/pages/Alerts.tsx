@@ -180,7 +180,7 @@ export const Alerts: React.FC = () => {
       ),
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: unknown, rule: AlertRule) => (
         <div style={{ display: 'flex', gap: 8 }}>
@@ -235,7 +235,7 @@ export const Alerts: React.FC = () => {
       ),
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: unknown, alert: Alert) => (
         <div style={{ display: 'flex', gap: 8 }}>

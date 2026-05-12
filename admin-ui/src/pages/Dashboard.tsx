@@ -14,7 +14,7 @@ import { apiClient } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard: React.FC = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['dashboard', 'common']);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -51,27 +51,27 @@ export const Dashboard: React.FC = () => {
       {
         key: 'add-provider',
         icon: <CloudServerOutlined />,
-        label: t('dashboard.quickActions.addProvider'),
+        label: t('quickActions.addProvider', { ns: 'dashboard' }),
         onClick: () => navigate('/providers'),
       },
       {
         key: 'create-user',
         icon: <UserOutlined />,
-        label: t('dashboard.quickActions.createUser'),
+        label: t('quickActions.createUser', { ns: 'dashboard' }),
         onClick: () => navigate('/users'),
       },
     ] : []),
     {
       key: 'issue-api-key',
       icon: <PlusOutlined />,
-      label: t('dashboard.quickActions.issueApiKey'),
+      label: t('quickActions.issueApiKey', { ns: 'dashboard' }),
       onClick: () => navigate('/api-keys'),
     },
     ...(userRole === 'admin' ? [
       {
         key: 'view-alerts',
         icon: <BellOutlined />,
-        label: t('dashboard.quickActions.viewAlerts'),
+        label: t('quickActions.viewAlerts', { ns: 'dashboard' }),
         onClick: () => navigate('/alerts'),
       },
     ] : []),
@@ -91,13 +91,13 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>{t('dashboard.title')}</h2>
+      <h2 style={{ marginBottom: 24 }}>{t('title', { ns: 'dashboard' })}</h2>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}>
           <Card>
             <Statistic
-              title={t('dashboard.summary.totalUsers')}
+              title={t('summary.totalUsers', { ns: 'dashboard' })}
               value={stats.totalUsers}
               prefix={<UserOutlined />}
               valueStyle={{ color: '#3f8600' }}
@@ -107,7 +107,7 @@ export const Dashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title={t('dashboard.summary.totalProviders')}
+              title={t('summary.totalProviders', { ns: 'dashboard' })}
               value={stats.totalProviders}
               prefix={<CloudServerOutlined />}
               valueStyle={{ color: '#1890ff' }}
@@ -117,7 +117,7 @@ export const Dashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title={t('dashboard.summary.monthlySpend')}
+              title={t('summary.monthlySpend', { ns: 'dashboard' })}
               value={stats.monthlySpend}
               prefix={<DollarOutlined />}
               precision={2}
@@ -128,7 +128,7 @@ export const Dashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title={t('dashboard.summary.activeAlerts')}
+              title={t('summary.activeAlerts', { ns: 'dashboard' })}
               value={stats.activeAlerts}
               prefix={<BellOutlined />}
               valueStyle={{ color: stats.activeAlerts > 0 ? '#cf1322' : '#3f8600' }}
@@ -137,7 +137,7 @@ export const Dashboard: React.FC = () => {
         </Col>
       </Row>
 
-      <Card title={t('dashboard.quickActions.title')} style={{ marginBottom: 24 }}>
+      <Card title={t('quickActions.title', { ns: 'dashboard' })} style={{ marginBottom: 24 }}>
         <Space size="middle">
           {quickActions.map((action) => (
             <Button

@@ -124,7 +124,7 @@ export default function APIKeys() {
       render: (expiresAt: string) => expiresAt ? new Date(expiresAt).toLocaleString() : 'Never',
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: any, record: APIKey) => (
         <Popconfirm

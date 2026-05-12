@@ -82,6 +82,17 @@ i18n
     },
     ns: ['common', 'dashboard', 'providers', 'routing', 'users', 'groups', 'tiers', 'apiKeys', 'permissions', 'usage', 'budgets', 'pricing', 'health', 'alerts'],
     defaultNS: 'common',
+    saveMissing: true,
+    missingKeyHandler: (lng, ns, key) => {
+      console.warn(`Missing translation key: ${key} in namespace: ${ns} for language: ${lng}`);
+    },
+    debug: true, // Enable debug mode
+  }).then(() => {
+    console.log('i18n initialized successfully');
+    console.log('Available namespaces:', Object.keys(resources.en));
+    console.log('Dashboard namespace loaded:', !!resources.en.dashboard);
+  }).catch((error) => {
+    console.error('i18n initialization failed:', error);
   });
 
 export default i18n;

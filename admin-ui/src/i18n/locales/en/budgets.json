@@ -9,6 +9,7 @@
     "limit": "Limit",
     "currentSpend": "Current Spend",
     "remaining": "Remaining",
-    "period": "Period"
+    "period": "Period",
+    "status": "Status"
   }
 }
