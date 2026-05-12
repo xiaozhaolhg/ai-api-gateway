@@ -26,8 +26,8 @@ func (m *MockUsageRepo) GetByID(id string) (*entity.UsageRecord, error) {
 	return args.Get(0).(*entity.UsageRecord), args.Error(1)
 }
 
-func (m *MockUsageRepo) GetByUserID(userID string, page, pageSize int) ([]*entity.UsageRecord, int, error) {
-	args := m.Called(userID, page, pageSize)
+func (m *MockUsageRepo) GetByUserID(userID string, page, pageSize int, startTime, endTime int64) ([]*entity.UsageRecord, int, error) {
+	args := m.Called(userID, page, pageSize, startTime, endTime)
 	return args.Get(0).([]*entity.UsageRecord), args.Int(1), args.Error(2)
 }
 

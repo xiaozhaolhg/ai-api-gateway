@@ -8,7 +8,8 @@ import (
 type UsageRecordRepository interface {
 	Create(record *entity.UsageRecord) error
 	GetByID(id string) (*entity.UsageRecord, error)
-	GetByUserID(userID string, page, pageSize int) ([]*entity.UsageRecord, int, error)
+	// GetByUserID retrieves usage records for a user. If startTime or endTime is 0, that bound is not applied.
+	GetByUserID(userID string, page, pageSize int, startTime, endTime int64) ([]*entity.UsageRecord, int, error)
 	GetAggregation(userID, startDate, endDate, groupBy string) ([]*entity.UsageAggregation, error)
 }
 

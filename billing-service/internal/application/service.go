@@ -135,9 +135,10 @@ func (s *Service) CheckBudget(userID string) (*entity.BudgetStatus, error) {
 	}, nil
 }
 
-// GetUsage retrieves usage records for a user
-func (s *Service) GetUsage(userID string, page, pageSize int) ([]*entity.UsageRecord, int, error) {
-	return s.usageRepo.GetByUserID(userID, page, pageSize)
+// GetUsage retrieves usage records for a user with optional date range filtering.
+// If startTime or endTime is 0, that bound is not applied.
+func (s *Service) GetUsage(userID string, page, pageSize int, startTime, endTime int64) ([]*entity.UsageRecord, int, error) {
+	return s.usageRepo.GetByUserID(userID, page, pageSize, startTime, endTime)
 }
 
 // GetUsageAggregation retrieves aggregated usage statistics

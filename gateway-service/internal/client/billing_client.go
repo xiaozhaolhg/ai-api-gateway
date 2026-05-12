@@ -34,12 +34,15 @@ func (c *BillingClient) Close() error {
 	return c.conn.Close()
 }
 
-// GetUsage retrieves usage records
-func (c *BillingClient) GetUsage(ctx context.Context, userID string, page, pageSize int32) (*billingv1.ListUsageResponse, error) {
+// GetUsage retrieves usage records with optional date range filtering.
+// If startTime or endTime is 0, that bound is not applied.
+func (c *BillingClient) GetUsage(ctx context.Context, userID string, page, pageSize int32, startTime, endTime int64) (*billingv1.ListUsageResponse, error) {
 	req := &billingv1.GetUsageRequest{
-		UserId:   userID,
-		Page:     page,
-		PageSize: pageSize,
+		UserId:    userID,
+		Page:      page,
+		PageSize:  pageSize,
+		StartTime: startTime,
+		EndTime:   endTime,
 	}
 
 	resp, err := c.client.GetUsage(ctx, req)

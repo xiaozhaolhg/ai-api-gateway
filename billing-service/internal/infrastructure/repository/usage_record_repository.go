@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/ai-api-gateway/billing-service/internal/domain/entity"
 	"github.com/google/uuid"
@@ -59,39 +61,52 @@ func (r *UsageRecordRepository) GetByID(id string) (*entity.UsageRecord, error) 
 	return &record, nil
 }
 
-// GetByUserID retrieves usage records for a user.
+// GetByUserID retrieves usage records for a user with optional date range filtering.
 // If userID is empty, returns all records (admin view).
-func (r *UsageRecordRepository) GetByUserID(userID string, page, pageSize int) ([]*entity.UsageRecord, int, error) {
+// If startTime or endTime is 0, that bound is not applied.
+func (r *UsageRecordRepository) GetByUserID(userID string, page, pageSize int, startTime, endTime int64) ([]*entity.UsageRecord, int, error) {
 	offset := (page - 1) * pageSize
 
-	var total int
-	var rows *sql.Rows
-	var err error
+	// Build dynamic WHERE clause from optional filters
+	var conditions []string
+	var args []interface{}
 
-	if userID == "" {
-		err = r.db.QueryRow("SELECT COUNT(*) FROM usage_records").Scan(&total)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to count usage records: %w", err)
-		}
-		rows, err = r.db.Query(`
-			SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
-			FROM usage_records
-			ORDER BY timestamp DESC
-			LIMIT ? OFFSET ?
-		`, pageSize, offset)
-	} else {
-		err = r.db.QueryRow("SELECT COUNT(*) FROM usage_records WHERE user_id = ?", userID).Scan(&total)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to count usage records: %w", err)
-		}
-		rows, err = r.db.Query(`
-			SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
-			FROM usage_records
-			WHERE user_id = ?
-			ORDER BY timestamp DESC
-			LIMIT ? OFFSET ?
-		`, userID, pageSize, offset)
+	if userID != "" {
+		conditions = append(conditions, "user_id = ?")
+		args = append(args, userID)
 	}
+	if startTime > 0 {
+		conditions = append(conditions, "timestamp >= ?")
+		args = append(args, time.Unix(startTime, 0))
+	}
+	if endTime > 0 {
+		conditions = append(conditions, "timestamp <= ?")
+		args = append(args, time.Unix(endTime, 0))
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Count total matching records
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM usage_records %s", whereClause)
+	var total int
+	err := r.db.QueryRow(countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count usage records: %w", err)
+	}
+
+	// Query with pagination
+	dataQuery := fmt.Sprintf(`
+		SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
+		FROM usage_records
+		%s
+		ORDER BY timestamp DESC
+		LIMIT ? OFFSET ?
+	`, whereClause)
+	queryArgs := append(args, pageSize, offset)
+	rows, err := r.db.Query(dataQuery, queryArgs...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query usage records: %w", err)
 	}

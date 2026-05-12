@@ -34,8 +34,10 @@ func NewAdminUsageHandler(billingClient *client.BillingClient) *AdminUsageHandle
 	return &AdminUsageHandler{billingClient: billingClient}
 }
 
-func (h *AdminUsageHandler) GetUsage(ctx context.Context, userID string, page, pageSize int32) (*UsageResp, error) {
-	resp, err := h.billingClient.GetUsage(ctx, userID, page, pageSize)
+// GetUsage retrieves usage records for a user with optional date range filtering.
+// If startTime or endTime is 0, that bound is not applied.
+func (h *AdminUsageHandler) GetUsage(ctx context.Context, userID string, page, pageSize int32, startTime, endTime int64) (*UsageResp, error) {
+	resp, err := h.billingClient.GetUsage(ctx, userID, page, pageSize, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}

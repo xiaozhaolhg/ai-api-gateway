@@ -1160,10 +1160,24 @@ func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
 		userID = "anonymous"
 	}
 
+	// Parse optional date range filters from query params
+	var startTime, endTime int64
+	if startDateStr := c.Query("start_date"); startDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			startTime = t.Unix()
+		}
+	}
+	if endDateStr := c.Query("end_date"); endDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			// Set to end of day so the filter is inclusive
+			endTime = t.Unix()
+		}
+	}
+
 	page := int32(1)
 	pageSize := int32(20)
 
-	resp, err := h.GetUsage(c.Request.Context(), userID, page, pageSize)
+	resp, err := h.GetUsage(c.Request.Context(), userID, page, pageSize, startTime, endTime)
 	if err != nil {
 		log.Printf("Error getting usage: %v", err)
 		// Return empty response on error (graceful fallback)

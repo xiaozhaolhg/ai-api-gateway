@@ -40,7 +40,8 @@ func (h *Handler) RecordUsage(ctx context.Context, req *billingv1.RecordUsageReq
 }
 
 func (h *Handler) GetUsage(ctx context.Context, req *billingv1.GetUsageRequest) (*billingv1.ListUsageResponse, error) {
-	records, total, err := h.service.GetUsage(req.GetUserId(), int(req.GetPage()), int(req.GetPageSize()))
+	records, total, err := h.service.GetUsage(req.GetUserId(), int(req.GetPage()), int(req.GetPageSize()),
+		req.GetStartTime(), req.GetEndTime())
 	if err != nil {
 		return nil, err
 	}

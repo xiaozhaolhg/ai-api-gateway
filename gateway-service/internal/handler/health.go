@@ -105,7 +105,7 @@ func (h *HealthHandler) GatewayHealth(c *gin.Context) {
 
 	// Check billing service (graceful - billing is optional)
 	billingStatus, billingLatency := h.checkService(ctx, "billing", func(ctx context.Context) error {
-		_, err := h.billingClient.GetUsage(ctx, "", 1, 1)
+		_, err := h.billingClient.GetUsage(ctx, "", 1, 1, 0, 0)
 		return err
 	})
 	services["billing"] = map[string]interface{}{
@@ -205,7 +205,7 @@ func (h *HealthHandler) gatewayHealthHTTP(w http.ResponseWriter, r *http.Request
 
 	// Check billing service (graceful - billing is optional)
 	billingStatus, billingLatency := h.checkService(ctx, "billing", func(ctx context.Context) error {
-		_, err := h.billingClient.GetUsage(ctx, "", 1, 1)
+		_, err := h.billingClient.GetUsage(ctx, "", 1, 1, 0, 0)
 		return err
 	})
 	services["billing"] = map[string]interface{}{
