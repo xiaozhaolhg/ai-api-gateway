@@ -203,3 +203,46 @@ func (c *BillingClient) DeletePricingRule(ctx context.Context, id string) error 
 
 	return nil
 }
+
+// Billing Account operations
+func (c *BillingClient) GetBillingAccountByUser(ctx context.Context, userID string) (*billingv1.BillingAccount, error) {
+	req := &billingv1.GetBillingAccountByUserRequest{
+		UserId: userID,
+	}
+
+	resp, err := c.client.GetBillingAccountByUser(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get billing account: %w", err)
+	}
+
+	return resp, nil
+}
+
+func (c *BillingClient) CreateBillingAccount(ctx context.Context, userID string, initialCredit float64) (*billingv1.BillingAccount, error) {
+	req := &billingv1.CreateBillingAccountRequest{
+		UserId:        userID,
+		InitialCredit: initialCredit,
+	}
+
+	resp, err := c.client.CreateBillingAccount(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create billing account: %w", err)
+	}
+
+	return resp, nil
+}
+
+func (c *BillingClient) UpdateBillingAccountBalance(ctx context.Context, accountID string, balance float64) (*billingv1.BillingAccount, error) {
+	req := &billingv1.UpdateBillingAccountRequest{
+		Id:             accountID,
+		Balance:        balance,
+		BalanceUpdated: true,
+	}
+
+	resp, err := c.client.UpdateBillingAccount(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update billing account: %w", err)
+	}
+
+	return resp, nil
+}

@@ -14,7 +14,8 @@ import type {
   AlertRule,
   Alert,
   ProviderHealth,
-  Tier
+  Tier,
+  BillingAccount
 } from './types';
 import MockDataHandler from '../mock/handlers/dataHandler';
 import { API_CONFIG } from './config';
@@ -444,6 +445,43 @@ class MockAPIClient implements APIClientInterface {
 
     this.dataHandler.deletePricingRule(id);
     return this.simulateNetworkDelay(undefined);
+  }
+
+  // ===== Billing Accounts =====
+  private billingAccounts: Map<string, BillingAccount> = new Map();
+
+  async getBillingAccount(userId: string): Promise<BillingAccount> {
+    let account = this.billingAccounts.get(userId);
+    if (!account) {
+      account = {
+        id: this.generateId(),
+        user_id: userId,
+        balance: 0,
+        currency: 'USD',
+        status: 'active'
+      };
+      this.billingAccounts.set(userId, account);
+    }
+    return this.simulateNetworkDelay({ ...account });
+  }
+
+  async adjustBalance(userId: string, amount: number): Promise<BillingAccount> {
+    let account = this.billingAccounts.get(userId);
+    if (!account) {
+      account = {
+        id: this.generateId(),
+        user_id: userId,
+        balance: 0,
+        currency: 'USD',
+        status: 'active'
+      };
+      this.billingAccounts.set(userId, account);
+    }
+    account.balance += amount;
+    if (account.balance < 0) {
+      account.balance = 0;
+    }
+    return this.simulateNetworkDelay({ ...account });
   }
 
   // ===== Alert Rules =====

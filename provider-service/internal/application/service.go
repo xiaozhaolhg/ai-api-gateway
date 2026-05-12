@@ -332,7 +332,7 @@ func (s *Service) makeHTTPRequest(ctx context.Context, url string, body []byte, 
 	}
 
 	client := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: 0, // No timeout - rely on context deadline for long-thinking models
 	}
 
 	return client.Do(req)

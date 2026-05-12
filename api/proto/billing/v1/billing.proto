@@ -35,6 +35,7 @@ service BillingService {
 
   // Billing Account
   rpc GetBillingAccount(GetBillingAccountRequest) returns (BillingAccount);
+  rpc GetBillingAccountByUser(GetBillingAccountByUserRequest) returns (BillingAccount);
   rpc CreateBillingAccount(CreateBillingAccountRequest) returns (BillingAccount);
   rpc UpdateBillingAccount(UpdateBillingAccountRequest) returns (BillingAccount);
 
@@ -223,27 +224,38 @@ message ListPricingRulesResponse {
 // Billing Account
 message BillingAccount {
   string id = 1;
-  string name = 2;
-  string billing_contact = 3;
-  double credit_balance = 4;
-  string status = 5;  // "active" | "suspended"
+  string user_id = 2;
+  string name = 3;
+  string billing_contact = 4;
+  double balance = 5;
+  double credit_balance = 6;
+  string currency = 7;
+  string status = 8;
 }
 
 message GetBillingAccountRequest {
   string id = 1;
 }
 
+message GetBillingAccountByUserRequest {
+  string user_id = 1;
+}
+
 message CreateBillingAccountRequest {
-  string name = 1;
-  string billing_contact = 2;
-  double initial_credit = 3;
+  string user_id = 1;
+  string name = 2;
+  string billing_contact = 3;
+  double initial_credit = 4;
 }
 
 message UpdateBillingAccountRequest {
   string id = 1;
-  string name = 2;
-  string billing_contact = 3;
-  string status = 4;
+  string user_id = 2;
+  string name = 3;
+  string billing_contact = 4;
+  double balance = 5;
+  string status = 6;
+  bool balance_updated = 7;  // flag to indicate balance should be updated
 }
 
 // Invoice (Phase 3+)

@@ -75,6 +75,10 @@ export interface APIClientInterface {
 
   // Health
   getProviderHealth(): Promise<ProviderHealth[]>;
+
+  // Billing Accounts
+  getBillingAccount(userId: string): Promise<BillingAccount>;
+  adjustBalance(userId: string, amount: number): Promise<BillingAccount>;
 }
 
 // Response Types
@@ -214,6 +218,14 @@ export interface Alert {
   triggered_at: string;
   description: string;
   acknowledged_at?: string;
+}
+
+export interface BillingAccount {
+  id: string;
+  user_id: string;
+  balance: number;
+  currency: string;
+  status: string;
 }
 
 export interface ProviderHealth {

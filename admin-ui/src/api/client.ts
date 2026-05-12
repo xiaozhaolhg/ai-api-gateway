@@ -12,6 +12,7 @@ import type {
   Permission,
   Budget,
   PricingRule,
+  BillingAccount,
   AlertRule,
   Alert,
   ProviderHealth,
@@ -28,6 +29,7 @@ export type {
   Permission,
   Budget,
   PricingRule,
+  BillingAccount,
   AlertRule,
   Alert,
   ProviderHealth,
@@ -441,12 +443,21 @@ export class RealAPIClient implements APIClientInterface {
   }
 
   async deletePricingRule(id: string): Promise<void> {
-    await this.request<void>(`/admin/pricing-rules/${id}`, {
-      method: 'DELETE',
+    await this.request<void>(`/admin/pricing-rules/${id}`, { method: 'DELETE' });
+  }
+
+  // Billing Account methods
+  async getBillingAccount(userId: string): Promise<BillingAccount> {
+    return await this.request<BillingAccount>(`/admin/billing/accounts/${userId}`);
+  }
+
+  async adjustBalance(userId: string, amount: number): Promise<BillingAccount> {
+    return await this.request<BillingAccount>(`/admin/billing/accounts/${userId}/balance`, {
+      method: 'PUT',
+      body: JSON.stringify({ amount }),
     });
   }
 
-  // Alert endpoints
   async getAlertRules(): Promise<AlertRule[]> {
     try {
       return await this.request<AlertRule[]>('/admin/alert-rules');
@@ -822,6 +833,15 @@ class UnifiedAPIClient implements APIClientInterface {
 
   async removeTierFromGroup(groupId: string) {
     return this.getActiveClient().removeTierFromGroup(groupId);
+  }
+
+  // Billing Accounts
+  async getBillingAccount(userId: string) {
+    return this.getActiveClient().getBillingAccount(userId);
+  }
+
+  async adjustBalance(userId: string, amount: number) {
+    return this.getActiveClient().adjustBalance(userId, amount);
   }
 
   setMockMode(enabled: boolean) {

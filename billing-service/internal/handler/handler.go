@@ -223,8 +223,17 @@ func (h *Handler) GetBillingAccount(ctx context.Context, req *billingv1.GetBilli
 	return billingAccountToProto(account), nil
 }
 
+func (h *Handler) GetBillingAccountByUser(ctx context.Context, req *billingv1.GetBillingAccountByUserRequest) (*billingv1.BillingAccount, error) {
+	account, err := h.service.GetBillingAccount(req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+	return billingAccountToProto(account), nil
+}
+
 func (h *Handler) CreateBillingAccount(ctx context.Context, req *billingv1.CreateBillingAccountRequest) (*billingv1.BillingAccount, error) {
 	account := &entity.BillingAccount{
+		UserID:         req.GetUserId(),
 		Name:           req.GetName(),
 		BillingContact: req.GetBillingContact(),
 		Balance:        req.GetInitialCredit(),
@@ -247,9 +256,18 @@ func (h *Handler) UpdateBillingAccount(ctx context.Context, req *billingv1.Updat
 	if err != nil {
 		return nil, err
 	}
-	existing.Name = req.GetName()
-	existing.BillingContact = req.GetBillingContact()
-	existing.Status = req.GetStatus()
+	if req.GetName() != "" {
+		existing.Name = req.GetName()
+	}
+	if req.GetBillingContact() != "" {
+		existing.BillingContact = req.GetBillingContact()
+	}
+	if req.GetStatus() != "" {
+		existing.Status = req.GetStatus()
+	}
+	if req.GetBalanceUpdated() {
+		existing.Balance = req.GetBalance()
+	}
 	if err := h.service.UpdateBillingAccount(existing); err != nil {
 		return nil, err
 	}
@@ -310,9 +328,12 @@ func billingAccountToProto(a *entity.BillingAccount) *billingv1.BillingAccount {
 	}
 	return &billingv1.BillingAccount{
 		Id:             a.ID,
+		UserId:         a.UserID,
 		Name:           a.Name,
 		BillingContact: a.BillingContact,
+		Balance:        a.Balance,
 		CreditBalance:  a.CreditBalance,
+		Currency:       a.Currency,
 		Status:         a.Status,
 	}
 }

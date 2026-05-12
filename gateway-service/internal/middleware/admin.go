@@ -14,7 +14,7 @@ func NewAdminMiddleware() *AdminMiddleware {
 
 func (m *AdminMiddleware) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, exists := c.Get("role")
+		role, exists := c.Get("userRole")
 		if !exists {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			return

@@ -112,6 +112,7 @@ func main() {
 	// New handlers for budgets, pricing rules, and alerts
 	adminBudgetsHandler := handler.NewAdminBudgetsHandler(billingClient)
 	adminPricingRulesHandler := handler.NewAdminPricingRulesHandler(billingClient)
+	adminBillingAccountsHandler := handler.NewAdminBillingAccountsHandler(billingClient)
 	adminAlertsHandler := handler.NewAdminAlertsHandler(monitorClient)
 
 	// Simple liveness check
@@ -215,6 +216,16 @@ func main() {
 	r.POST("/admin/pricing-rules", adminPricingRulesHandler.CreatePricingRule)
 	r.PUT("/admin/pricing-rules/:id", adminPricingRulesHandler.UpdatePricingRule)
 	r.DELETE("/admin/pricing-rules/:id", adminPricingRulesHandler.DeletePricingRule)
+
+	// Billing account management endpoints (admin only)
+	adminBilling := r.Group("/admin/billing/accounts")
+	adminBilling.Use(jwtAuthMiddleware())
+	adminBilling.Use(adminMiddleware.Middleware())
+	{
+		adminBilling.GET("/:userId", adminBillingAccountsHandler.GetBillingAccount)
+		adminBilling.POST("", adminBillingAccountsHandler.CreateBillingAccount)
+		adminBilling.PUT("/:userId/balance", adminBillingAccountsHandler.AdjustBalance)
+	}
 
 	// Alert management endpoints
 	r.GET("/admin/alert-rules", adminAlertsHandler.ListAlertRules)

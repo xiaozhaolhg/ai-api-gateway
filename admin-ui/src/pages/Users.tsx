@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Empty, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, Tag, Empty, message } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, DollarOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type User, type Group } from '../api/client';
+import { apiClient, type User, type Group, type BillingAccount } from '../api/client';
 
 export default function Users() {
   const { t } = useTranslation(['users', 'common']);
@@ -12,6 +12,14 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [rechargeModalVisible, setRechargeModalVisible] = useState(false);
+  const [rechargeUser, setRechargeUser] = useState<User | null>(null);
+  const [rechargeAmount, setRechargeAmount] = useState<number>(0);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+
+  useEffect(() => {
+    apiClient.getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
+  }, []);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -33,6 +41,22 @@ export default function Users() {
   const { data: groups = [] } = useQuery({
     queryKey: ['groups'],
     queryFn: () => apiClient.getGroups(),
+  });
+
+  const { data: billingAccounts = {} as Record<string, BillingAccount> } = useQuery({
+    queryKey: ['billingAccounts', users.map(u => u.id)],
+    queryFn: async () => {
+      const accounts: Record<string, BillingAccount> = {};
+      for (const user of users) {
+        try {
+          accounts[user.id] = await apiClient.getBillingAccount(user.id);
+        } catch {
+          // No billing account for this user
+        }
+      }
+      return accounts;
+    },
+    enabled: users.length > 0,
   });
 
   const createMutation = useMutation({
@@ -103,6 +127,19 @@ export default function Users() {
     },
   });
 
+  const rechargeMutation = useMutation({
+    mutationFn: ({ userId, amount }: { userId: string; amount: number }) =>
+      apiClient.adjustBalance(userId, amount),
+    onSuccess: (_data) => {
+      message.success(`Recharge successful! New balance: $${_data.balance.toFixed(2)}`);
+      queryClient.invalidateQueries({ queryKey: ['billingAccounts'] });
+      setRechargeModalVisible(false);
+    },
+    onError: (err: Error) => {
+      message.error(`Recharge failed: ${err.message}`);
+    },
+  });
+
   const handleAdd = () => {
     setEditingUser(null);
     setSelectedGroups([]);
@@ -121,7 +158,6 @@ export default function Users() {
     const values = await form.validateFields();
     const { password, ...userData } = values;
 
-    // Validate username uniqueness for new users
     if (!editingUser && userData.username) {
       try {
         const response = await apiClient.checkUsernameAvailability(userData.username);
@@ -148,6 +184,22 @@ export default function Users() {
     setModalVisible(false);
     form.resetFields();
   };
+
+  const handleRecharge = (user: User) => {
+    setRechargeUser(user);
+    setRechargeAmount(0);
+    setRechargeModalVisible(true);
+  };
+
+  const handleRechargeOk = async () => {
+    if (!rechargeUser || rechargeAmount <= 0) {
+      message.error('Please enter a valid amount');
+      return;
+    }
+    rechargeMutation.mutate({ userId: rechargeUser.id, amount: rechargeAmount });
+  };
+
+  const isAdmin = currentUser?.role === 'admin';
 
   const columns = [
     {
@@ -191,6 +243,18 @@ export default function Users() {
       ),
     },
     {
+      title: 'Balance',
+      key: 'balance',
+      render: (_: any, record: User) => {
+        const account = billingAccounts[record.id];
+        return (
+          <span style={{ fontFamily: 'monospace' }}>
+            ${account ? account.balance.toFixed(2) : '0.00'}
+          </span>
+        );
+      },
+    },
+    {
       title: t('common:createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
@@ -207,6 +271,16 @@ export default function Users() {
           >
             {t('common:edit')}
           </Button>
+          {isAdmin && (
+            <Button
+              type="link"
+              icon={<DollarOutlined />}
+              onClick={() => handleRecharge(record)}
+              style={{ color: '#52c41a' }}
+            >
+              Recharge
+            </Button>
+          )}
           <Popconfirm
             title="Are you sure you want to delete this user?"
             onConfirm={() => deleteMutation.mutate(record.id)}
@@ -357,6 +431,36 @@ export default function Users() {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Recharge User Balance"
+        open={rechargeModalVisible}
+        onOk={handleRechargeOk}
+        onCancel={() => setRechargeModalVisible(false)}
+        confirmLoading={rechargeMutation.isPending}
+        width={400}
+      >
+        {rechargeUser && (
+          <div>
+            <p><strong>User:</strong> {rechargeUser.name} ({rechargeUser.email})</p>
+            <p><strong>Current Balance:</strong> <span style={{ fontFamily: 'monospace' }}>
+              ${(billingAccounts[rechargeUser.id]?.balance || 0).toFixed(2)}
+            </span></p>
+            <div style={{ marginTop: 16 }}>
+              <label>Amount to add:</label>
+              <InputNumber
+                min={0.01}
+                step={10}
+                precision={2}
+                style={{ width: '100%', marginTop: 8 }}
+                placeholder="Enter amount"
+                value={rechargeAmount}
+                onChange={(val) => setRechargeAmount(val || 0)}
+              />
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
