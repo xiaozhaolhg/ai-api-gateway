@@ -39,6 +39,16 @@ The gateway-service SHALL expose three categories of HTTP endpoints: OpenAI-comp
 - **WHEN** GET /admin/usage is called with filters
 - **THEN** the gateway SHALL proxy the request to billing-service via gRPC
 
+#### Scenario: Admin role sees all usage records
+- **WHEN** GET /admin/usage is called by a user with role "admin"
+- **THEN** the gateway SHALL pass an empty user_id to billing-service GetUsage
+- **AND** the response SHALL contain usage records from all users
+
+#### Scenario: Regular user sees own usage records
+- **WHEN** GET /admin/usage is called by a user with role "user"
+- **THEN** the gateway SHALL pass the JWT user_id to billing-service GetUsage
+- **AND** the response SHALL contain only that user's usage records
+
 ### Requirement: Middleware pipeline
 The gateway-service SHALL implement an ordered middleware pipeline that processes every chat completion request.
 

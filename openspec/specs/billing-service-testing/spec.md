@@ -35,6 +35,10 @@ The billing-service SHALL have tests that verify gRPC server behavior.
 - **WHEN** a gRPC GetUsage request is sent with filters
 - **THEN** the service SHALL return matching usage records
 
+#### Scenario: GetUsage admin view test
+- **WHEN** a gRPC GetUsage request is sent with empty user_id
+- **THEN** the service SHALL return all usage records without user_id filtering
+
 ### Requirement: Test Coverage
 The billing-service domain and application layers SHALL maintain at least 70% code coverage.
 

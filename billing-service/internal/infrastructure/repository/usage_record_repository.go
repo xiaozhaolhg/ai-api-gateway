@@ -59,27 +59,39 @@ func (r *UsageRecordRepository) GetByID(id string) (*entity.UsageRecord, error) 
 	return &record, nil
 }
 
-// GetByUserID retrieves usage records for a user
+// GetByUserID retrieves usage records for a user.
+// If userID is empty, returns all records (admin view).
 func (r *UsageRecordRepository) GetByUserID(userID string, page, pageSize int) ([]*entity.UsageRecord, int, error) {
 	offset := (page - 1) * pageSize
 
-	// Get total count
 	var total int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM usage_records WHERE user_id = ?", userID).Scan(&total)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count usage records: %w", err)
+	var rows *sql.Rows
+	var err error
+
+	if userID == "" {
+		err = r.db.QueryRow("SELECT COUNT(*) FROM usage_records").Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to count usage records: %w", err)
+		}
+		rows, err = r.db.Query(`
+			SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
+			FROM usage_records
+			ORDER BY timestamp DESC
+			LIMIT ? OFFSET ?
+		`, pageSize, offset)
+	} else {
+		err = r.db.QueryRow("SELECT COUNT(*) FROM usage_records WHERE user_id = ?", userID).Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to count usage records: %w", err)
+		}
+		rows, err = r.db.Query(`
+			SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
+			FROM usage_records
+			WHERE user_id = ?
+			ORDER BY timestamp DESC
+			LIMIT ? OFFSET ?
+		`, userID, pageSize, offset)
 	}
-
-	// Get records
-	query := `
-		SELECT id, user_id, provider_id, model, prompt_tokens, completion_tokens, cost, timestamp
-		FROM usage_records
-		WHERE user_id = ?
-		ORDER BY timestamp DESC
-		LIMIT ? OFFSET ?
-	`
-
-	rows, err := r.db.Query(query, userID, pageSize, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query usage records: %w", err)
 	}

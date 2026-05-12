@@ -125,6 +125,11 @@ The system SHALL store `UsageRecord` with `user_id`, `group_id`, `provider_id`, 
 - **WHEN** `GetUsage` is called with `model="gpt-4"`
 - **THEN** all usage records for that model are returned
 
+#### Scenario: Admin query returns all records
+- **WHEN** `GetUsage` is called with an empty `user_id` (admin view)
+- **THEN** the repository SHALL return all usage records across all users
+- **AND** the response SHALL include usage records from every user_id in the database
+
 ### Requirement: Budget enforcement
 The billing-service SHALL enforce budget limits for users and groups.
 

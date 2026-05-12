@@ -9,7 +9,6 @@ import (
 func RunMigrations(db *sql.DB) error {
 	migrations := []string{
 		createUsageRecordsTable(),
-		addGroupIDColumn(),
 		createPricingRulesTable(),
 		createBillingAccountsTable(),
 		createBudgetsTable(),
@@ -42,10 +41,6 @@ func createUsageRecordsTable() string {
 	CREATE INDEX IF NOT EXISTS idx_usage_records_user_id ON usage_records(user_id);
 	CREATE INDEX IF NOT EXISTS idx_usage_records_timestamp ON usage_records(timestamp);
 	`
-}
-
-func addGroupIDColumn() string {
-	return `ALTER TABLE usage_records ADD COLUMN group_id TEXT;`
 }
 
 func createPricingRulesTable() string {

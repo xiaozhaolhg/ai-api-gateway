@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/ai-api-gateway/gateway-service/internal/client"
 )
@@ -18,6 +19,7 @@ type UsageRecord struct {
 	PromptTokens     int64   `json:"prompt_tokens"`
 	CompletionTokens int64   `json:"completion_tokens"`
 	Cost             float64 `json:"cost"`
+	Timestamp        string  `json:"timestamp"`
 }
 
 type UsageResp struct {
@@ -47,6 +49,7 @@ func (h *AdminUsageHandler) GetUsage(ctx context.Context, userID string, page, p
 			PromptTokens:     r.PromptTokens,
 			CompletionTokens: r.CompletionTokens,
 			Cost:             r.Cost,
+			Timestamp:        time.Unix(r.Timestamp, 0).Format(time.RFC3339),
 		}
 	}
 

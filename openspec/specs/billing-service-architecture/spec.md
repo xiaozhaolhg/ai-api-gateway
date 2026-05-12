@@ -20,6 +20,11 @@ The billing-service SHALL own the UsageRecord entity with fields: id, user_id, g
 - **WHEN** a GetUsage request is received with user_id, model, or date range filters
 - **THEN** the service SHALL return matching UsageRecords with pagination
 
+#### Scenario: Admin query all usage records
+- **WHEN** a GetUsage request is received with an empty user_id
+- **THEN** the repository SHALL return ALL usage records without user_id filtering
+- **AND** support the same pagination as user-specific queries
+
 ### Requirement: PricingRule entity and repository
 The billing-service SHALL own the PricingRule entity with fields: id, model, provider_id, price_per_prompt_token, price_per_completion_token, currency. It SHALL provide a PricingRuleRepository interface.
 

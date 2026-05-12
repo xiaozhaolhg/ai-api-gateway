@@ -203,9 +203,22 @@ The gateway SHALL expose API key management endpoints that call auth-service gRP
 ### Requirement: Admin usage endpoint calls billing-service
 The gateway admin usage endpoint SHALL call billing-service gRPC instead of returning mock data.
 
-#### Scenario: Get usage
-- **WHEN** GET /admin/auth/usage is called
-- **THEN** the gateway calls billing-service GetUsage gRPC and returns real usage records
+#### Scenario: Get usage for regular user
+- **WHEN** GET /admin/auth/usage is called by a non-admin user
+- **THEN** the gateway extracts user_id from JWT context
+- **AND** calls billing-service GetUsage with that user_id
+- **AND** returns the user's usage records
+
+#### Scenario: Get usage for admin (all users)
+- **WHEN** GET /admin/auth/usage is called by a user with role "admin"
+- **THEN** the gateway SHALL set user_id to empty string
+- **AND** call billing-service GetUsage with empty user_id
+- **AND** return usage records for ALL users
+
+#### Scenario: Timestamp serialization
+- **WHEN** the gateway maps gRPC UsageRecord to JSON response
+- **THEN** the timestamp field SHALL be converted from Unix seconds to RFC3339 string
+- **AND** the response SHALL include a "timestamp" key with a valid ISO 8601 date string
 
 ### Requirement: Admin group management endpoints
 The gateway SHALL expose group management endpoints that proxy to auth-service gRPC.

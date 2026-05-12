@@ -1150,8 +1150,13 @@ func handleDeleteUserAPIKey(c *gin.Context) {
 // --- Usage handler (using adminUsageHandler from main branch) ---
 
 func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
+	userRole := c.GetString("userRole")
 	userID := c.GetString("userId")
-	if userID == "" {
+
+	// Admin users can see all usage records
+	if userRole == "admin" {
+		userID = ""
+	} else if userID == "" {
 		userID = "anonymous"
 	}
 
@@ -1175,6 +1180,7 @@ func handleGetUsage(c *gin.Context, h *handler.AdminUsageHandler) {
 			"prompt_tokens":     r.PromptTokens,
 			"completion_tokens": r.CompletionTokens,
 			"cost":              r.Cost,
+			"timestamp":         r.Timestamp,
 		}
 	}
 
