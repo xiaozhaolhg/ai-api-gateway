@@ -160,7 +160,7 @@ export const Groups: React.FC = () => {
       key: 'created_at',
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: any, record: Group) => (
         <div>

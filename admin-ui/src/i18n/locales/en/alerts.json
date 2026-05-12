@@ -2,12 +2,18 @@
   "title": "Alerts",
   "tabs": {
     "rules": "Alert Rules",
-    "activeAlerts": "Active Alerts"
+    "activeAlerts": "Active Alerts",
+    "alerts": "Active Alerts"
   },
   "addRule": "Add Alert Rule",
   "editRule": "Edit Alert Rule",
   "deleteRule": "Delete Alert Rule",
   "acknowledge": "Acknowledge",
+  "actions": {
+    "acknowledge": "Acknowledge",
+    "addRule": "Add Alert Rule",
+    "editRule": "Edit Alert Rule"
+  },
   "fields": {
     "name": "Rule Name",
     "metric": "Metric",
@@ -17,6 +23,37 @@
     "severity": "Severity",
     "status": "Status",
     "triggeredAt": "Triggered At",
+    "triggered_at": "Triggered At",
     "description": "Description"
+  },
+  "validation": {
+    "nameRequired": "Please enter rule name",
+    "metricRequired": "Please select a metric",
+    "conditionRequired": "Please select a condition",
+    "thresholdRequired": "Please enter threshold value",
+    "channelRequired": "Please select a notification channel"
+  },
+  "placeholders": {
+    "name": "Enter rule name",
+    "metric": "Select metric",
+    "condition": "Select condition",
+    "threshold": "Enter threshold value",
+    "channel": "Select notification channel"
+  },
+  "metrics": {
+    "errorRate": "Error Rate",
+    "latency": "Latency",
+    "cost": "Cost",
+    "usage": "Usage"
+  },
+  "conditions": {
+    "greaterThan": "Greater Than",
+    "lessThan": "Less Than",
+    "equals": "Equals"
+  },
+  "channels": {
+    "email": "Email",
+    "slack": "Slack",
+    "webhook": "Webhook"
   }
 }

@@ -155,7 +155,7 @@ export const Permissions: React.FC = () => {
       key: 'created_at',
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: any, record: Permission) => (
         <div>

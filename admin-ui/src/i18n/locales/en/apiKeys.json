@@ -5,7 +5,9 @@
   "deleteKey": "Delete API Key",
   "fields": {
     "key": "API Key",
+    "name": "Key Name",
     "user": "User",
+    "scopes": "Scopes",
     "status": "Status",
     "expiresAt": "Expires At"
   },

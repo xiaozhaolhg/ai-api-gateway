@@ -9,6 +9,7 @@
     "limit": "限制",
     "currentSpend": "当前支出",
     "remaining": "剩余",
-    "period": "周期"
+    "period": "周期",
+    "status": "状态"
   }
 }

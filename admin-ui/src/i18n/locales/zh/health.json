@@ -1,9 +1,21 @@
 {
   "title": "健康状态",
+  "status": {
+    "healthy": "健康",
+    "unhealthy": "不健康",
+    "unknown": "未知"
+  },
   "fields": {
     "provider": "提供商",
     "status": "状态",
     "lastCheck": "最后检查",
-    "responseTime": "响应时间"
+    "responseTime": "响应时间",
+    "latency": "延迟",
+    "errorRate": "错误率"
+  },
+  "stats": {
+    "healthyProviders": "健康提供商",
+    "unhealthyProviders": "不健康提供商",
+    "avgLatency": "平均延迟"
   }
 }

@@ -2,6 +2,7 @@
   "title": "Usage",
   "fields": {
     "userId": "User ID",
+    "user": "User",
     "model": "Model",
     "provider": "Provider",
     "promptTokens": "Prompt Tokens",

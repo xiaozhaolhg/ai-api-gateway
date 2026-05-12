@@ -133,7 +133,7 @@ export const PricingRules: React.FC = () => {
       key: 'effective_date',
     },
     {
-      title: t('common:actions'),
+      title: t('common:common.actions'),
       key: 'actions',
       render: (_: any, record: PricingRule) => (
         <div>

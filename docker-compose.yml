@@ -128,8 +128,8 @@ services:
 
   admin-ui:
     build:
-      context: .
-      dockerfile: admin-ui/Dockerfile
+      context: ./admin-ui
+      dockerfile: Dockerfile
     ports:
       - "3000:80"
     depends_on:
@@ -137,6 +137,8 @@ services:
         condition: service_started
     environment:
       VITE_API_URL: "http://localhost:8080"
+    networks:
+      - ai-gateway
 
 networks:
   ai-gateway:

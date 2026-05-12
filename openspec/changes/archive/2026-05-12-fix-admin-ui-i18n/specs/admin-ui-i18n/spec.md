@@ -1,11 +1,7 @@
-## Purpose
-
-Internationalization framework for the admin UI, supporting multiple languages.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Internationalization framework
-The admin-ui SHALL support Chinese and English languages using react-i18next and antd locale.
+The admin-ui SHALL support Chinese and English languages using react-i18next and antd locale, with initial focus on English translation resolution.
 
 #### Scenario: Language initialization
 - **WHEN** the admin-ui starts
@@ -46,6 +42,8 @@ The admin-ui SHALL provide a language switcher in the header area.
 - **WHEN** the header is rendered
 - **THEN** a language toggle SHALL be visible showing the current language
 - **AND** clicking it SHALL switch between English and Chinese
+
+## ADDED Requirements
 
 ### Requirement: English translation completeness
 The admin-ui SHALL have complete English translations for all UI elements currently showing stub keys.

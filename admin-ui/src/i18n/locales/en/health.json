@@ -1,9 +1,21 @@
 {
   "title": "Health",
+  "status": {
+    "healthy": "Healthy",
+    "unhealthy": "Unhealthy",
+    "unknown": "Unknown"
+  },
   "fields": {
     "provider": "Provider",
     "status": "Status",
     "lastCheck": "Last Check",
-    "responseTime": "Response Time"
+    "responseTime": "Response Time",
+    "latency": "Latency",
+    "errorRate": "Error Rate"
+  },
+  "stats": {
+    "healthyProviders": "Healthy Providers",
+    "unhealthyProviders": "Unhealthy Providers",
+    "avgLatency": "Avg Latency"
   }
 }

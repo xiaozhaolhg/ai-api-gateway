@@ -2,12 +2,18 @@
   "title": "告警",
   "tabs": {
     "rules": "告警规则",
-    "activeAlerts": "活跃告警"
+    "activeAlerts": "活跃告警",
+    "alerts": "活跃告警"
   },
   "addRule": "添加告警规则",
   "editRule": "编辑告警规则",
   "deleteRule": "删除告警规则",
   "acknowledge": "确认",
+  "actions": {
+    "acknowledge": "确认",
+    "addRule": "添加告警规则",
+    "editRule": "编辑告警规则"
+  },
   "fields": {
     "name": "规则名称",
     "metric": "指标",
@@ -17,6 +23,37 @@
     "severity": "严重程度",
     "status": "状态",
     "triggeredAt": "触发时间",
+    "triggered_at": "触发时间",
     "description": "描述"
+  },
+  "validation": {
+    "nameRequired": "请输入规则名称",
+    "metricRequired": "请选择指标",
+    "conditionRequired": "请选择条件",
+    "thresholdRequired": "请输入阈值",
+    "channelRequired": "请选择通知通道"
+  },
+  "placeholders": {
+    "name": "输入规则名称",
+    "metric": "选择指标",
+    "condition": "选择条件",
+    "threshold": "输入阈值",
+    "channel": "选择通知通道"
+  },
+  "metrics": {
+    "errorRate": "错误率",
+    "latency": "延迟",
+    "cost": "费用",
+    "usage": "用量"
+  },
+  "conditions": {
+    "greaterThan": "大于",
+    "lessThan": "小于",
+    "equals": "等于"
+  },
+  "channels": {
+    "email": "邮件",
+    "slack": "Slack",
+    "webhook": "Webhook"
   }
 }
