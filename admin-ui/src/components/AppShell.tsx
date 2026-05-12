@@ -7,9 +7,7 @@ import {
   UserOutlined,
   TeamOutlined,
   KeyOutlined,
-  SafetyOutlined,
   BarChartOutlined,
-  DollarOutlined,
   ThunderboltOutlined,
   HeartOutlined,
   BellOutlined,
@@ -35,9 +33,7 @@ const roleAccess: Record<string, Role[]> = {
   '/groups': ['admin'],
   '/tiers': ['admin'],
   '/api-keys': ['admin', 'user'],
-  '/permissions': ['admin'],
   '/usage': ['admin', 'user', 'viewer'],
-  '/budgets': ['admin'],
   '/pricing': ['admin'],
   '/health': ['admin', 'user', 'viewer'],
   '/alerts': ['admin'],
@@ -125,11 +121,6 @@ export const AppShell: React.FC = () => {
           icon: <KeyOutlined />,
           label: t('navigation.apiKeys'),
         },
-        {
-          key: '/permissions',
-          icon: <SafetyOutlined />,
-          label: t('navigation.permissions'),
-        },
       ],
     },
     {
@@ -140,11 +131,6 @@ export const AppShell: React.FC = () => {
           key: '/usage',
           icon: <BarChartOutlined />,
           label: t('navigation.usage'),
-        },
-        {
-          key: '/budgets',
-          icon: <DollarOutlined />,
-          label: t('navigation.budgets'),
         },
         {
           key: '/pricing',

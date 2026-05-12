@@ -16,9 +16,7 @@ import Users from './pages/Users';
 import { Groups } from './pages/Groups';
 import { Tiers } from './pages/Tiers';
 import APIKeys from './pages/APIKeys';
-import { Permissions } from './pages/Permissions';
 import Usage from './pages/Usage';
-import { Budgets } from './pages/Budgets';
 import { PricingRules } from './pages/PricingRules';
 import Health from './pages/Health';
 import { Alerts } from './pages/Alerts';
@@ -51,9 +49,7 @@ function AppContent() {
                 <Route path="groups" element={<ProtectedRoute requiredRole="admin"><Groups /></ProtectedRoute>} />
                 <Route path="tiers" element={<ProtectedRoute requiredRole="admin"><Tiers /></ProtectedRoute>} />
                 <Route path="api-keys" element={<ProtectedRoute requiredRole="user"><APIKeys /></ProtectedRoute>} />
-                <Route path="permissions" element={<ProtectedRoute requiredRole="admin"><Permissions /></ProtectedRoute>} />
                 <Route path="usage" element={<Usage />} />
-                <Route path="budgets" element={<ProtectedRoute requiredRole="admin"><Budgets /></ProtectedRoute>} />
                 <Route path="pricing" element={<ProtectedRoute requiredRole="admin"><PricingRules /></ProtectedRoute>} />
                 <Route path="health" element={<Health />} />
                 <Route path="alerts" element={<ProtectedRoute requiredRole="admin"><Alerts /></ProtectedRoute>} />
