@@ -100,7 +100,9 @@ func (s *Service) ForwardRequest(ctx context.Context, providerID string, request
 	}
 	log.Printf("[DEBUG] ForwardRequest: final requestURL=%s, body=%s", requestURL, string(transformedBody))
 	resp, err := s.makeHTTPRequest(ctx, requestURL, transformedBody, transformedHeaders)
-	log.Printf("[DEBUG] HTTP response status: %d %s", resp.StatusCode, resp.Status)
+	if resp != nil {
+		log.Printf("[DEBUG] HTTP response status: %d %s", resp.StatusCode, resp.Status)
+	}
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to make request: %w", err)
 	}
