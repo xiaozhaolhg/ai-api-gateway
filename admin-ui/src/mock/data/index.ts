@@ -1,4 +1,4 @@
-import type { MockDataStore } from '../../api/types';
+import type { MockDataStore, Tier } from '../../api/types';
 
 // Default Mock Data
 export const defaultMockData: MockDataStore = {
@@ -356,6 +356,29 @@ export const defaultMockData: MockDataStore = {
       latency_ms: 120,
       error_rate: 0.1,
       last_check: '2024-01-16T10:00:00Z',
+    },
+  ],
+
+  tiers: [
+    {
+      id: '1',
+      name: 'Free',
+      description: 'Free tier with basic access',
+      is_default: true,
+      allowed_models: ['ollama:llama2', 'ollama:mistral'],
+      allowed_providers: ['ollama'],
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: '2',
+      name: 'Premium',
+      description: 'Premium tier with full access',
+      is_default: false,
+      allowed_models: ['*'],
+      allowed_providers: ['*'],
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
     },
   ],
 };

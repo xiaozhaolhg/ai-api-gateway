@@ -13,7 +13,8 @@ import type {
   PricingRule,
   AlertRule,
   Alert,
-  ProviderHealth
+  ProviderHealth,
+  Tier
 } from './types';
 import MockDataHandler from '../mock/handlers/dataHandler';
 import { API_CONFIG } from './config';
@@ -521,6 +522,63 @@ class MockAPIClient implements APIClientInterface {
   // ===== Health =====
   async getProviderHealth(): Promise<ProviderHealth[]> {
     return this.simulateNetworkDelay(this.dataHandler.getProviderHealth());
+  }
+
+  // ===== Tiers =====
+  async getTiers(): Promise<Tier[]> {
+    return this.simulateNetworkDelay(this.dataHandler.getTiers());
+  }
+
+  async createTier(tier: Omit<Tier, 'id' | 'created_at' | 'updated_at'>): Promise<Tier> {
+    const newTier: Tier = {
+      ...tier,
+      id: this.generateId(),
+      created_at: this.getCurrentTimestamp(),
+      updated_at: this.getCurrentTimestamp(),
+    };
+    this.dataHandler.addTier(newTier);
+    return this.simulateNetworkDelay(newTier);
+  }
+
+  async updateTier(id: string, tier: Partial<Tier>): Promise<Tier> {
+    const existing = this.dataHandler.getTierById(id);
+    if (!existing) {
+      throw new Error('Tier not found');
+    }
+    const updated = { ...existing, ...tier, updated_at: this.getCurrentTimestamp() };
+    this.dataHandler.updateTier(id, updated);
+    return this.simulateNetworkDelay(updated);
+  }
+
+  async deleteTier(id: string): Promise<void> {
+    const existing = this.dataHandler.getTierById(id);
+    if (!existing) {
+      throw new Error('Tier not found');
+    }
+    this.dataHandler.deleteTier(id);
+    return this.simulateNetworkDelay(undefined);
+  }
+
+  async assignTierToGroup(groupId: string, tierId: string): Promise<void> {
+    const group = this.dataHandler.getGroupById(groupId);
+    if (!group) {
+      throw new Error('Group not found');
+    }
+    const tier = this.dataHandler.getTierById(tierId);
+    if (!tier) {
+      throw new Error('Tier not found');
+    }
+    this.dataHandler.updateGroup(groupId, { tier_id: tierId });
+    return this.simulateNetworkDelay(undefined);
+  }
+
+  async removeTierFromGroup(groupId: string): Promise<void> {
+    const group = this.dataHandler.getGroupById(groupId);
+    if (!group) {
+      throw new Error('Group not found');
+    }
+    this.dataHandler.updateGroup(groupId, { tier_id: undefined });
+    return this.simulateNetworkDelay(undefined);
   }
 }
 

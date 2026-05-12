@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Popconfirm, Tag, Space, message, Card, Descriptions, Collapse } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type Tier } from '../../api/client';
+import { apiClient, type Tier, type Provider } from '../../api/client';
 
 export const Tiers: React.FC = () => {
   const { t } = useTranslation(['tiers', 'common']);
@@ -18,6 +18,21 @@ export const Tiers: React.FC = () => {
     queryKey: ['tiers'],
     queryFn: () => apiClient.getTiers(),
   });
+
+  const { data: providers = [], isLoading: providersLoading } = useQuery<Provider[]>({
+    queryKey: ['providers'],
+    queryFn: () => apiClient.getProviders(),
+  });
+
+  const groupedModels = useMemo(() => {
+    return providers.reduce((acc, provider) => {
+      acc[provider.type] = {
+        name: provider.name,
+        models: provider.models.map(m => `${provider.type}:${m}`),
+      };
+      return acc;
+    }, {} as Record<string, { name: string; models: string[] }>);
+  }, [providers]);
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Tier>) => {
@@ -177,21 +192,6 @@ export const Tiers: React.FC = () => {
     },
   ];
 
-  const mockProviders = [
-    { id: 'ollama', name: 'Ollama', models: ['llama2', 'mistral', 'codellama', 'orca-mini'] },
-    { id: 'openai', name: 'OpenAI', models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
-    { id: 'anthropic', name: 'Anthropic', models: ['claude-3', 'claude-3-sonnet', 'claude-3-opus'] },
-    { id: 'gemini', name: 'Google Gemini', models: ['gemini-pro', 'gemini-pro-vision'] },
-  ];
-
-  const groupedModels = mockProviders.reduce((acc, provider) => {
-    acc[provider.id] = {
-      name: provider.name,
-      models: provider.models.map(m => `${provider.id}:${m}`),
-    };
-    return acc;
-  }, {} as Record<string, { name: string; models: string[] }>);
-
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
@@ -236,6 +236,7 @@ export const Tiers: React.FC = () => {
               mode="multiple"
               placeholder={t('selectModels')}
               style={{ width: '100%' }}
+              loading={providersLoading}
             >
               {Object.entries(groupedModels).map(([providerId, provider]) => (
                 <Select.OptGroup key={providerId} label={provider.name}>
@@ -257,9 +258,10 @@ export const Tiers: React.FC = () => {
               mode="multiple"
               placeholder={t('selectProviders')}
               style={{ width: '100%' }}
+              loading={providersLoading}
             >
-              {mockProviders.map(provider => (
-                <Select.Option key={provider.id} value={provider.id}>
+              {providers.map(provider => (
+                <Select.Option key={provider.type} value={provider.type}>
                   {provider.name}
                 </Select.Option>
               ))}
@@ -313,11 +315,11 @@ export const Tiers: React.FC = () => {
             </Card>
 
             <Card title={t('allowedProviders')} style={{ marginTop: 16 }}>
-              {mockProviders.map(provider => {
-                const isAllowed = selectedTier.allowed_providers?.includes(provider.id) ||
+              {providers.map(provider => {
+                const isAllowed = selectedTier.allowed_providers?.includes(provider.type) ||
                   selectedTier.allowed_providers?.includes('*');
                 return (
-                  <Tag key={provider.id} color={isAllowed ? 'green' : 'default'}>
+                  <Tag key={provider.type} color={isAllowed ? 'green' : 'default'}>
                     {provider.name} {isAllowed ? '✓' : ''}
                   </Tag>
                 );

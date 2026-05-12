@@ -11,7 +11,8 @@ import type {
   PricingRule,
   AlertRule,
   Alert,
-  ProviderHealth
+  ProviderHealth,
+  Tier
 } from '../../api/types';
 import { defaultMockData } from '../data';
 
@@ -395,6 +396,33 @@ class MockDataHandler {
       this.dataStore.providerHealth[index] = { ...this.dataStore.providerHealth[index], ...updates };
       this.saveData();
     }
+  }
+
+  // ===== Tier Operations =====
+  getTiers(): Tier[] {
+    return [...this.dataStore.tiers];
+  }
+
+  getTierById(id: string): Tier | undefined {
+    return this.dataStore.tiers.find(t => t.id === id);
+  }
+
+  addTier(tier: Tier): void {
+    this.dataStore.tiers.push(tier);
+    this.saveData();
+  }
+
+  updateTier(id: string, updates: Partial<Tier>): void {
+    const index = this.dataStore.tiers.findIndex(t => t.id === id);
+    if (index !== -1) {
+      this.dataStore.tiers[index] = { ...this.dataStore.tiers[index], ...updates };
+      this.saveData();
+    }
+  }
+
+  deleteTier(id: string): void {
+    this.dataStore.tiers = this.dataStore.tiers.filter(t => t.id !== id);
+    this.saveData();
   }
 }
 
