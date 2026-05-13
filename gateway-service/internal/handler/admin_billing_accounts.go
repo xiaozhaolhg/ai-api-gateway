@@ -96,8 +96,12 @@ func (h *AdminBillingAccountsHandler) AdjustBalance(c *gin.Context) {
 
 	account, err := h.billingClient.GetBillingAccountByUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "billing account not found, create one first"})
-		return
+		// Auto-create billing account on first recharge
+		account, err = h.billingClient.CreateBillingAccount(c.Request.Context(), userID, 0)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create billing account: " + err.Error()})
+			return
+		}
 	}
 
 	newBalance := account.Balance + req.Amount
