@@ -62,7 +62,14 @@ func (m *ProxyMiddleware) Middleware() gin.HandlerFunc {
 		}
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-		stream := c.Query("stream") == "true"
+		// Check stream flag from request body (not query param), default false
+		stream := false
+		var reqBody struct {
+			Stream bool `json:"stream"`
+		}
+		if err := json.Unmarshal(bodyBytes, &reqBody); err == nil {
+			stream = reqBody.Stream
+		}
 
 		if stream {
 			m.handleStreamingRequest(c, providerID, bodyBytes)
@@ -182,6 +189,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 	// Try primary provider first
 	err := m.tryStreamingProvider(w, r, userIDStr, providerID, requestBody, headers, model, true)
 	if err == nil {
+		c.Abort()
 		return
 	}
 
@@ -214,6 +222,7 @@ func (m *ProxyMiddleware) handleStreamingRequest(c *gin.Context, providerID stri
 		}
 
 		log.Printf("[Fallback] Successfully fell back to streaming provider %s", fallbackID)
+		c.Abort()
 		return
 	}
 

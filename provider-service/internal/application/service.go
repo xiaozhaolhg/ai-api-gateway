@@ -173,6 +173,14 @@ func (s *Service) StreamRequest(ctx context.Context, providerID string, requestB
 		if targetURL == "" {
 			targetURL = "http://localhost:11434"
 		}
+		// Append /api/chat for Ollama chat endpoint (same as ForwardRequest)
+		if !strings.HasSuffix(targetURL, "/api/chat") {
+			if strings.HasSuffix(targetURL, "/") {
+				targetURL = targetURL + "api/chat"
+			} else {
+				targetURL = targetURL + "/api/chat"
+			}
+		}
 
 		adapter, err := s.adapterFactory.GetAdapter(provider.Type)
 		if err != nil {
@@ -200,7 +208,7 @@ func (s *Service) StreamRequest(ctx context.Context, providerID string, requestB
 
 		// Make streaming HTTP request
 		startTime := time.Now()
-		resp, err := s.makeStreamingHTTPRequest(ctx, provider.BaseURL, transformedBody, transformedHeaders)
+		resp, err := s.makeStreamingHTTPRequest(ctx, targetURL, transformedBody, transformedHeaders)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to make request: %w", err)
 			return

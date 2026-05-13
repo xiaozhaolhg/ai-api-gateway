@@ -360,11 +360,12 @@ func main() {
 	}
 
 	// Setup HTTP server with timeouts
+	// WriteTimeout must be high (300s) to accommodate long LLM generation times
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
 		Handler:      r,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 300 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 
